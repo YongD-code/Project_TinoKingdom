@@ -19,6 +19,10 @@ Build/
 # Generated IDE/project files
 *.sln
 *.slnx
+*.xcodeproj/
+*.xcworkspace/
+*.xcuserdata/
+*.xcuserstate
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
@@ -32,6 +36,7 @@ Build/
 # Visual Studio / Rider / VS Code local state
 .idea/
 .vscode/
+*.xcscmblueprint
 *.VC.db
 *.VC.opendb
 *.code-workspace
@@ -41,11 +46,14 @@ Build/
 *.tmp
 *.db
 *.opendb
+*.xcuserdatad
 
 # OS files
 Thumbs.db
 Desktop.ini
 .DS_Store
+.AppleDouble
+.LSOverride
 
 # Keep project source/config/content under version control.
 # Do not ignore .uproject, Source/, Config/, Content/, or Plugins/.
