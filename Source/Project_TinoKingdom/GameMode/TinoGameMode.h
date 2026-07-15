@@ -14,4 +14,6 @@ class PROJECT_TINOKINGDOM_API ATinoGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	
+public:
+	ATinoGameMode();
 };
