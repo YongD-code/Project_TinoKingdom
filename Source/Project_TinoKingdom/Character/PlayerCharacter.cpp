@@ -9,6 +9,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Math/RotationMatrix.h"
+#include "GameFramework/Controller.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
