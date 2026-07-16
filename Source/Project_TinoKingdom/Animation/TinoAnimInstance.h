@@ -26,10 +26,10 @@ public:
 	
 private:
 	// 런타임에 한 번 찾아서 캐시하는 참조
-	UPROPERTY(Transient)
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|References", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<ACharacter> OwnerCharacter = nullptr;
 	
-	UPROPERTY(Transient)
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|References", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCharacterMovementComponent> MovementComponent = nullptr;
 	
 	// 매 프레임마다 계산되는 애니메이션 입력값
