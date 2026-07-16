@@ -21,8 +21,10 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 	
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 500.f, 0.f);
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	
+	MovementComponent->bOrientRotationToMovement = true;
+	MovementComponent->RotationRate = FRotator(0.f, 500.f, 0.f);
 	
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -32,6 +34,15 @@ APlayerCharacter::APlayerCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+	
+	// 플레이어의 움직임 관성 값들
+	MovementComponent->MaxAcceleration = 500.f;
+	MovementComponent->BrakingDecelerationWalking = 450.f;
+	MovementComponent->GroundFriction = 6.f;
+
+	MovementComponent->bUseSeparateBrakingFriction = true;
+	MovementComponent->BrakingFriction = 0.4f;
+	MovementComponent->BrakingFrictionFactor = 1.f;
 }
 
 // Called when the game starts or when spawned
