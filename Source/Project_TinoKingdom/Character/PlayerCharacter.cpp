@@ -21,8 +21,10 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 	
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 500.f, 0.f);
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	
+	MovementComponent->bOrientRotationToMovement = true;
+	MovementComponent->RotationRate = FRotator(0.f, 500.f, 0.f);
 	
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -32,6 +34,15 @@ APlayerCharacter::APlayerCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+	
+	// 플레이어의 움직임 관성 값들
+	MovementComponent->MaxAcceleration = 500.f;
+	MovementComponent->BrakingDecelerationWalking = 450.f;
+	MovementComponent->GroundFriction = 6.f;
+
+	MovementComponent->bUseSeparateBrakingFriction = true;
+	MovementComponent->BrakingFriction = 0.4f;
+	MovementComponent->BrakingFrictionFactor = 1.f;
 }
 
 // Called when the game starts or when spawned
@@ -39,6 +50,7 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
 // Called every frame
@@ -64,6 +76,14 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	
+	if (SprintAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
+		
+	}
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -91,5 +111,15 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 	
 	AddControllerYawInput(LookInput.X);
 	AddControllerPitchInput(LookInput.Y);
+}
+
+void APlayerCharacter::StartRunning()
+{
+	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+}
+
+void APlayerCharacter::StopRunning()
+{
+	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
