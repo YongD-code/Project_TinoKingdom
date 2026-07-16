@@ -48,10 +48,19 @@ private:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (AllowPrivateAccess = "true"))
 	uint8 bIsJumping : 1;
 	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Landing", meta = (AllowPrivateAccess = "true"))
+	uint8 bShouldPlayLandAnimation : 1;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Landing", meta = (AllowPrivateAccess = "true"))
+	uint8 bShouldSkipLandAnimation : 1;
+	
 	// AnimBP Class Defaults에서 설정하고 저장할 수 있는 값
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Settings", meta = (AllowPrivateAccess = "true"))
 	float MovingSpeedThreshold = 3.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Settings", meta = (AllowPrivateAccess = "true"))
 	float JumpingSpeedThreshold = 0.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Settings", meta = (AllowPrivateAccess = "true"))
+	float LandingSpeedThreshold = 80.f;
 };

@@ -36,5 +36,9 @@ void UTinoAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		const bool bIsInAir = MovementComponent->IsFalling();
 		bIsJumping = bIsInAir && (Velocity.Z > JumpingSpeedThreshold);
 		bIsFalling = bIsInAir && !bIsJumping;
+		
+		const bool bIsGrounded = !bIsInAir;
+		bShouldPlayLandAnimation = bIsGrounded && (GroundSpeed < LandingSpeedThreshold);
+		bShouldSkipLandAnimation = bIsGrounded && (GroundSpeed >= LandingSpeedThreshold);
 	}
 }
