@@ -5,14 +5,16 @@
 
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
+#include "AI/NavigationSystemBase.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Dataflow/DataflowEngineUtil.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Math/RotationMatrix.h"
 #include "GameFramework/Controller.h"
+#include "Animation/AnimMontage.h"
+#include "Project_TinoKingdom/Combat/AttackComboData.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -74,6 +76,15 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 }
 
+void APlayerCharacter::SetComboInputWindowOpen(uint8 bIsOpen)
+{
+	bComboInputWindowOpen = bIsOpen;
+	if (bIsOpen)
+	{
+		bComboInputConsumed = false;
+	}
+}
+
 // Called to bind functionality to input
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -102,9 +113,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	// 공격 중에는 이동 입력 액션이 불가능하게
-
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (IsValid(AnimInstance) && AnimInstance->Montage_IsPlaying(AttackMontage))
+	if (IsAttacking())
 	{
 		return;
 	}
@@ -145,17 +154,93 @@ void APlayerCharacter::StopRunning()
 
 void APlayerCharacter::Attack()
 {
-	if (!GetCharacterMovement()->IsMovingOnGround() || bPressedJump)
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (bPressedJump || !MovementComponent->IsMovingOnGround())
 	{
 		return;
 	}
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	AnimInstance->Montage_Play(AttackMontage);
 	
-	// 같은 프레임에 이미 들어온 이동 입력 제거
+	const UAttackComboData* AttackData = GetCurrentAttackData();
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance();
+	
+	if (!IsAttacking())
+	{
+		StartComboAttack(AnimInstance, AttackData);
+		return;
+	}
+	
+	TryQueueNextCombo(AnimInstance, AttackData);
+}
+
+void APlayerCharacter::StartComboAttack(UAnimInstance* AnimInstance, const UAttackComboData* AttackData)
+{
+	// 몽타지 재생
+	const float MontageDuration = AnimInstance->Montage_Play(AttackData->AttackMontage);
+	if (MontageDuration <= 0.f)
+	{
+		ResetCombo();
+		return;
+	}
+	
+	// 재생 성공 시
+	CurrentComboIndex = 0;
+	bComboInputWindowOpen = false;
+	bComboInputConsumed = false;
+	
+	// Data Asset의 첫 번째 섹션으로 이동
+	AnimInstance->Montage_JumpToSection(AttackData->ComboSectionNames[CurrentComboIndex], AttackData->AttackMontage);
+	FOnMontageEnded MontageEndedDelegate;
+	
+	// 몽타지 종료 델리게이트 등록
+	MontageEndedDelegate.BindUObject(this, &APlayerCharacter::OnAttackMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, AttackData->AttackMontage);
+	
+	// 기존 이동 속도 제거
 	ConsumeMovementInputVector();
-	// 공격 직전까지 남아있던 이동 속도 제거
 	GetCharacterMovement()->StopMovementImmediately();
+}
+
+void APlayerCharacter::TryQueueNextCombo(UAnimInstance* AnimInstance, const UAttackComboData* AttackData)
+{
+	// 입력 허용 구간이 아니거나 이미 입력을 받았다면 무시
+	if (!bComboInputWindowOpen || bComboInputConsumed)
+	{
+		return;
+	}
+	
+	const int32 NextComboIndex = CurrentComboIndex + 1;
+	
+	// 마지막 콤보라서 다음 공격이 없다면 무시
+	if (!AttackData->ComboSectionNames.IsValidIndex(NextComboIndex))
+	{
+		return;
+	}
+	
+	const FName CurrentSectionName = AttackData->ComboSectionNames[CurrentComboIndex];
+	const FName NextSectionName = AttackData->ComboSectionNames[NextComboIndex];
+	
+	AnimInstance->Montage_SetNextSection(CurrentSectionName, NextSectionName, AttackData->AttackMontage);
+	CurrentComboIndex = NextComboIndex;
+	bComboInputWindowOpen = true;
+	bComboInputConsumed = false;
+}
+
+void APlayerCharacter::ResetCombo()
+{
+	CurrentComboIndex = INDEX_NONE;
+	bComboInputWindowOpen = false;
+	bComboInputConsumed = false;
+}
+
+void APlayerCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	ResetCombo();
+}
+
+const UAttackComboData* APlayerCharacter::GetCurrentAttackData() const
+{
+	return UnarmedAttackData.Get();
 }
 
 void APlayerCharacter::StartJump()
@@ -172,5 +257,6 @@ bool APlayerCharacter::IsAttacking() const
 	const USkeletalMeshComponent* CharacterMesh = GetMesh();
 	const UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance();
 	
-	return IsValid(AnimInstance) && AnimInstance->Montage_IsPlaying(AttackMontage);
+	// 이제는 몽타지 직접 검사할 필요 X
+	return CurrentComboIndex != INDEX_NONE;
 }

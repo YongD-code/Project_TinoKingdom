@@ -6,11 +6,13 @@
 #include "GameFramework/Character.h"
 #include "PlayerCharacter.generated.h"
 
+class UAnimInstance;
 class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
 class UAnimMontage;
 class USkeletalMeshComponent;
+class UAttackComboData;
 struct FInputActionValue;
 
 UCLASS()
@@ -37,6 +39,12 @@ protected:
 	void StopRunning();
 	
 	void Attack();
+	
+	void StartComboAttack(UAnimInstance* AnimInstance, const UAttackComboData* AttackData);
+	void TryQueueNextCombo(UAnimInstance* AnimInstance, const UAttackComboData* AttackData);
+	void ResetCombo();
+	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	const UAttackComboData* GetCurrentAttackData() const;
 	
 	void StartJump();
 	bool IsAttacking() const;
@@ -74,11 +82,17 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
-	TObjectPtr<UAnimMontage> AttackMontage;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UAttackComboData> UnarmedAttackData;
+	
+private:
+	uint32 CurrentComboIndex = INDEX_NONE;
+	uint8 bComboInputWindowOpen : 1 = false;
+	uint8 bComboInputConsumed : 1 = false;
 
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+	
+	void SetComboInputWindowOpen(uint8 bIsOpen);
 };
