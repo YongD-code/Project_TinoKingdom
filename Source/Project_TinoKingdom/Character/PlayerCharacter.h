@@ -38,6 +38,9 @@ protected:
 	
 	void Attack();
 	
+	void StartJump();
+	bool IsAttacking() const;
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;

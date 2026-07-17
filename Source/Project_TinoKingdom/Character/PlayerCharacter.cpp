@@ -88,7 +88,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	
 	EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
 	EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
-	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::StartJump);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Attack);
 	if (SprintAction != nullptr)
@@ -156,4 +156,21 @@ void APlayerCharacter::Attack()
 	ConsumeMovementInputVector();
 	// 공격 직전까지 남아있던 이동 속도 제거
 	GetCharacterMovement()->StopMovementImmediately();
+}
+
+void APlayerCharacter::StartJump()
+{
+	if (IsAttacking())
+	{
+		return;
+	}
+	Jump();
+}
+
+bool APlayerCharacter::IsAttacking() const
+{
+	const USkeletalMeshComponent* CharacterMesh = GetMesh();
+	const UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance();
+	
+	return IsValid(AnimInstance) && AnimInstance->Montage_IsPlaying(AttackMontage);
 }
