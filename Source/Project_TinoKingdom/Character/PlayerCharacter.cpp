@@ -56,7 +56,15 @@ void APlayerCharacter::BeginPlay()
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	
 	static const FName AnimationBodyTag(TEXT("AnimationBody"));
-	AnimationMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
+	VisibleBodyMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
+	
+	USkeletalMeshComponent* DriverMesh = GetMesh();
+	DriverMesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	DriverMesh->SetHiddenInGame(true);
+	
+	// true - bForceUpdate 값인데 true, false 둘 다 상관없을듯. 어차피 BeginPlay()에서 실행하니까
+	// fasle - CharacterMesh0의 포즈를 따라가는 Body가 별도로 TickPose를 실행하지 않게 
+	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
 }
 
 // Called every frame
@@ -93,13 +101,20 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
-	const FVector2D MovementInput = Value.Get<FVector2D>();
+	// 공격 중에는 이동 입력 액션이 불가능하게
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (IsValid(AnimInstance) && AnimInstance->Montage_IsPlaying(AttackMontage))
+	{
+		return;
+	}
 	
 	if (Controller == nullptr)
 	{
 		return;
 	}
 	
+	const FVector2D MovementInput = Value.Get<FVector2D>();
 	const FRotator ControlRotation = Controller->GetControlRotation();
 	const FRotator YawRotation(0.f, ControlRotation.Yaw, 0.f);
 	
@@ -130,6 +145,15 @@ void APlayerCharacter::StopRunning()
 
 void APlayerCharacter::Attack()
 {
-	UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance();
+	if (!GetCharacterMovement()->IsMovingOnGround() || bPressedJump)
+	{
+		return;
+	}
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	AnimInstance->Montage_Play(AttackMontage);
+	
+	// 같은 프레임에 이미 들어온 이동 입력 제거
+	ConsumeMovementInputVector();
+	// 공격 직전까지 남아있던 이동 속도 제거
+	GetCharacterMovement()->StopMovementImmediately();
 }

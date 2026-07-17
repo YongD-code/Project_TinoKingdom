@@ -69,7 +69,7 @@ protected:
 // Animation Montage
 protected:
 	UPROPERTY(Transient)
-	TObjectPtr<USkeletalMeshComponent> AnimationMesh;
+	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UAnimMontage> AttackMontage;
