@@ -10,6 +10,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
 class UAnimMontage;
+class USkeletalMeshComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -67,6 +68,9 @@ protected:
 	
 // Animation Montage
 protected:
+	UPROPERTY(Transient)
+	TObjectPtr<USkeletalMeshComponent> AnimationMesh;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UAnimMontage> AttackMontage;
 

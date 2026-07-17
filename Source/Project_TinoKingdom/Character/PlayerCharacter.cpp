@@ -9,6 +9,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Dataflow/DataflowEngineUtil.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Math/RotationMatrix.h"
 #include "GameFramework/Controller.h"
@@ -53,6 +54,9 @@ void APlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	
+	static const FName AnimationBodyTag(TEXT("AnimationBody"));
+	AnimationMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
 }
 
 // Called every frame
@@ -126,6 +130,6 @@ void APlayerCharacter::StopRunning()
 
 void APlayerCharacter::Attack()
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance();
 	AnimInstance->Montage_Play(AttackMontage);
 }
