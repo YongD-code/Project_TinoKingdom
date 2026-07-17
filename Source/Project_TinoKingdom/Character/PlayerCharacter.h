@@ -9,6 +9,7 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
+class UAnimMontage;
 struct FInputActionValue;
 
 UCLASS()
@@ -34,6 +35,8 @@ protected:
 	void StartRunning();
 	void StopRunning();
 	
+	void Attack();
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -53,11 +56,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SprintAction;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> AttackAction;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float RunSpeed = 400.f;
+	
+// Animation Montage
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> AttackMontage;
 
 public:	
 	// Called every frame
