@@ -4,7 +4,7 @@
 #include "ComboAttackAnimNotifyState.h"
 
 #include "Components/SkeletalMeshComponent.h"
-#include "Project_TinoKingdom/Character/PlayerCharacter.h"
+#include "Project_TinoKingdom/Interface/CombatAttackAnimationInterface.h"
 
 void UComboAttackAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                                               float TotalDuration, const FAnimNotifyEventReference& EventReference)
@@ -16,10 +16,11 @@ void UComboAttackAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, 
 		return;
 	}
 	
-	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(MeshComp->GetOwner());
-	if (IsValid(PlayerCharacter))
+	ICombatAttackAnimationInterface* CombatAnimationInterface =
+		Cast<ICombatAttackAnimationInterface>(MeshComp->GetOwner());
+	if (CombatAnimationInterface != nullptr)
 	{
-		PlayerCharacter->SetComboInputWindowOpen(true);
+		CombatAnimationInterface->SetComboInputWindowOpen(true);
 	}
 }
 
@@ -33,9 +34,10 @@ void UComboAttackAnimNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp, UA
 		return;
 	}
 
-	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(MeshComp->GetOwner());
-	if (IsValid(PlayerCharacter))
+	ICombatAttackAnimationInterface* CombatAnimationInterface =
+		Cast<ICombatAttackAnimationInterface>(MeshComp->GetOwner());
+	if (CombatAnimationInterface != nullptr)
 	{
-		PlayerCharacter->SetComboInputWindowOpen(false);
+		CombatAnimationInterface->SetComboInputWindowOpen(false);
 	}
 }

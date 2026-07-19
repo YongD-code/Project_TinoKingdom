@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Project_TinoKingdom/Interface/CombatAttackAnimationInterface.h"
 #include "PlayerCharacter.generated.h"
 
 class UAnimInstance;
@@ -16,7 +17,7 @@ class UAttackComboData;
 struct FInputActionValue;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter
+class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter, public ICombatAttackAnimationInterface
 {
 	GENERATED_BODY()
 
@@ -94,5 +95,5 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	
-	void SetComboInputWindowOpen(uint8 bIsOpen);
+	virtual void SetComboInputWindowOpen(bool bIsOpen) override;
 };
