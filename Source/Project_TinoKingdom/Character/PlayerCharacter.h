@@ -6,9 +6,13 @@
 #include "GameFramework/Character.h"
 #include "PlayerCharacter.generated.h"
 
+class UAnimInstance;
 class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
+class UAnimMontage;
+class USkeletalMeshComponent;
+class UAttackComboData;
 struct FInputActionValue;
 
 UCLASS()
@@ -34,6 +38,17 @@ protected:
 	void StartRunning();
 	void StopRunning();
 	
+	void Attack();
+	
+	void StartComboAttack(UAnimInstance* AnimInstance, const UAttackComboData* AttackData);
+	void TryQueueNextCombo(UAnimInstance* AnimInstance, const UAttackComboData* AttackData);
+	void ResetCombo();
+	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	const UAttackComboData* GetCurrentAttackData() const;
+	
+	void StartJump();
+	bool IsAttacking() const;
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -53,14 +68,31 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SprintAction;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> AttackAction;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float RunSpeed = 400.f;
+	
+// Animation Montage
+protected:
+	UPROPERTY(Transient)
+	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UAttackComboData> UnarmedAttackData;
+	
+private:
+	uint32 CurrentComboIndex = INDEX_NONE;
+	uint8 bComboInputWindowOpen : 1 = false;
+	uint8 bComboInputConsumed : 1 = false;
 
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+	
+	void SetComboInputWindowOpen(uint8 bIsOpen);
 };

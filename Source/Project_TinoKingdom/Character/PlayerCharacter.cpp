@@ -5,11 +5,16 @@
 
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
+#include "AI/NavigationSystemBase.h"
+#include "Animation/AnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Math/RotationMatrix.h"
 #include "GameFramework/Controller.h"
+#include "Animation/AnimMontage.h"
+#include "Project_TinoKingdom/Combat/AttackComboData.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -51,6 +56,17 @@ void APlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	
+	static const FName AnimationBodyTag(TEXT("AnimationBody"));
+	VisibleBodyMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
+	
+	USkeletalMeshComponent* DriverMesh = GetMesh();
+	DriverMesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	DriverMesh->SetHiddenInGame(true);
+	
+	// true - bForceUpdate 값인데 true, false 둘 다 상관없을듯. 어차피 BeginPlay()에서 실행하니까
+	// fasle - CharacterMesh0의 포즈를 따라가는 Body가 별도로 TickPose를 실행하지 않게 
+	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
 }
 
 // Called every frame
@@ -58,6 +74,15 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void APlayerCharacter::SetComboInputWindowOpen(uint8 bIsOpen)
+{
+	bComboInputWindowOpen = bIsOpen;
+	if (bIsOpen)
+	{
+		bComboInputConsumed = false;
+	}
 }
 
 // Called to bind functionality to input
@@ -74,27 +99,31 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	
 	EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
 	EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
-	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::StartJump);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-	
+	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Attack);
 	if (SprintAction != nullptr)
 	{
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
-		
 	}
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
-	const FVector2D MovementInput = Value.Get<FVector2D>();
+	// 공격 중에는 이동 입력 액션이 불가능하게
+	if (IsAttacking())
+	{
+		return;
+	}
 	
 	if (Controller == nullptr)
 	{
 		return;
 	}
 	
+	const FVector2D MovementInput = Value.Get<FVector2D>();
 	const FRotator ControlRotation = Controller->GetControlRotation();
 	const FRotator YawRotation(0.f, ControlRotation.Yaw, 0.f);
 	
@@ -123,3 +152,108 @@ void APlayerCharacter::StopRunning()
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
+void APlayerCharacter::Attack()
+{
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (bPressedJump || !MovementComponent->IsMovingOnGround())
+	{
+		return;
+	}
+	
+	const UAttackComboData* AttackData = GetCurrentAttackData();
+	USkeletalMeshComponent* CharacterMesh = GetMesh();
+	UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance();
+	
+	if (!IsAttacking())
+	{
+		StartComboAttack(AnimInstance, AttackData);
+		return;
+	}
+	
+	TryQueueNextCombo(AnimInstance, AttackData);
+}
+
+void APlayerCharacter::StartComboAttack(UAnimInstance* AnimInstance, const UAttackComboData* AttackData)
+{
+	// 몽타지 재생
+	const float MontageDuration = AnimInstance->Montage_Play(AttackData->AttackMontage);
+	if (MontageDuration <= 0.f)
+	{
+		ResetCombo();
+		return;
+	}
+	
+	// 재생 성공 시
+	CurrentComboIndex = 0;
+	bComboInputWindowOpen = false;
+	bComboInputConsumed = false;
+	
+	// Data Asset의 첫 번째 섹션으로 이동
+	AnimInstance->Montage_JumpToSection(AttackData->ComboSectionNames[CurrentComboIndex], AttackData->AttackMontage);
+	FOnMontageEnded MontageEndedDelegate;
+	
+	// 몽타지 종료 델리게이트 등록
+	MontageEndedDelegate.BindUObject(this, &APlayerCharacter::OnAttackMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, AttackData->AttackMontage);
+	
+	// 기존 이동 속도 제거
+	ConsumeMovementInputVector();
+	GetCharacterMovement()->StopMovementImmediately();
+}
+
+void APlayerCharacter::TryQueueNextCombo(UAnimInstance* AnimInstance, const UAttackComboData* AttackData)
+{
+	// 입력 허용 구간이 아니거나 이미 입력을 받았다면 무시
+	if (!bComboInputWindowOpen || bComboInputConsumed)
+	{
+		return;
+	}
+	
+	const int32 NextComboIndex = CurrentComboIndex + 1;
+	
+	// 마지막 콤보라서 다음 공격이 없다면 무시
+	if (!AttackData->ComboSectionNames.IsValidIndex(NextComboIndex))
+	{
+		return;
+	}
+	
+	const FName CurrentSectionName = AttackData->ComboSectionNames[CurrentComboIndex];
+	const FName NextSectionName = AttackData->ComboSectionNames[NextComboIndex];
+	
+	AnimInstance->Montage_SetNextSection(CurrentSectionName, NextSectionName, AttackData->AttackMontage);
+	CurrentComboIndex = NextComboIndex;
+	bComboInputWindowOpen = true;
+	bComboInputConsumed = false;
+}
+
+void APlayerCharacter::ResetCombo()
+{
+	CurrentComboIndex = INDEX_NONE;
+	bComboInputWindowOpen = false;
+	bComboInputConsumed = false;
+}
+
+void APlayerCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	ResetCombo();
+}
+
+const UAttackComboData* APlayerCharacter::GetCurrentAttackData() const
+{
+	return UnarmedAttackData.Get();
+}
+
+void APlayerCharacter::StartJump()
+{
+	if (IsAttacking())
+	{
+		return;
+	}
+	Jump();
+}
+
+bool APlayerCharacter::IsAttacking() const
+{
+	// 이제는 몽타지 직접 검사할 필요 X
+	return CurrentComboIndex != INDEX_NONE;
+}
