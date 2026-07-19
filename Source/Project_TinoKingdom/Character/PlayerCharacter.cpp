@@ -13,7 +13,7 @@
 #include "Math/RotationMatrix.h"
 #include "GameFramework/Controller.h"
 #include "Animation/AnimMontage.h"
-#include "Project_TinoKingdom/Combat/AttackComboData.h"
+#include "Project_TinoKingdom/DataAsset/AttackComboData.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -75,7 +75,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 }
 
-void APlayerCharacter::SetComboInputWindowOpen(uint8 bIsOpen)
+void APlayerCharacter::SetComboInputWindowOpen(bool bIsOpen)
 {
 	bComboInputWindowOpen = bIsOpen;
 	if (bIsOpen)
