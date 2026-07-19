@@ -3,16 +3,17 @@
 
 #include "PlayerCharacter.h"
 
-#include "EnhancedInputComponent.h"
-#include "InputActionValue.h"
 #include "Animation/AnimInstance.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "Animation/AnimMontage.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "GameFramework/SpringArmComponent.h"
-#include "Math/RotationMatrix.h"
+#include "Components/CapsuleComponent.h"
+#include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
-#include "Animation/AnimMontage.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "InputActionValue.h"
+#include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
 
 // Sets default values
@@ -47,6 +48,9 @@ APlayerCharacter::APlayerCharacter()
 	MovementComponent->bUseSeparateBrakingFriction = true;
 	MovementComponent->BrakingFriction = 0.4f;
 	MovementComponent->BrakingFrictionFactor = 1.f;
+	
+	// 충돌 프리셋 적용
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("TinoCapsule"));
 }
 
 // Called when the game starts or when spawned
