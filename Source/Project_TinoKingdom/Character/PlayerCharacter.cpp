@@ -254,9 +254,6 @@ void APlayerCharacter::StartJump()
 
 bool APlayerCharacter::IsAttacking() const
 {
-	const USkeletalMeshComponent* CharacterMesh = GetMesh();
-	const UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance();
-	
 	// 이제는 몽타지 직접 검사할 필요 X
 	return CurrentComboIndex != INDEX_NONE;
 }
