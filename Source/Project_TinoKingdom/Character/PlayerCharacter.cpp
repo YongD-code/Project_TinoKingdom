@@ -5,7 +5,6 @@
 
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
-#include "AI/NavigationSystemBase.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
@@ -222,8 +221,7 @@ void APlayerCharacter::TryQueueNextCombo(UAnimInstance* AnimInstance, const UAtt
 	
 	AnimInstance->Montage_SetNextSection(CurrentSectionName, NextSectionName, AttackData->AttackMontage);
 	CurrentComboIndex = NextComboIndex;
-	bComboInputWindowOpen = true;
-	bComboInputConsumed = false;
+	bComboInputConsumed = true;
 }
 
 void APlayerCharacter::ResetCombo()
