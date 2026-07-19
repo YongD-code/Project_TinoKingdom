@@ -21,7 +21,8 @@ struct FComboAttackSectionData
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
 	float Damage = 10.f;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0"))
+	// 0은 대상 수 제한 없음
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "1"))
 	int32 MaxHitTargets = 1;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace")
@@ -33,7 +34,7 @@ struct FComboAttackSectionData
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace")
 	float TraceHeightOffset = 30.f;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace", meta = (ClampMin = "0.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace", meta = (ClampMin = "1.0"))
 	float TraceRadius = 35.f;
 };
 

@@ -8,6 +8,10 @@
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "CollisionQueryParams.h"
+#include "CollisionShape.h"
+#include "DrawDebugHelpers.h"
+#include "Engine/World.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -15,6 +19,7 @@
 #include "InputActionValue.h"
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
+#include "Project_TinoKingdom/Constants/TinoCollision.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
@@ -74,6 +79,71 @@ void APlayerCharacter::BeginPlay()
 	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
 }
 
+void APlayerCharacter::PerformAttackTrace()
+{
+	if (!bAttackHitWindowOpen)
+	{
+		return;
+	}
+	
+	const UAttackComboData* AttackData = GetCurrentAttackData();
+	const FComboAttackSectionData& AttackSection = AttackData->ComboSection[ActiveAttackSectionIndex];
+	
+	// 공격이 이미 섹션에 정해놓은 대상만큼 타격을 했다면 이후 Tick에서 Sweep할 필요 없음
+	// AttackSection.MaxHitTargets > 0 조건은 MaxHitTargets == 0이면 타격 수 제한이 없기 때문
+	if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+	
+	const FVector Forward = GetActorForwardVector();
+	const FVector Up = GetActorUpVector();
+	
+	const FVector Start = GetActorLocation() + Forward * AttackSection.TraceStartForwardOffset
+						+ Up * AttackSection.TraceHeightOffset;
+	const FVector End = Start + Forward * AttackSection.TraceDistance;
+	
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TinoMeleeTrace), false, this);
+	TArray<FHitResult> HitResults;
+	World->SweepMultiByChannel(HitResults, Start, End, FQuat::Identity, TinoCollision::Action,
+		FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
+	
+	const FColor DebugColor = HitResults.IsEmpty() ? FColor::Green : FColor::Red;
+	DrawDebugSphere(World, Start, AttackSection.TraceRadius, 16, DebugColor, false, 0.1f, 0, 1.f);
+	DrawDebugSphere(World, End, AttackSection.TraceRadius, 16, DebugColor, false, 0.1f, 0, 1.f);
+	DrawDebugLine(World, Start, End, DebugColor, false, 0.1f, 0, 1.f);
+	
+	for (const FHitResult& HitResult : HitResults)
+	{
+		AActor* HitActor = HitResult.GetActor();
+		if (!IsValid(HitActor))
+		{
+			continue;
+		}
+		
+		const TWeakObjectPtr<AActor> HitActorKey(HitActor);
+		if (HitActorsThisWindow.Contains(HitActorKey))
+		{
+			continue;
+		}
+		HitActorsThisWindow.Add(HitActorKey);
+		
+		UE_LOG(LogTinoCombat, Log, TEXT("%s 공격이 %s를 검출"), *GetNameSafe(this), *GetNameSafe(HitActor));
+		
+		// 현재 Sweep에서 최대 대상 수에 도달했는지 확인
+		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
+		{
+			break;
+		}
+	}
+}
+
 // Called every frame
 void APlayerCharacter::Tick(float DeltaTime)
 {
@@ -88,6 +158,39 @@ void APlayerCharacter::SetComboInputWindowOpen(bool bIsOpen)
 	{
 		bComboInputConsumed = false;
 	}
+}
+
+void APlayerCharacter::BeginAttackHitWindow()
+{
+	bAttackHitWindowOpen = false;
+	ActiveAttackSectionIndex = INDEX_NONE;
+	HitActorsThisWindow.Reset();
+	
+	const int32 FoundSectionIndex = FindActiveComboAttackSectionIndex();
+	const UAttackComboData* AttackData = GetCurrentAttackData();
+	if (!IsValid(AttackData) || !AttackData->ComboSection.IsValidIndex(FoundSectionIndex))
+	{
+		UE_LOG(LogTinoCombat, Error, TEXT("%s: 현재 공격 섹션 데이터를 찾을 수 없습니다."), *GetNameSafe(this));
+		return;
+	}
+	
+	ActiveAttackSectionIndex = FoundSectionIndex;
+	bAttackHitWindowOpen = true;
+	
+	// Anim Notify State 구간이 너무 짧으면 검사가 안 될까봐 즉시 한 번 검사
+	PerformAttackTrace();
+}
+
+void APlayerCharacter::TickAttackHitWindow(float DeltaTime)
+{
+	PerformAttackTrace();
+}
+
+void APlayerCharacter::EndAttackHitWindow()
+{
+	bAttackHitWindowOpen = false;
+	ActiveAttackSectionIndex = INDEX_NONE;
+	HitActorsThisWindow.Reset();
 }
 
 // Called to bind functionality to input
@@ -268,6 +371,9 @@ void APlayerCharacter::ResetCombo()
 	QueuedComboIndex = INDEX_NONE;
 	bComboInputWindowOpen = false;
 	bComboInputConsumed = false;
+	
+	// 만약에 플레이어가 몽타지를 플레이하던 도중 끊겼을 때를 대비
+	EndAttackHitWindow();
 }
 
 void APlayerCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
@@ -293,4 +399,33 @@ bool APlayerCharacter::IsAttacking() const
 {
 	// 이제는 몽타지 직접 검사할 필요 X
 	return QueuedComboIndex != INDEX_NONE;
+}
+
+int32 APlayerCharacter::FindActiveComboAttackSectionIndex() const
+{
+	const UAttackComboData* AttackData = GetCurrentAttackData();
+	const USkeletalMeshComponent* CharacterMesh = GetMesh();
+	
+	if (!IsValid(AttackData) || !IsValid(AttackData->AttackMontage) || !IsValid(CharacterMesh))
+	{
+		return INDEX_NONE;
+	}
+	
+	const UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance();
+	if (!IsValid(AnimInstance))
+	{
+		return INDEX_NONE;
+	}
+	
+	const FName CurrentSectionName = AnimInstance->Montage_GetCurrentSection(AttackData->AttackMontage);
+	if (CurrentSectionName.IsNone())
+	{
+		return INDEX_NONE;
+	}
+	
+	return AttackData->ComboSection.IndexOfByPredicate(
+		[&CurrentSectionName](const FComboAttackSectionData& SectionData)
+		{
+			return SectionData.SectionName == CurrentSectionName;
+		});
 }
