@@ -16,6 +16,8 @@
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
+
 // Sets default values
 APlayerCharacter::APlayerCharacter()
 {
@@ -178,21 +180,54 @@ void APlayerCharacter::Attack()
 
 void APlayerCharacter::StartComboAttack(UAnimInstance* AnimInstance, const UAttackComboData* AttackData)
 {
-	// 몽타지 재생
+	if (!IsValid(AnimInstance))
+	{
+		UE_LOG(LogTinoCombat, Error, TEXT("%s: AnimInstance가 없습니다."), *GetNameSafe(this));
+		return;
+	}
+
+	if (!IsValid(AttackData))
+	{
+		UE_LOG(LogTinoCombat,Error, TEXT("%s: AttackData가 지정되지 않았습니다."), *GetNameSafe(this));
+		return;
+	}
+
+	if (!IsValid(AttackData->AttackMontage))
+	{
+		UE_LOG(LogTinoCombat, Error, TEXT("%s: AttackMontage가 지정되지 않았습니다."), *GetNameSafe(this));
+		return;
+	}
+
+	if (!AttackData->ComboSection.IsValidIndex(0))
+	{
+		UE_LOG(LogTinoCombat, Error, TEXT("%s: ComboSection 배열이 비어 있습니다."), *GetNameSafe(this));
+		return;
+	}
+
+	const FName FirstSectionName = AttackData->ComboSection[0].SectionName;
+	if (!AttackData->AttackMontage->IsValidSectionName(FirstSectionName))
+	{
+		UE_LOG(LogTinoCombat, Error, TEXT("%s: 몽타주 %s에 섹션 %s이 존재하지 않습니다."),
+			*GetNameSafe(this), *GetNameSafe(AttackData->AttackMontage), *FirstSectionName.ToString());
+		return;
+	}
+
 	const float MontageDuration = AnimInstance->Montage_Play(AttackData->AttackMontage);
 	if (MontageDuration <= 0.f)
 	{
+		UE_LOG(LogTinoCombat, Error, TEXT("%s: 공격 몽타주 %s 재생에 실패했습니다."),
+			*GetNameSafe(this), *GetNameSafe(AttackData->AttackMontage));
 		ResetCombo();
 		return;
 	}
 	
 	// 재생 성공 시
-	CurrentComboIndex = 0;
+	QueuedComboIndex = 0;
 	bComboInputWindowOpen = false;
 	bComboInputConsumed = false;
 	
 	// Data Asset의 첫 번째 섹션으로 이동
-	AnimInstance->Montage_JumpToSection(AttackData->ComboSectionNames[CurrentComboIndex], AttackData->AttackMontage);
+	AnimInstance->Montage_JumpToSection(FirstSectionName, AttackData->AttackMontage);
 	FOnMontageEnded MontageEndedDelegate;
 	
 	// 몽타지 종료 델리게이트 등록
@@ -212,25 +247,25 @@ void APlayerCharacter::TryQueueNextCombo(UAnimInstance* AnimInstance, const UAtt
 		return;
 	}
 	
-	const int32 NextComboIndex = CurrentComboIndex + 1;
+	const int32 NextComboIndex = QueuedComboIndex + 1;
 	
 	// 마지막 콤보라서 다음 공격이 없다면 무시
-	if (!AttackData->ComboSectionNames.IsValidIndex(NextComboIndex))
+	if (!AttackData->ComboSection.IsValidIndex(NextComboIndex))
 	{
 		return;
 	}
 	
-	const FName CurrentSectionName = AttackData->ComboSectionNames[CurrentComboIndex];
-	const FName NextSectionName = AttackData->ComboSectionNames[NextComboIndex];
+	const FName CurrentSectionName = AttackData->ComboSection[QueuedComboIndex].SectionName;
+	const FName NextSectionName = AttackData->ComboSection[NextComboIndex].SectionName;
 	
 	AnimInstance->Montage_SetNextSection(CurrentSectionName, NextSectionName, AttackData->AttackMontage);
-	CurrentComboIndex = NextComboIndex;
+	QueuedComboIndex = NextComboIndex;
 	bComboInputConsumed = true;
 }
 
 void APlayerCharacter::ResetCombo()
 {
-	CurrentComboIndex = INDEX_NONE;
+	QueuedComboIndex = INDEX_NONE;
 	bComboInputWindowOpen = false;
 	bComboInputConsumed = false;
 }
@@ -257,5 +292,5 @@ void APlayerCharacter::StartJump()
 bool APlayerCharacter::IsAttacking() const
 {
 	// 이제는 몽타지 직접 검사할 필요 X
-	return CurrentComboIndex != INDEX_NONE;
+	return QueuedComboIndex != INDEX_NONE;
 }

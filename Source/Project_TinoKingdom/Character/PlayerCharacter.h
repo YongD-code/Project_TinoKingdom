@@ -87,7 +87,7 @@ protected:
 	TObjectPtr<UAttackComboData> UnarmedAttackData;
 	
 private:
-	uint32 CurrentComboIndex = INDEX_NONE;
+	int32 QueuedComboIndex = INDEX_NONE;
 	uint8 bComboInputWindowOpen : 1 = false;
 	uint8 bComboInputConsumed : 1 = false;
 
