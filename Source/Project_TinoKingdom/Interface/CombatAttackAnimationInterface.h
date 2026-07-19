@@ -7,7 +7,7 @@
 #include "CombatAttackAnimationInterface.generated.h"
 
 // This class does not need to be modified.
-UINTERFACE(MinimalAPI)
+UINTERFACE(MinimalAPI, meta = (CannotImplementInterfaceInBlueprint))
 class UCombatAttackAnimationInterface : public UInterface
 {
 	GENERATED_BODY()
@@ -22,4 +22,5 @@ class PROJECT_TINOKINGDOM_API ICombatAttackAnimationInterface
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
+	virtual void SetComboInputWindowOpen(bool bIsOpen) = 0;
 };
