@@ -50,6 +50,8 @@ protected:
 	void StartJump();
 	bool IsAttacking() const;
 	
+	int32 FindActiveComboAttackSectionIndex() const;
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -87,13 +89,24 @@ protected:
 	TObjectPtr<UAttackComboData> UnarmedAttackData;
 	
 private:
-	uint32 CurrentComboIndex = INDEX_NONE;
-	uint8 bComboInputWindowOpen : 1 = false;
-	uint8 bComboInputConsumed : 1 = false;
+	int32 QueuedComboIndex = INDEX_NONE;
+	bool bComboInputWindowOpen = false;
+	bool bComboInputConsumed = false;
+	
+	int32 ActiveAttackSectionIndex = INDEX_NONE;
+	bool bAttackHitWindowOpen = false;
+	// 피격 대상이 도중에 죽어도 null 오류가 안 나게
+	TSet<TWeakObjectPtr<AActor>> HitActorsThisWindow;
 
+private:
+	void PerformAttackTrace();
+	
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	
 	virtual void SetComboInputWindowOpen(bool bIsOpen) override;
+	virtual void BeginAttackHitWindow() override;
+	virtual void TickAttackHitWindow(float DeltaTime) override;
+	virtual void EndAttackHitWindow() override;
 };
