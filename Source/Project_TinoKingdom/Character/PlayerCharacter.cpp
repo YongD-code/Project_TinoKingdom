@@ -15,8 +15,10 @@
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/DamageType.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
+#include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
@@ -114,6 +116,12 @@ void APlayerCharacter::PerformAttackTrace()
 	World->SweepMultiByChannel(HitResults, Start, End, FQuat::Identity, TinoCollision::Action,
 		FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
 	
+	HitResults.Sort(
+		[](const FHitResult& A, const FHitResult& B)
+		{
+			return A.Distance < B.Distance;
+		});
+	
 	const FColor DebugColor = HitResults.IsEmpty() ? FColor::Green : FColor::Red;
 	DrawDebugSphere(World, Start, AttackSection.TraceRadius, 16, DebugColor, false, 0.1f, 0, 1.f);
 	DrawDebugSphere(World, End, AttackSection.TraceRadius, 16, DebugColor, false, 0.1f, 0, 1.f);
@@ -133,6 +141,9 @@ void APlayerCharacter::PerformAttackTrace()
 			continue;
 		}
 		HitActorsThisWindow.Add(HitActorKey);
+		
+		UGameplayStatics::ApplyPointDamage(HitActor, AttackSection.Damage, Forward, HitResult,
+			GetController(), this, UDamageType::StaticClass());
 		
 		UE_LOG(LogTinoCombat, Log, TEXT("%s 공격이 %s를 검출"), *GetNameSafe(this), *GetNameSafe(HitActor));
 		
