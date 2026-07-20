@@ -22,7 +22,7 @@ struct FComboAttackSectionData
 	float Damage = 10.f;
 	
 	// 0은 대상 수 제한 없음
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0"))
 	int32 MaxHitTargets = 1;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace")
