@@ -39,22 +39,22 @@ public:
 	bool IsDead() const;
 	
 	UFUNCTION(BlueprintCallable,Category= "Stat")
-	float GetCurrentHP() const {return CurrentHP();}
+	float GetCurrentHP() const {return CurrentHP;}
 	
 	UFUNCTION(BlueprintCallable,Category= "Stat")
-	float GetMaxHP() const {return MaxHP();}
+	float GetMaxHP() const {return MaxHP;}
 	
 	UFUNCTION(BlueprintCallable,Category= "Stat")
-	float GetCurrentStamina() const {return CurrentStamina();}
+	float GetCurrentStamina() const {return CurrentStamina;}
 	
 	UFUNCTION(BlueprintCallable,Category= "Stat")
-	float GetMaxStamina() const {return MaxStamina();}
+	float GetMaxStamina() const {return MaxStamina;}
 	
 	UFUNCTION(BlueprintCallable,Category= "Stat")
-	float GetAttackPower() const {return AttackPower();}
+	float GetAttackPower() const {return AttackPower;}
 	
 	UFUNCTION(BlueprintCallable,Category= "Stat")
-	float GetDefense() const {return Defense();}
+	float GetDefense() const {return Defense;}
 	
 public:
 	UPROPERTY(BlueprintAssignable,Category= "Stat")

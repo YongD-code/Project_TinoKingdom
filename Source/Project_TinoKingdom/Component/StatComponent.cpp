@@ -30,7 +30,7 @@ void UStatComponent::ApplyDamage(float DamageAmount)
 	const float FinalDamage = FMath::Max(DamageAmount-Defense, 1.0f);
 	CurrentHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 	
-	OnHPChanged.BroadCast(CurrentHP, MaxHP);
+	OnHPChanged.Broadcast(CurrentHP, MaxHP);
 	
 	if (CurrentHP <= 0.0f)
 	{
