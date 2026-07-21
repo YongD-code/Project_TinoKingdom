@@ -91,6 +91,9 @@ protected:
 	//스테미나를 소모하지 않는 상태일때 스테미나 회복량
 	float RecoverStaminaWhileRest = 20.0f;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina")
+	float StaminaDelay = 1.5f;
+	
 // Animation Montage
 protected:
 	UPROPERTY(Transient)
@@ -104,6 +107,8 @@ private:
 	uint8 bComboInputWindowOpen : 1 = false;
 	uint8 bComboInputConsumed : 1 = false;
 	uint8 bRunning : 1 = false;
+	
+	float StaminaDelayTime = 0.0f;
 
 public:	
 	// Called every frame

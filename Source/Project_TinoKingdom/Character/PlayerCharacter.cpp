@@ -87,10 +87,17 @@ void APlayerCharacter::Tick(float DeltaTime)
 	if (bRunning)
 	{
 		const bool bConsumedStamina = StatComponent->ConsumeStamina(RunningStamina * DeltaTime);
+		StaminaDelayTime = StaminaDelay;
 		if (!bConsumedStamina)
 		{
 			StopRunning();
 		}
+		return;
+	}
+	
+	if (StaminaDelayTime >= 0.0f)
+	{
+		StaminaDelayTime -= DeltaTime;
 		return;
 	}
 	
