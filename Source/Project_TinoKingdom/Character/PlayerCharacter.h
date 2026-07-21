@@ -83,6 +83,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
 	TObjectPtr<UStatComponent> StatComponent; 
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
+	//1초당 감소 스테미나 설정 (차차 조절하면 될듯)
+	float RunningStamina = 15.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
+	//스테미나를 소모하지 않는 상태일때 스테미나 회복량
+	float RecoverStaminaWhileRest = 20.0f;
+	
 // Animation Montage
 protected:
 	UPROPERTY(Transient)
@@ -95,6 +103,7 @@ private:
 	uint32 CurrentComboIndex = INDEX_NONE;
 	uint8 bComboInputWindowOpen : 1 = false;
 	uint8 bComboInputConsumed : 1 = false;
+	uint8 bRunning : 1 = false;
 
 public:	
 	// Called every frame

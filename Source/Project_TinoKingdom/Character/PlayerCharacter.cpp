@@ -76,6 +76,26 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	
+	//틱마다 스테미나 감소 계산 체크 
+	if (StatComponent == nullptr)
+	{
+		return;
+	}
+	
+	if (bRunning)
+	{
+		const bool bConsumedStamina = StatComponent->ConsumeStamina(RunningStamina * DeltaTime);
+		if (!bConsumedStamina)
+		{
+			StopRunning();
+		}
+		return;
+	}
+	
+	StatComponent->RecoverStamina(RecoverStaminaWhileRest * DeltaTime);
+	
 
 }
 
@@ -147,11 +167,25 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
+	if (IsAttacking())
+	{
+		return;
+	}
+	
+	//스테미나 사용해서 달리기 임시 추가본
+	if (StatComponent == nullptr || StatComponent->GetCurrentStamina() <= 0.0f)
+	{
+		return;
+	}
+	
+	bRunning = true;
+	
 	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 }
 
 void APlayerCharacter::StopRunning()
 {
+	bRunning = false;
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
