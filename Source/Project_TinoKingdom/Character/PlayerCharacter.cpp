@@ -14,6 +14,7 @@
 #include "GameFramework/Controller.h"
 #include "Animation/AnimMontage.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
+#include "Project_TinoKingdom/Component/StatComponent.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -38,6 +39,9 @@ APlayerCharacter::APlayerCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+	
+	//스탯 컴포넌트 생성자 
+	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	
 	// 플레이어의 움직임 관성 값들
 	MovementComponent->MaxAcceleration = 500.f;

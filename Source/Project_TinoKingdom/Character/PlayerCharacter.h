@@ -14,6 +14,7 @@ class UInputAction;
 class UAnimMontage;
 class USkeletalMeshComponent;
 class UAttackComboData;
+class UStatComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -77,6 +78,10 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float RunSpeed = 400.f;
+	
+	//스탯 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
+	TObjectPtr<UStatComponent> StatComponent; 
 	
 // Animation Montage
 protected:
