@@ -51,6 +51,11 @@ protected:
 	void StartJump();
 	bool IsAttacking() const;
 	
+	//외부참조 함수 모음
+public:
+	UFUNCTION(BlueprintPure, Category = "Stat")
+	UStatComponent* GetStatComponent() const {return StatComponent;}
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
