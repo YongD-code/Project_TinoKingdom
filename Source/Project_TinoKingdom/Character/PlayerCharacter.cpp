@@ -21,6 +21,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
+#include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
 
@@ -52,7 +53,8 @@ APlayerCharacter::APlayerCharacter()
 
 	// 스탯 컴포넌트를 기본 서브오브젝트로 생성한다.
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
-
+	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
+	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
 	MovementComponent->BrakingDecelerationWalking = 450.f;

@@ -15,6 +15,7 @@ class UAnimMontage;
 class USkeletalMeshComponent;
 class UAttackComboData;
 class UStatComponent;
+class UTinoCombatComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -52,6 +53,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Stat")
 	UStatComponent* GetStatComponent() const { return StatComponent; }
 
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	UTinoCombatComponent* GetCombatComponent() const { return CombatComponent; }
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -82,6 +85,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
 	TObjectPtr<UStatComponent> StatComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UTinoCombatComponent> CombatComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RunningStamina = 15.0f;
