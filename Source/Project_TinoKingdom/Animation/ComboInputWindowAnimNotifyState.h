@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
-#include "ComboAttackAnimNotifyState.generated.h"
+#include "ComboInputWindowAnimNotifyState.generated.h"
 
 /**
  * 
  */
 UCLASS(meta = (DisplayName = "Combo Input Window"))
-class PROJECT_TINOKINGDOM_API UComboAttackAnimNotifyState : public UAnimNotifyState
+class PROJECT_TINOKINGDOM_API UComboInputWindowAnimNotifyState : public UAnimNotifyState
 {
 	GENERATED_BODY()
 	

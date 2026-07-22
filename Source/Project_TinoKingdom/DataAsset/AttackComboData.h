@@ -10,6 +10,33 @@
  * 
  */
 
+USTRUCT(BlueprintType)
+struct FComboAttackSectionData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	FName SectionName = NAME_None;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float Damage = 10.f;
+	
+	// 0은 대상 수 제한 없음
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "1"))
+	int32 MaxHitTargets = 1;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace")
+	float TraceStartForwardOffset = 20.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace", meta = (ClampMin = "0.0"))
+	float TraceDistance = 100.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace")
+	float TraceHeightOffset = 30.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trace", meta = (ClampMin = "1.0"))
+	float TraceRadius = 35.f;
+};
 
 class UAnimMontage;
 
@@ -23,5 +50,5 @@ public:
 	TObjectPtr<UAnimMontage> AttackMontage;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
-	TArray<FName> ComboSectionNames;
+	TArray<FComboAttackSectionData> ComboSection;
 };
