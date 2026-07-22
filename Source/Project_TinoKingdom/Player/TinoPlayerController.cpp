@@ -5,6 +5,7 @@
 
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Blueprint/UserWidget.h"
 
 
 void ATinoPlayerController::BeginPlay()
@@ -28,5 +29,15 @@ void ATinoPlayerController::BeginPlay()
 	if (InputSubsystem != nullptr)
 	{
 		InputSubsystem->AddMappingContext(DefaultMappingContext, 0);
+	}
+	
+	if (PlayerUIClass != nullptr)
+	{
+		PlayerUIWidget = CreateWidget<UUserWidget>(this, PlayerUIClass);
+		
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->AddToViewport();
+		}
 	}
 }
