@@ -265,7 +265,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	// 공격 중에는 이동 입력을 받지 않는다.
-	if (IsAttacking())
+	if (CombatComponent->IsAttacking())
 	{
 		return;
 	}
@@ -296,7 +296,7 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
-	if (IsAttacking())
+	if (CombatComponent->IsAttacking())
 	{
 		return;
 	}
@@ -320,23 +320,11 @@ void APlayerCharacter::StopRunning()
 
 void APlayerCharacter::Attack()
 {
-	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
-	if (bPressedJump || !MovementComponent->IsMovingOnGround())
+	if (!IsValid(CombatComponent))
 	{
 		return;
 	}
-
-	const UAttackComboData* AttackData = GetCurrentAttackData();
-	USkeletalMeshComponent* CharacterMesh = GetMesh();
-	UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance();
-
-	if (!IsAttacking())
-	{
-		StartComboAttack(AnimInstance, AttackData);
-		return;
-	}
-
-	TryQueueNextCombo(AnimInstance, AttackData);
+	CombatComponent->RequestAttack();
 }
 
 void APlayerCharacter::StartComboAttack(UAnimInstance* AnimInstance, const UAttackComboData* AttackData)
@@ -446,17 +434,11 @@ const UAttackComboData* APlayerCharacter::GetCurrentAttackData() const
 
 void APlayerCharacter::StartJump()
 {
-	if (IsAttacking())
+	if (CombatComponent->IsAttacking())
 	{
 		return;
 	}
 	Jump();
-}
-
-bool APlayerCharacter::IsAttacking() const
-{
-	// 콤보 인덱스로 공격 상태를 관리하므로 몽타주를 직접 검사하지 않는다.
-	return QueuedComboIndex != INDEX_NONE;
 }
 
 int32 APlayerCharacter::FindActiveComboAttackSectionIndex() const

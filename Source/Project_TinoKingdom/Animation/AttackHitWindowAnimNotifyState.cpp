@@ -4,22 +4,34 @@
 #include "AttackHitWindowAnimNotifyState.h"
 
 #include "Components/SkeletalMeshComponent.h"
-#include "Project_TinoKingdom/Interface/CombatAttackAnimationInterface.h"
+#include "GameFramework/Actor.h"
+#include "Project_TinoKingdom/Component/TinoCombatComponent.h"
+
+namespace 
+{
+	UTinoCombatComponent* FindCombatComponent(const USkeletalMeshComponent* MeshComp)
+	{
+		if (!IsValid(MeshComp))
+		{
+			return nullptr;
+		}
+		AActor* Owner = MeshComp->GetOwner();
+		if (!IsValid(Owner))
+		{
+			return nullptr;
+		}
+		return Owner->FindComponentByClass<UTinoCombatComponent>();
+	}
+}
 
 void UAttackHitWindowAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                                                   float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	
-	if (!IsValid(MeshComp))
+	if (UTinoCombatComponent* CombatComponent = FindCombatComponent(MeshComp))
 	{
-		return;
-	}
-	
-	ICombatAttackAnimationInterface* CombatInterface = Cast<ICombatAttackAnimationInterface>(MeshComp->GetOwner());
-	if (CombatInterface != nullptr)
-	{
-		CombatInterface->BeginAttackHitWindow();
+		CombatComponent->BeginAttackHitWindow();
 	}
 }
 
@@ -28,15 +40,9 @@ void UAttackHitWindowAnimNotifyState::NotifyTick(USkeletalMeshComponent* MeshCom
 {
 	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
 	
-	if (!IsValid(MeshComp))
+	if (UTinoCombatComponent* CombatComponent = FindCombatComponent(MeshComp))
 	{
-		return;
-	}
-	
-	ICombatAttackAnimationInterface* CombatInterface = Cast<ICombatAttackAnimationInterface>(MeshComp->GetOwner());
-	if (CombatInterface != nullptr)
-	{
-		CombatInterface->TickAttackHitWindow(FrameDeltaTime);
+		CombatComponent->TickAttackHitWindow();
 	}
 }
 
@@ -45,10 +51,8 @@ void UAttackHitWindowAnimNotifyState::NotifyEnd(USkeletalMeshComponent* MeshComp
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 	
-	ICombatAttackAnimationInterface* CombatInterface = Cast<ICombatAttackAnimationInterface>(MeshComp->GetOwner());
-
-	if (CombatInterface != nullptr)
+	if (UTinoCombatComponent* CombatComponent = FindCombatComponent(MeshComp))
 	{
-		CombatInterface->EndAttackHitWindow();
+		CombatComponent->EndAttackHitWindow();
 	}
 }

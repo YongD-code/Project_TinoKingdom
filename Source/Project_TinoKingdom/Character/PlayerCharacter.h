@@ -46,7 +46,6 @@ protected:
 	const UAttackComboData* GetCurrentAttackData() const;
 
 	void StartJump();
-	bool IsAttacking() const;
 	int32 FindActiveComboAttackSectionIndex() const;
 
 public:
