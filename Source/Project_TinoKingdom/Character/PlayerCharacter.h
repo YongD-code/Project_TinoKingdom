@@ -12,6 +12,7 @@ class UInputAction;
 class USkeletalMeshComponent;
 class UStatComponent;
 class UTinoCombatComponent;
+class UTinoEquipmentComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -73,6 +74,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UTinoCombatComponent> CombatComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UTinoEquipmentComponent> EquipmentComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RunningStamina = 15.0f;
