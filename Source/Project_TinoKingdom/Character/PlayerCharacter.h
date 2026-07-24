@@ -4,21 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Project_TinoKingdom/Interface/CombatAttackAnimationInterface.h"
 #include "PlayerCharacter.generated.h"
 
-class UAnimInstance;
 class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
-class UAnimMontage;
 class USkeletalMeshComponent;
-class UAttackComboData;
 class UStatComponent;
+class UTinoCombatComponent;
+class UTinoEquipmentComponent;
 struct FInputActionValue;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter, public ICombatAttackAnimationInterface
+class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -37,21 +35,12 @@ protected:
 	void StopRunning();
 
 	void Attack();
-
-	void StartComboAttack(UAnimInstance* AnimInstance, const UAttackComboData* AttackData);
-	void TryQueueNextCombo(UAnimInstance* AnimInstance, const UAttackComboData* AttackData);
-	void ResetCombo();
-	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-	const UAttackComboData* GetCurrentAttackData() const;
-
 	void StartJump();
-	bool IsAttacking() const;
-	int32 FindActiveComboAttackSectionIndex() const;
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Stat")
 	UStatComponent* GetStatComponent() const { return StatComponent; }
-
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -82,6 +71,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
 	TObjectPtr<UStatComponent> StatComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UTinoCombatComponent> CombatComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UTinoEquipmentComponent> EquipmentComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RunningStamina = 15.0f;
@@ -96,29 +91,10 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat")
-	TObjectPtr<UAttackComboData> UnarmedAttackData;
-
 private:
-	int32 QueuedComboIndex = INDEX_NONE;
-	bool bComboInputWindowOpen = false;
-	bool bComboInputConsumed = false;
 	bool bRunning = false;
-
-	int32 ActiveAttackSectionIndex = INDEX_NONE;
-	bool bAttackHitWindowOpen = false;
-	TSet<TWeakObjectPtr<AActor>> HitActorsThisWindow;
-
 	float StaminaDelayTime = 0.0f;
-
-private:
-	void PerformAttackTrace();
 
 public:
 	virtual void Tick(float DeltaTime) override;
-
-	virtual void SetComboInputWindowOpen(bool bIsOpen) override;
-	virtual void BeginAttackHitWindow() override;
-	virtual void TickAttackHitWindow(float DeltaTime) override;
-	virtual void EndAttackHitWindow() override;
 };
