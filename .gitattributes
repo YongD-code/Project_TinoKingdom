@@ -33,3 +33,11 @@ Content/Animation/MHC_TinoPlayer/Retargeted/Attack/SwordAndShield/*.uasset -filt
 Content/Animation/MHC_TinoPlayer/Retargeted/Attack/Unarmed/*.uasset -filter -diff -merge -text
 Content/SourceAnimation/Mixamo/Anims/*.uasset -filter -diff -merge -text
 Content/SourceAnimation/Mixamo/XBot/*.uasset -filter -diff -merge -text
+
+# Store the current sword-and-shield work in regular Git.
+Content/SourceAnimation/SwordShield/** -filter -diff -merge -text
+Content/Animation/MHC_TinoPlayer/AM_TinoPlayerSwordShieldAttack.uasset -filter -diff -merge -text
+Content/DataAssets/Combat/DA_SwordAndShieldAttack.uasset -filter -diff -merge -text
+Content/DataAssets/Combat/DA_UnarmedAttack.uasset -filter -diff -merge -text
+Content/Character/BP_MHC_TinoPlayerCharacter.uasset -filter -diff -merge -text
+Content/Map/TestMap.umap -filter -diff -merge -text
