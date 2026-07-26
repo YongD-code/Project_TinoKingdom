@@ -12,6 +12,9 @@ class UEquipmentLoadoutData;
 class USkeletalMeshComponent;
 class UTinoCombatComponent;
 
+// 나중에 UI, 캐릭터, 사운드 시스템 등등 다양한 객체에 이벤트를 보내게 Multicast로
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FonTinoEquipmentChanged, UEquipmentLoadoutData*, NewLoadOut);
+
 UCLASS( ClassGroup=(Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UTinoEquipmentComponent : public UActorComponent
 {
