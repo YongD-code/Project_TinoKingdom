@@ -25,6 +25,11 @@ bool UTinoEquipmentComponent::EquipLoadout(UEquipmentLoadoutData* InLoadout)
 			*GetNameSafe(GetOwner()));
 		return false;
 	}
+	
+	if (CurrentLoadout == InLoadout)
+	{
+		return true;
+	}
 
 	// 새 조합이 완성될 때까지 기존 장비를 유지한다.
 	ATinoEquipmentActor* NewRightHandActor =
@@ -54,6 +59,9 @@ bool UTinoEquipmentComponent::EquipLoadout(UEquipmentLoadoutData* InLoadout)
 	LeftHandEquipmentActor = NewLeftHandActor;
 	CombatComponent->SetEquippedAttackData(InLoadout->AttackData);
 
+	CurrentLoadout = InLoadout;
+	OnEquipmentChanged.Broadcast(CurrentLoadout.Get());
+	
 	return true;
 }
 
@@ -64,6 +72,8 @@ void UTinoEquipmentComponent::Unequip()
 
 	// nullptr을 전달하면 CombatComponent가 맨손 공격 데이터를 사용한다.
 	CombatComponent->SetEquippedAttackData(nullptr);
+	CurrentLoadout = nullptr;
+	OnEquipmentChanged.Broadcast(nullptr);
 }
 
 void UTinoEquipmentComponent::BeginPlay()
