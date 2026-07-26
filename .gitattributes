@@ -26,3 +26,10 @@
 *.h text eol=crlf
 *.uproject text eol=crlf
 *.md text eol=crlf
+
+# Store these animation assets in regular Git.
+Content/Animation/MHC_TinoPlayer/AM_TinoPlayerUnarmedAttack.uasset -filter -diff -merge -text
+Content/Animation/MHC_TinoPlayer/Retargeted/Attack/SwordAndShield/*.uasset -filter -diff -merge -text
+Content/Animation/MHC_TinoPlayer/Retargeted/Attack/Unarmed/*.uasset -filter -diff -merge -text
+Content/SourceAnimation/Mixamo/Anims/*.uasset -filter -diff -merge -text
+Content/SourceAnimation/Mixamo/XBot/*.uasset -filter -diff -merge -text
