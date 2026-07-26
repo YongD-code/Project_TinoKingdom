@@ -134,6 +134,11 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
 	}
+	
+	if (ToggleEquipmentMenuAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleEquipment);
+	}
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -204,4 +209,23 @@ void APlayerCharacter::StartJump()
 		return;
 	}
 	Jump();
+}
+
+void APlayerCharacter::ToggleEquipment()
+{
+	// 공격 중에는 무기 외형과 공격 애니메이션이 달라지는 오류 방지
+	if (CombatComponent->IsAttacking())
+	{
+		return;
+	}
+	if (EquipmentComponent->IsEquipped())
+	{
+		EquipmentComponent->Unequip();
+		return;
+	}
+	if (TestEquipmentLoadout == nullptr)
+	{
+		return;
+	}
+	EquipmentComponent->EquipLoadout(TestEquipmentLoadout);
 }

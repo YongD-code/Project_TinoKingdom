@@ -13,6 +13,7 @@ class USkeletalMeshComponent;
 class UStatComponent;
 class UTinoCombatComponent;
 class UTinoEquipmentComponent;
+class UEquipmentLoadoutData;
 struct FInputActionValue;
 
 UCLASS()
@@ -36,6 +37,7 @@ protected:
 
 	void Attack();
 	void StartJump();
+	void ToggleEquipment();
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Stat")
@@ -62,6 +64,13 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> AttackAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ToggleEquipmentMenuAction;
+	
+	// 인벤토리 구현 전 장착/해제 기능을 검증하기 위한 임시 장비 데이터
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Test")
+	TObjectPtr<UEquipmentLoadoutData> TestEquipmentLoadout;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
