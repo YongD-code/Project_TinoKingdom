@@ -12,6 +12,8 @@
 
 class ATinoEquipmentActor;
 class UAttackComboData;
+class UTexture2D;
+
 UCLASS(BlueprintType)
 class PROJECT_TINOKINGDOM_API UEquipmentLoadoutData : public UDataAsset
 {
@@ -26,4 +28,12 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UAttackComboData> AttackData;
+	
+	// UI에 표시할 장비 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	FText DisplayName;
+	
+	// UI에 표시할 아이콘인데 아직은 None
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UTexture2D> Icon;
 };

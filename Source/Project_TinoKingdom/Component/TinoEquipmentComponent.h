@@ -43,6 +43,10 @@ public:
 	// 블루프린트가 C++ 함수를 호출하는 것은 아니고 델리게이트에 이벤트를 등록할 수 있게
 	UPROPERTY(BlueprintAssignable, Category = "Equipment")
 	FOnTinoEquipmentChanged OnEquipmentChanged;
+	
+	// 장비 선택 UI에 표시할 수 있는 Loadout 목록을 반환
+	UFUNCTION(BlueprintPure, Category = "Equipment|Selection")
+	TArray<UEquipmentLoadoutData*> GetSelectableLoadouts() const;
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -66,6 +70,11 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Socket", meta = (AllowPrivateAccess = "true"))
 	FName LeftHandSocketName = FName(TEXT("LeftHandEquipmentSocket"));
 
+	// 장비 선택 UI에 표시할 Loadout 목록
+	// 원본 참조를 장기간 멤버 변수로 저장할 용도이기 때문에 TObjectPtr로 보관
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Selection", meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<UEquipmentLoadoutData>> SelectableLoadouts;
+	
 	UPROPERTY(Transient)
 	TObjectPtr<ACharacter> OwnerCharacter;
 
@@ -81,8 +90,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<ATinoEquipmentActor> LeftHandEquipmentActor;
-	
-private:
+
 	// nullptr이면 맨손
 	UPROPERTY(Transient)
 	TObjectPtr<UEquipmentLoadoutData> CurrentLoadout;

@@ -76,6 +76,21 @@ void UTinoEquipmentComponent::Unequip()
 	OnEquipmentChanged.Broadcast(nullptr);
 }
 
+TArray<UEquipmentLoadoutData*> UTinoEquipmentComponent::GetSelectableLoadouts() const
+{
+	TArray<UEquipmentLoadoutData*> Result;
+	Result.Reserve(SelectableLoadouts.Num());
+	
+	for (const TObjectPtr<UEquipmentLoadoutData>& Loadout : SelectableLoadouts)
+	{
+		if (IsValid(Loadout.Get()))
+		{
+			Result.Add(Loadout.Get());
+		}
+	}
+	return Result;
+}
+
 void UTinoEquipmentComponent::BeginPlay()
 {
 	Super::BeginPlay();
