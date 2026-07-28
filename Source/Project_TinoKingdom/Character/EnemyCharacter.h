@@ -32,7 +32,7 @@ public:
 	bool IsAttacking() const {return bAttacking;}
 	
 	UFUNCTION(BlueprintPure, Category = "Enemy|Combat")
-	bool GetAttackRange() const {return AttackRange;}
+	float GetAttackRange() const {return AttackRange;}
 	
 	UFUNCTION(BlueprintPure, Category = "Enemy | Combat")
 	UBehaviorTree* GetBehaviorTree() const {return BehaviorTree;}
@@ -49,11 +49,28 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
 	TObjectPtr<UStatComponent> StatComponent;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI")
+	TObjectPtr<UBehaviorTree> BehaviorTree;
 	
-public:	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Movement", meta = (ClampMin = "0.0"))
+	float WalkSpeed = 180.0f;
 
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat")
+	TObjectPtr<UAnimMontage> AttackMontage;
 
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
+	float AttackRange = 150.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
+	float AttackCooldown = 2.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Death", meta = (ClampMin = "0.0"))
+	float DeadLifeSpan = 5.0f;
+
+private:
+	UPROPERTY(Transient)
+	bool bAttacking = false;
+
+	UPROPERTY(Transient)
+	float LastAttackTime = -999.f;
 };
