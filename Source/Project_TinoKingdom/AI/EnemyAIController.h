@@ -14,4 +14,13 @@ class PROJECT_TINOKINGDOM_API AEnemyAIController : public AAIController
 {
 	GENERATED_BODY()
 	
+public:
+	static const FName TargetPlayer;
+	static const FName HomeLocation;
+	
+	AEnemyAIController();
+	
+protected:
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnUnPossess() override;
 };

@@ -9,7 +9,7 @@
 class UBehaviorTree;
 class UStatComponent;
 class UAnimMontage;
-
+class AEnemyAIController;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter

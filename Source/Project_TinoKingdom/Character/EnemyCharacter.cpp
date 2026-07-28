@@ -5,6 +5,7 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
+#include "Project_TinoKingdom/AI/EnemyAIController.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -20,6 +21,9 @@ AEnemyCharacter::AEnemyCharacter()
 	MovementComponent->MaxWalkSpeed = WalkSpeed;
 
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
+	
+	AIControllerClass = AEnemyAIController::StaticClass();
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 void AEnemyCharacter::BeginPlay()
