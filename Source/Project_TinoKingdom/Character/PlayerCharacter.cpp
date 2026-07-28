@@ -15,6 +15,7 @@
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
+#include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -218,14 +219,15 @@ void APlayerCharacter::ToggleEquipment()
 	{
 		return;
 	}
-	if (EquipmentComponent->IsEquipped())
+	// 임시 검증용 코드
+	if (!IsValid(TestEquipmentLoadout.Get()))
+	{
+		return;
+	}
+	if (EquipmentComponent->GetCurrentLoadout() == TestEquipmentLoadout.Get())
 	{
 		EquipmentComponent->Unequip();
 		return;
 	}
-	if (TestEquipmentLoadout == nullptr)
-	{
-		return;
-	}
-	EquipmentComponent->EquipLoadout(TestEquipmentLoadout);
+	EquipmentComponent->EquipLoadout(TestEquipmentLoadout.Get());
 }

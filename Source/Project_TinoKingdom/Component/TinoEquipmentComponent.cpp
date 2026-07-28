@@ -65,15 +65,15 @@ bool UTinoEquipmentComponent::EquipLoadout(UEquipmentLoadoutData* InLoadout)
 	return true;
 }
 
+// 기존처럼 Actor를 직접 제거하고 CurrentLoadout = nullptr로 만들지 않음
+// DefaultLoadout에 DA_UnarmedLoadout을 지정하고 맨손 복귀할 예정
 void UTinoEquipmentComponent::Unequip()
 {
-	DestroyEquipmentActor(RightHandEquipmentActor);
-	DestroyEquipmentActor(LeftHandEquipmentActor);
-
-	// nullptr을 전달하면 CombatComponent가 맨손 공격 데이터를 사용한다.
-	CombatComponent->SetEquippedAttackData(nullptr);
-	CurrentLoadout = nullptr;
-	OnEquipmentChanged.Broadcast(nullptr);
+	if (!EquipLoadout(DefaultLoadout.Get()))
+	{
+		UE_LOG(LogTinoEquipment, Error, TEXT("%s: 기본 로드아웃 적용에 실패했습니다."),
+			*GetNameSafe(GetOwner()));
+	}
 }
 
 TArray<UEquipmentLoadoutData*> UTinoEquipmentComponent::GetSelectableLoadouts() const
@@ -103,17 +103,35 @@ void UTinoEquipmentComponent::BeginPlay()
 		TEXT("%s: UTinoEquipmentComponent에는 UTinoCombatComponent가 필요합니다."),
 		*GetNameSafe(OwnerCharacter));
 
-	if (DefaultLoadout != nullptr && !EquipLoadout(DefaultLoadout))
+	if (!IsValid(DefaultLoadout.Get()))
 	{
-		UE_LOG(LogTinoEquipment, Error, TEXT("%s: 기본 장비 조합 %s 장착에 실패했습니다."),
-			*GetNameSafe(OwnerCharacter), *GetNameSafe(DefaultLoadout));
+		UE_LOG(LogTinoEquipment, Error, TEXT("%s: DefaultLoadout이 지정되지 않았습니다."),
+			*GetNameSafe(OwnerCharacter));
+		return;
+	}
+	
+	if (!EquipLoadout(DefaultLoadout.Get()))
+	{
+		UE_LOG(LogTinoEquipment, Error, TEXT("%s: 기본 로드아웃 %s 적용에 실패했습니다."),
+			*GetNameSafe(OwnerCharacter), *GetNameSafe(DefaultLoadout.Get()));
 	}
 }
 
 void UTinoEquipmentComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	// 컴포넌트가 생성한 장비 Actor는 직접 정리한다.
-	Unequip();
+	DestroyEquipmentActor(RightHandEquipmentActor);
+	DestroyEquipmentActor(LeftHandEquipmentActor);
+
+	CurrentLoadout = nullptr;
+
+	if (IsValid(CombatComponent.Get()))
+	{
+		CombatComponent->SetEquippedAttackData(nullptr);
+	}
+
+	CombatComponent = nullptr;
+	AttachmentMesh = nullptr;
+	OwnerCharacter = nullptr;
 	Super::EndPlay(EndPlayReason);
 }
 

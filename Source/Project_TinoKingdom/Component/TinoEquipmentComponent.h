@@ -30,11 +30,9 @@ public:
 	bool EquipLoadout(UEquipmentLoadoutData* InLoadout);
 	
 	// 현재 장비 Actor를 제거하고 맨손 공격 데이터로 되돌림
+	// 장비 선택 UI 연결 후 삭제 예정
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	void Unequip();
-	
-	UFUNCTION(BlueprintPure, Category = "Equipment")
-	bool IsEquipped() const { return CurrentLoadout != nullptr; }
 	
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	UEquipmentLoadoutData* GetCurrentLoadout() const { return CurrentLoadout.Get(); }
@@ -59,6 +57,7 @@ private:
 	void DestroyEquipmentActor(TObjectPtr<ATinoEquipmentActor>& InOutEquipmentActor);
 
 	// 게임 시작 시 자동으로 장착할 기본 장비 조합.
+	// DA_UnarmedLoadout
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UEquipmentLoadoutData> DefaultLoadout;
 
@@ -91,7 +90,8 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ATinoEquipmentActor> LeftHandEquipmentActor;
 
-	// nullptr이면 맨손
+	// 현재 적용된 실제 로드아웃
+	// 정상 플레이 중에는 항상 유효하고 nullptr은 이제 주먹에 사용하지 않음
 	UPROPERTY(Transient)
 	TObjectPtr<UEquipmentLoadoutData> CurrentLoadout;
 };
