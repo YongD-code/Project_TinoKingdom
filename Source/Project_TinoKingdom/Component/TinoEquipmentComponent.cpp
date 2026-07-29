@@ -65,17 +65,6 @@ bool UTinoEquipmentComponent::EquipLoadout(UEquipmentLoadoutData* InLoadout)
 	return true;
 }
 
-// 기존처럼 Actor를 직접 제거하고 CurrentLoadout = nullptr로 만들지 않음
-// DefaultLoadout에 DA_UnarmedLoadout을 지정하고 맨손 복귀할 예정
-void UTinoEquipmentComponent::Unequip()
-{
-	if (!EquipLoadout(DefaultLoadout.Get()))
-	{
-		UE_LOG(LogTinoEquipment, Error, TEXT("%s: 기본 로드아웃 적용에 실패했습니다."),
-			*GetNameSafe(GetOwner()));
-	}
-}
-
 TArray<UEquipmentLoadoutData*> UTinoEquipmentComponent::GetSelectableLoadouts() const
 {
 	TArray<UEquipmentLoadoutData*> Result;

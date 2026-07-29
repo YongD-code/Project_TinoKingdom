@@ -15,7 +15,6 @@
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
-#include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()

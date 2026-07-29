@@ -29,11 +29,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool EquipLoadout(UEquipmentLoadoutData* InLoadout);
 	
-	// 현재 장비 Actor를 제거하고 맨손 공격 데이터로 되돌림
-	// 장비 선택 UI 연결 후 삭제 예정
-	UFUNCTION(BlueprintCallable, Category = "Equipment")
-	void Unequip();
-	
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	UEquipmentLoadoutData* GetCurrentLoadout() const { return CurrentLoadout.Get(); }
 	
