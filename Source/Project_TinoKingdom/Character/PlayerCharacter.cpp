@@ -138,7 +138,9 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	
 	if (ToggleEquipmentMenuAction != nullptr)
 	{
-		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleEquipment);
+		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::OpenEquipmentWheel);
+		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
+		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
 	}
 }
 
@@ -210,24 +212,4 @@ void APlayerCharacter::StartJump()
 		return;
 	}
 	Jump();
-}
-
-void APlayerCharacter::ToggleEquipment()
-{
-	// 공격 중에는 무기 외형과 공격 애니메이션이 달라지는 오류 방지
-	if (CombatComponent->IsAttacking())
-	{
-		return;
-	}
-	// 임시 검증용 코드
-	if (!IsValid(TestEquipmentLoadout.Get()))
-	{
-		return;
-	}
-	if (EquipmentComponent->GetCurrentLoadout() == TestEquipmentLoadout.Get())
-	{
-		EquipmentComponent->Unequip();
-		return;
-	}
-	EquipmentComponent->EquipLoadout(TestEquipmentLoadout.Get());
 }
