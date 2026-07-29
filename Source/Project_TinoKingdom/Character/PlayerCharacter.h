@@ -62,6 +62,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> AttackAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ToggleEquipmentMenuAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
@@ -77,6 +80,15 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TObjectPtr<UTinoEquipmentComponent> EquipmentComponent;
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
+	void OpenEquipmentWheel();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
+	void ConfirmEquipmentWheel();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
+	void CancelEquipmentWheel();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RunningStamina = 15.0f;
