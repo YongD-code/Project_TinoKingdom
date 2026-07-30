@@ -9,7 +9,7 @@
 
 namespace
 {
-	UTinoCombatComponent* FindCombatComponent(const USkeletalMeshComponent* MeshComp)
+	UTinoCombatComponent* FindComboCombatComponent(const USkeletalMeshComponent* MeshComp)
 	{
 		if (!IsValid(MeshComp))
 		{
@@ -31,7 +31,7 @@ void UComboInputWindowAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshC
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	
-	if (UTinoCombatComponent* CombatComponent = FindCombatComponent(MeshComp))
+	if (UTinoCombatComponent* CombatComponent = FindComboCombatComponent(MeshComp))
 	{
 		CombatComponent->SetComboInputWindowOpen(true);
 	}
@@ -42,7 +42,7 @@ void UComboInputWindowAnimNotifyState::NotifyEnd(USkeletalMeshComponent* MeshCom
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 	
-	if (UTinoCombatComponent* CombatComponent = FindCombatComponent(MeshComp))
+	if (UTinoCombatComponent* CombatComponent = FindComboCombatComponent(MeshComp))
 	{
 		CombatComponent->SetComboInputWindowOpen(false);
 	}
