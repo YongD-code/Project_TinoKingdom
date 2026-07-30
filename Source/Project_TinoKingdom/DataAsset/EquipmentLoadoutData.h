@@ -19,6 +19,27 @@ enum class EEquipmentGrade : uint8
 	High UMETA(DisplayName = "상")
 };
 
+class UBlendSpace;
+class UAnimSequenceBase;
+
+USTRUCT(BlueprintType)
+struct PROJECT_TINOKINGDOM_API FEquipmentLocomotionSet
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UBlendSpace> GroundMovement;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAnimSequenceBase> Jump;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAnimSequenceBase> FallLoop;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAnimSequenceBase> Land;
+};
+
 class ATinoEquipmentActor;
 class UAttackComboData;
 class UTexture2D;
@@ -53,4 +74,7 @@ public:
 	// UI에 표시할 사거리 등급
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	EEquipmentGrade ReachGrade = EEquipmentGrade::Unrated;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	FEquipmentLocomotionSet Locomotion;
 };
