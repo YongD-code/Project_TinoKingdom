@@ -12,6 +12,10 @@ class UEquipmentLoadoutData;
 class USkeletalMeshComponent;
 class UTinoCombatComponent;
 
+// 나중에 UI, 캐릭터, 사운드 시스템 등등 다양한 객체에 이벤트를 보내게 Multicast로
+// 델리게이트 : 실행할 함수를 미리 등록해 두었다가 특정 시점에 호출하는 Unreal의 콜백 시스템
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTinoEquipmentChanged, UEquipmentLoadoutData*, NewLoadout);
+
 UCLASS( ClassGroup=(Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UTinoEquipmentComponent : public UActorComponent
 {
@@ -21,11 +25,21 @@ public:
 	UTinoEquipmentComponent();
 	
 	// 지정한 장비 조합을 생성하고 좌우 소켓에 부착
+	// 이게 나중에 UI 등에서 사용하기 편할듯
+	UFUNCTION(BlueprintCallable, Category = "Equipment")
 	bool EquipLoadout(UEquipmentLoadoutData* InLoadout);
 	
-	// 현재 장비 Actor를 제거하고 맨손 공격 데이터로 되돌림
-	void Unequip();
+	UFUNCTION(BlueprintPure, Category = "Equipment")
+	UEquipmentLoadoutData* GetCurrentLoadout() const { return CurrentLoadout.Get(); }
 	
+	// 장비 장착 또는 해제 시 UI 등의 구독자에게 변경 결과를 알리는 이벤트
+	// 블루프린트가 C++ 함수를 호출하는 것은 아니고 델리게이트에 이벤트를 등록할 수 있게
+	UPROPERTY(BlueprintAssignable, Category = "Equipment")
+	FOnTinoEquipmentChanged OnEquipmentChanged;
+	
+	// 장비 선택 UI에 표시할 수 있는 Loadout 목록을 반환
+	UFUNCTION(BlueprintPure, Category = "Equipment|Selection")
+	TArray<UEquipmentLoadoutData*> GetSelectableLoadouts() const;
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -38,6 +52,7 @@ private:
 	void DestroyEquipmentActor(TObjectPtr<ATinoEquipmentActor>& InOutEquipmentActor);
 
 	// 게임 시작 시 자동으로 장착할 기본 장비 조합.
+	// DA_UnarmedLoadout
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UEquipmentLoadoutData> DefaultLoadout;
 
@@ -49,6 +64,11 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Socket", meta = (AllowPrivateAccess = "true"))
 	FName LeftHandSocketName = FName(TEXT("LeftHandEquipmentSocket"));
 
+	// 장비 선택 UI에 표시할 Loadout 목록
+	// 원본 참조를 장기간 멤버 변수로 저장할 용도이기 때문에 TObjectPtr로 보관
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Selection", meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<UEquipmentLoadoutData>> SelectableLoadouts;
+	
 	UPROPERTY(Transient)
 	TObjectPtr<ACharacter> OwnerCharacter;
 
@@ -64,4 +84,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<ATinoEquipmentActor> LeftHandEquipmentActor;
+
+	// 현재 적용된 실제 로드아웃
+	// 정상 플레이 중에는 항상 유효하고 nullptr은 이제 주먹에 사용하지 않음
+	UPROPERTY(Transient)
+	TObjectPtr<UEquipmentLoadoutData> CurrentLoadout;
 };

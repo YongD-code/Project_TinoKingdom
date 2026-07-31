@@ -134,6 +134,13 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
 	}
+	
+	if (ToggleEquipmentMenuAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::OpenEquipmentWheel);
+		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
+		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
+	}
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
