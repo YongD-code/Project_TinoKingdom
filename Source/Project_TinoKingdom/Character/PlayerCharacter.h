@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Project_TinoKingdom/Component/StatComponent.h"
 #include "PlayerCharacter.generated.h"
 
 class UCameraComponent;
@@ -22,6 +23,9 @@ class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter
 
 public:
 	APlayerCharacter();
+	
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
+		class AController* EventInstigator, AActor* DamageCauser) override;
 
 protected:
 	virtual void BeginPlay() override;

@@ -212,3 +212,20 @@ void APlayerCharacter::StartJump()
 	}
 	Jump();
 }
+
+float APlayerCharacter::TakeDamage(
+	float DamageAmount,
+	FDamageEvent const& DamageEvent,
+	AController* EventInstigator,
+	AActor* DamageCauser
+)
+{
+	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (StatComponent != nullptr)
+	{
+		StatComponent->ApplyDamage(DamageAmount);
+	}
+
+	return AppliedDamage;
+}
