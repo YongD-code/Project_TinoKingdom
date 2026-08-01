@@ -36,6 +36,11 @@ public:
 	
 	UFUNCTION(BlueprintPure, Category = "Enemy | Combat")
 	UBehaviorTree* GetBehaviorTree() const {return BehaviorTree;}
+	
+	UFUNCTION(BlueprintCallable, Category = "Enemy|Combat")
+	void PerformAttackTrace();
+
+	void PlayHitReaction();
 
 protected:
 	
@@ -57,20 +62,38 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat")
 	TObjectPtr<UAnimMontage> AttackMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat")
+	TObjectPtr<UAnimMontage> HitMontage;
+    	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Death")
+	TObjectPtr<UAnimMontage> DeathMontage;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
 	float AttackRange = 150.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
 	float AttackCooldown = 2.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
+	float AttackDamage = 10.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Death", meta = (ClampMin = "0.0"))
 	float DeadLifeSpan = 5.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
+	float AttackTraceRadius = 50.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
+	float AttackTraceDistance = 120.f;
+	
 private:
 	UPROPERTY(Transient)
 	bool bAttacking = false;
-
+	
+	UPROPERTY(Transient)
+	bool bDead = false;
+	
 	UPROPERTY(Transient)
 	float LastAttackTime = -999.f;
 };

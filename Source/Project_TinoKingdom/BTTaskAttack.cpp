@@ -11,24 +11,19 @@ UBTTaskAttack::UBTTaskAttack()
 	NodeName = TEXT("Attack");
 }
 
-EBTNodeResult::Type UBTTaskAttack::ExecuteTask(
-	UBehaviorTreeComponent& OwnerComp,
-	uint8* NodeMemory
-)
+EBTNodeResult::Type UBTTaskAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 	AAIController* AIController = OwnerComp.GetAIOwner();
-	if (AIController == nullptr)
-	{
-		return EBTNodeResult::Failed;
-	}
+	AEnemyCharacter* EnemyCharacter = AIController != nullptr
+		? Cast<AEnemyCharacter>(AIController->GetPawn())
+		: nullptr;
 
-	AEnemyCharacter* EnemyCharacter = Cast<AEnemyCharacter>(AIController->GetPawn());
 	if (EnemyCharacter == nullptr)
 	{
 		return EBTNodeResult::Failed;
 	}
 
-	const bool bAttackStarted = EnemyCharacter->RequestAttack();
-
-	return bAttackStarted ? EBTNodeResult::Succeeded : EBTNodeResult::Failed;
+	return EnemyCharacter->RequestAttack()
+		? EBTNodeResult::Succeeded
+		: EBTNodeResult::Failed;
 }

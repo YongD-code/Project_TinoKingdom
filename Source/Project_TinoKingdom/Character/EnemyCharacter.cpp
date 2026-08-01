@@ -4,6 +4,7 @@
 #include "Animation/AnimMontage.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
 
@@ -50,6 +51,11 @@ float AEnemyCharacter::TakeDamage(
 	if (StatComponent != nullptr)
 	{
 		StatComponent->ApplyDamage(DamageAmount);
+
+		if (!StatComponent->IsDead())
+		{
+			PlayHitReaction();
+		}
 	}
 
 	return AppliedDamage;
@@ -119,14 +125,101 @@ void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrup
 
 void AEnemyCharacter::HandleDead()
 {
+	if (bDead)
+	{
+		return;
+	}
+
+	bDead = true;
+	bAttacking = false;
+
 	if (AController* CurrentController = GetController())
 	{
-		CurrentController->StopMovement();
+		if (AAIController* AIController = Cast<AAIController>(CurrentController))
+		{
+			AIController->StopMovement();
+		}
+
 		CurrentController->UnPossess();
 	}
 
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	SetLifeSpan(DeadLifeSpan);
+	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	if (AnimInstance != nullptr && DeathMontage != nullptr)
+	{
+		const float DeathLength = AnimInstance->Montage_Play(DeathMontage);
+		SetLifeSpan(DeathLength > 0.0f ? DeathLength + 1.0f : DeadLifeSpan);
+	}
+	else
+	{
+		SetLifeSpan(DeadLifeSpan);
+	}
+}
+
+void AEnemyCharacter::PlayHitReaction()
+{
+	if (bDead || bAttacking)
+	{
+		return;
+	}
+
+	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	if (AnimInstance != nullptr && HitMontage != nullptr)
+	{
+		AnimInstance->Montage_Play(HitMontage);
+	}
+}
+
+void AEnemyCharacter::PerformAttackTrace()
+{
+	if (bDead)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	const FVector Forward = GetActorForwardVector();
+	const FVector Start = GetActorLocation() + Forward * 50.0f;
+	const FVector End = Start + Forward * AttackTraceDistance;
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(EnemyAttackTrace), false, this);
+
+	FHitResult HitResult;
+	const bool bHit = World->SweepSingleByChannel(
+		HitResult,
+		Start,
+		End,
+		FQuat::Identity,
+		ECC_Pawn,
+		FCollisionShape::MakeSphere(AttackTraceRadius),
+		Params
+	);
+
+	DrawDebugSphere(World, End, AttackTraceRadius, 16, bHit ? FColor::Red : FColor::Green, false, 1.0f);
+
+	if (!bHit)
+	{
+		return;
+	}
+
+	AActor* HitActor = HitResult.GetActor();
+	if (HitActor == nullptr || HitActor == this)
+	{
+		return;
+	}
+
+	UGameplayStatics::ApplyDamage(
+		HitActor,
+		AttackDamage,
+		GetController(),
+		this,
+		UDamageType::StaticClass()
+	);
 }
