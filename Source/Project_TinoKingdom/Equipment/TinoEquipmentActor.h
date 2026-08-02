@@ -7,6 +7,7 @@
 #include "TinoEquipmentActor.generated.h"
 
 class UStaticMeshComponent;
+class USceneComponent;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoEquipmentActor : public AActor
@@ -20,5 +21,8 @@ public:
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> EquipmentMesh;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
+    	TObjectPtr<USceneComponent> AttachmentRoot;
 
 };
