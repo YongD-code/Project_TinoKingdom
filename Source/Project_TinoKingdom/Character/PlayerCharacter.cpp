@@ -128,19 +128,16 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::StartJump);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Attack);
-	if (SprintAction != nullptr)
-	{
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
-	}
+
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
 	
-	if (ToggleEquipmentMenuAction != nullptr)
-	{
-		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::OpenEquipmentWheel);
-		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
-		EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
-	}
+	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::OpenEquipmentWheel);
+	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
+	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
+	
+	// EnhancedInputComponent->BindAction(ETriggerEvent::Started, this, &APlayerCharacter::DodgeAttack);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
