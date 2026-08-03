@@ -7,6 +7,7 @@
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "PlayerCharacter.generated.h"
 
+class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
@@ -87,6 +88,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TObjectPtr<UTinoEquipmentComponent> EquipmentComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Reaction")
+	TObjectPtr<UReactionComponent> ReactionComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();

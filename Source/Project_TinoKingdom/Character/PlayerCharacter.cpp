@@ -12,6 +12,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
 #include "Math/RotationMatrix.h"
+#include "Project_TinoKingdom/Component/ReactionComponent.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
@@ -44,6 +45,7 @@ APlayerCharacter::APlayerCharacter()
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
+	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
@@ -143,7 +145,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	// 공격 중에는 이동 입력을 받지 않는다.
-	if (CombatComponent->IsAttacking())
+	if (CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -174,7 +176,7 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
-	if (CombatComponent->IsAttacking())
+	if (CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -198,12 +200,16 @@ void APlayerCharacter::StopRunning()
 
 void APlayerCharacter::Attack()
 {
+	if (ReactionComponent->IsReacting())
+	{
+		return;
+	}
 	CombatComponent->RequestAttack();
 }
 
 void APlayerCharacter::StartJump()
 {
-	if (CombatComponent->IsAttacking())
+	if (CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -223,6 +229,11 @@ float APlayerCharacter::TakeDamage(
 	{
 		StatComponent->ApplyDamage(DamageAmount);
 	}
-
+	if (!StatComponent->IsDead())
+	{
+		StopRunning();
+		ReactionComponent->PlayHitReaction(DamageCauser);
+	}
+	
 	return AppliedDamage;
 }
