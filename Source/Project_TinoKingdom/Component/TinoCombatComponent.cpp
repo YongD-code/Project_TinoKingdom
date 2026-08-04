@@ -110,6 +110,24 @@ void UTinoCombatComponent::EndAttackHitWindow()
 	HitActorsThisWindow.Reset();
 }
 
+void UTinoCombatComponent::CancelAttack()
+{
+	if (!IsAttacking())
+	{
+		return;
+	}
+	// ResetCombo 이후 ActiveAttackData가 nullptr이 되므로 중단할 몽타주를 먼저 저장한다.
+	UAnimMontage* AttackMontage = ActiveAttackData->AttackMontage;
+	ResetCombo();
+	
+	UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance();
+	if (AnimInstance->Montage_IsPlaying(AttackMontage))
+	{
+		const float CancelBlendOutTime = 0.05f;
+		AnimInstance->Montage_Stop(CancelBlendOutTime, AttackMontage);
+	}
+}
+
 void UTinoCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();

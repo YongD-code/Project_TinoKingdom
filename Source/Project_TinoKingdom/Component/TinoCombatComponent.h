@@ -48,6 +48,10 @@ public:
 
 	// 공격 판정 구간과 해당 구간의 중복 타격 기록을 초기화한다.
 	void EndAttackHitWindow();
+	
+	// 현재 공격 몽타주와 모든 콤보/공격 판정 상태를 취소한다.
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void CancelAttack();
 
 protected:
 	// 소유 Character와 공격 몽타주를 재생할 기본 Mesh를 캐싱한다.

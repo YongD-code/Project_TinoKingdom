@@ -10,7 +10,6 @@ class ACharacter;
 class ATinoEquipmentActor;
 class UEquipmentLoadoutData;
 class USkeletalMeshComponent;
-class UTinoCombatComponent;
 
 // 나중에 UI, 캐릭터, 사운드 시스템 등등 다양한 객체에 이벤트를 보내게 Multicast로
 // 델리게이트 : 실행할 함수를 미리 등록해 두었다가 특정 시점에 호출하는 Unreal의 콜백 시스템
@@ -74,9 +73,6 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> AttachmentMesh;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTinoCombatComponent> CombatComponent;
 
 	// 런타임에 생성한 좌우 장비 Actor.
 	UPROPERTY(Transient)

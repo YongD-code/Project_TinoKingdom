@@ -7,6 +7,7 @@
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "PlayerCharacter.generated.h"
 
+class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
@@ -14,6 +15,7 @@ class USkeletalMeshComponent;
 class UStatComponent;
 class UTinoCombatComponent;
 class UTinoEquipmentComponent;
+class UEquipmentLoadoutData;
 struct FInputActionValue;
 
 UCLASS()
@@ -27,8 +29,11 @@ public:
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
 		class AController* EventInstigator, AActor* DamageCauser) override;
 
+	virtual void Tick(float DeltaTime) override;
+	
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 protected:
@@ -69,6 +74,9 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ToggleEquipmentMenuAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> DodgeAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
@@ -84,6 +92,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TObjectPtr<UTinoEquipmentComponent> EquipmentComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Reaction")
+	TObjectPtr<UReactionComponent> ReactionComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();
@@ -111,6 +122,7 @@ private:
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
 
-public:
-	virtual void Tick(float DeltaTime) override;
+private:
+	UFUNCTION()
+	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
 };
