@@ -8,7 +8,7 @@
 #include "ReactionComponent.generated.h"
 
 UENUM(BlueprintType)
-enum class EHitDirection : uint8
+enum class EReactionDirection : uint8
 {
 	Front,
 	Back,
@@ -31,7 +31,7 @@ public:
 	UReactionComponent();
 	
 	// DamageCauser 위치를 기준으로 방향을 계산하고 그에 맞는 Hit Reaction 재생
-	UFUNCTION(BlueprintCallable, Category = "Reaction")
+	UFUNCTION(BlueprintCallable, Category = "Reaction|Hit")
 	bool PlayHitReaction(AActor* DamageCauser);
 	
 	UFUNCTION(BlueprintPure, Category = "Reaction")
@@ -45,10 +45,10 @@ protected:
 	
 private:
 	// 공격자가 피격자의 어느 방향에 있는지 계산
-	EHitDirection CalculateHitDirection(const AActor* DamageCauser);
+	EReactionDirection CalculateHitDirection(const AActor* DamageCauser);
 	
 	// 방향에 해당하는 피격 몽타주 반환
-	UAnimSequenceBase* GetHitAnimation(EHitDirection HitDirection) const;
+	UAnimSequenceBase* GetHitAnimation(EReactionDirection HitDirection) const;
 	
 	// 현재 피격 몽타주가 종료되거나 중단되었을 때 상태 초기화
 	// TinoCombatComponent와 동일
@@ -58,7 +58,7 @@ private:
 	UPROPERTY(Transient)
 	FEquipmentReactionSet CurrentReactionSet;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction|Hit", meta = (AllowPrivateAccess = "true"))
 	FName HitReactionSlotName = FName("DefaultSlot");
 	
 	UPROPERTY(Transient)

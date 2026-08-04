@@ -21,7 +21,7 @@ UReactionComponent::UReactionComponent()
 
 bool UReactionComponent::PlayHitReaction(AActor* DamageCauser)
 {
-	const EHitDirection HitDirection = CalculateHitDirection(DamageCauser);
+	const EReactionDirection HitDirection = CalculateHitDirection(DamageCauser);
 	UAnimSequenceBase* HitAnimation = GetHitAnimation(HitDirection);
 	if (HitAnimation == nullptr)
 	{
@@ -65,11 +65,11 @@ void UReactionComponent::BeginPlay()
 	AnimationMesh = OwnerCharacter->GetMesh();
 }
 
-EHitDirection UReactionComponent::CalculateHitDirection(const AActor* DamageCauser)
+EReactionDirection UReactionComponent::CalculateHitDirection(const AActor* DamageCauser)
 {
 	if (DamageCauser == nullptr)
 	{
-		return EHitDirection::Front;
+		return EReactionDirection::Front;
 	}
 	
 	const FVector PlayerLookEnemyDir = DamageCauser->GetActorLocation() - OwnerCharacter->GetActorLocation();
@@ -78,20 +78,20 @@ EHitDirection UReactionComponent::CalculateHitDirection(const AActor* DamageCaus
 	
 	if (FMath::Abs(ForwardDot) >= FMath::Abs(RightDot))
 	{
-		return ForwardDot >= 0.f ? EHitDirection::Front : EHitDirection::Back;
+		return ForwardDot >= 0.f ? EReactionDirection::Front : EReactionDirection::Back;
 	}
-	return RightDot >= 0.f ? EHitDirection::Right : EHitDirection::Left;
+	return RightDot >= 0.f ? EReactionDirection::Right : EReactionDirection::Left;
 }
 
-UAnimSequenceBase* UReactionComponent::GetHitAnimation(EHitDirection HitDirection) const
+UAnimSequenceBase* UReactionComponent::GetHitAnimation(EReactionDirection HitDirection) const
 {
 	const FDirectionalHitAnimations& Animations = CurrentReactionSet.HitAnimations;
 	switch (HitDirection)
 	{
-		case EHitDirection::Front: return Animations.Front;
-		case EHitDirection::Back: return Animations.Back;
-		case EHitDirection::Left: return Animations.Left;
-		case EHitDirection::Right: return Animations.Right;
+		case EReactionDirection::Front: return Animations.Front;
+		case EReactionDirection::Back: return Animations.Back;
+		case EReactionDirection::Left: return Animations.Left;
+		case EReactionDirection::Right: return Animations.Right;
 	}
 	return Animations.Front;
 }
