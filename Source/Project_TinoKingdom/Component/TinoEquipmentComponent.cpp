@@ -105,13 +105,6 @@ void UTinoEquipmentComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	DestroyEquipmentActor(LeftHandEquipmentActor);
 
 	CurrentLoadout = nullptr;
-
-	if (IsValid(CombatComponent.Get()))
-	{
-		CombatComponent->SetEquippedAttackData(nullptr);
-	}
-
-	CombatComponent = nullptr;
 	AttachmentMesh = nullptr;
 	OwnerCharacter = nullptr;
 	Super::EndPlay(EndPlayReason);

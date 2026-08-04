@@ -6,12 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "TinoEquipmentComponent.generated.h"
 
-class UReactionComponent;
 class ACharacter;
 class ATinoEquipmentActor;
 class UEquipmentLoadoutData;
 class USkeletalMeshComponent;
-class UTinoCombatComponent;
 
 // 나중에 UI, 캐릭터, 사운드 시스템 등등 다양한 객체에 이벤트를 보내게 Multicast로
 // 델리게이트 : 실행할 함수를 미리 등록해 두었다가 특정 시점에 호출하는 Unreal의 콜백 시스템

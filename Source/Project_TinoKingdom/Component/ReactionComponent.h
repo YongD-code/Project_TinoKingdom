@@ -59,7 +59,7 @@ private:
 	UPROPERTY(Transient)
 	FEquipmentReactionSet CurrentReactionSet;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction", meta = (AllowPrivateAccess = "ture"))
 	FName HitReactionSlotName = FName("DefaultSlot");
 	
 	UPROPERTY(Transient)

@@ -15,6 +15,7 @@ class USkeletalMeshComponent;
 class UStatComponent;
 class UTinoCombatComponent;
 class UTinoEquipmentComponent;
+class UEquipmentLoadoutData;
 struct FInputActionValue;
 
 UCLASS()
@@ -28,8 +29,11 @@ public:
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
 		class AController* EventInstigator, AActor* DamageCauser) override;
 
+	virtual void Tick(float DeltaTime) override;
+	
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 protected:
@@ -118,6 +122,7 @@ private:
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
 
-public:
-	virtual void Tick(float DeltaTime) override;
+private:
+	UFUNCTION()
+	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
 };

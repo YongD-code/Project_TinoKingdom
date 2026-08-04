@@ -16,6 +16,7 @@
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
+#include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -65,8 +66,15 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	EquipmentComponent->OnEquipmentChanged.AddUniqueDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
+	// EquipmentComponent의 BeginPlay가 먼저 실행됐을 수 있기 때문에 현재 값도 직접 반영
+	if (UEquipmentLoadoutData* CurrentLoadout = EquipmentComponent->GetCurrentLoadout())
+	{
+		HandleEquipmentChanged(CurrentLoadout);
+	}
+	
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-
+	
 	static const FName AnimationBodyTag(TEXT("AnimationBody"));
 	VisibleBodyMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
 
@@ -77,6 +85,15 @@ void APlayerCharacter::BeginPlay()
 	// 숨겨진 Driver Mesh의 포즈를 보이는 Body Mesh에 전달한다.
 	// Body Mesh는 별도로 포즈를 계산하지 않고 Leader Pose를 따라간다.
 	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
+}
+
+void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (IsValid(EquipmentComponent))
+	{
+		EquipmentComponent->OnEquipmentChanged.RemoveDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 // Called every frame
@@ -214,6 +231,12 @@ void APlayerCharacter::StartJump()
 		return;
 	}
 	Jump();
+}
+
+void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
+{
+	CombatComponent->SetEquippedAttackData(NewLoadout->AttackData.Get());
+	ReactionComponent->SetReactionSet(NewLoadout->Reactions);
 }
 
 float APlayerCharacter::TakeDamage(
