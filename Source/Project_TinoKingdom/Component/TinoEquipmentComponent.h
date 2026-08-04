@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "TinoEquipmentComponent.generated.h"
 
+class UReactionComponent;
 class ACharacter;
 class ATinoEquipmentActor;
 class UEquipmentLoadoutData;
@@ -74,9 +75,6 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> AttachmentMesh;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTinoCombatComponent> CombatComponent;
 
 	// 런타임에 생성한 좌우 장비 Actor.
 	UPROPERTY(Transient)

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Project_TinoKingdom/Types/ReactionTypes.h"
 #include "EquipmentLoadoutData.generated.h"
 
 /**
@@ -77,4 +78,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	FEquipmentLocomotionSet Locomotion;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	FEquipmentReactionSet Reactions;
 };

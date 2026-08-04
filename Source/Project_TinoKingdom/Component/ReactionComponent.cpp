@@ -26,8 +26,8 @@ bool UReactionComponent::PlayHitReaction(AActor* DamageCauser)
 	CombatComponent->CancelAttack();
 	
 	const EHitDirection HitDirection = CalculateHitDirection(DamageCauser);
-	UAnimMontage* HitMontage = GetHitMontage(HitDirection);
-	if (HitMontage == nullptr)
+	UAnimSequenceBase* HitAnimation = GetHitAnimation(HitDirection);
+	if (HitAnimation == nullptr)
 	{
 		return false;
 	}
@@ -40,20 +40,24 @@ bool UReactionComponent::PlayHitReaction(AActor* DamageCauser)
 	}
 	
 	UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance();
-	// HitMontage를 플레이, 다 재생했다면 false로 리턴
-	if (AnimInstance->Montage_Play(HitMontage) <= 0.f)
-	{
-		return false;
-	}
+	UAnimMontage* DynamicHitMontage = AnimInstance->PlaySlotAnimationAsDynamicMontage(
+		HitAnimation, HitReactionSlotName,
+		CurrentReactionSet.HitBlendInTime, CurrentReactionSet.HitBlendOutTime,
+		1.f, 1);
 	
-	ActiveHitMontage = HitMontage;
+	ActiveHitMontage = DynamicHitMontage;
 	bIsReacting = true;
 	
 	FOnMontageEnded MontageEndedDelegate;
 	MontageEndedDelegate.BindUObject(this, &UReactionComponent::OnHitMontageEnded);
-	AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, HitMontage);
+	AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, DynamicHitMontage);
 	
 	return true;
+}
+
+void UReactionComponent::SetReactionSet(const FEquipmentReactionSet& ReactionSet)
+{
+	CurrentReactionSet = ReactionSet;
 }
 
 // Called when the game starts
@@ -84,17 +88,17 @@ EHitDirection UReactionComponent::CalculateHitDirection(const AActor* DamageCaus
 	return RightDot >= 0.f ? EHitDirection::Right : EHitDirection::Left;
 }
 
-UAnimMontage* UReactionComponent::GetHitMontage(EHitDirection HitDirection) const
+UAnimSequenceBase* UReactionComponent::GetHitAnimation(EHitDirection HitDirection) const
 {
-	UAnimMontage* HitMontage = nullptr;
+	const FDirectionalHitAnimations& Animations = CurrentReactionSet.HitAnimations;
 	switch (HitDirection)
 	{
-		case EHitDirection::Front: HitMontage = HitFromFrontMontage; break;
-		case EHitDirection::Back: HitMontage = HitFromBackMontage; break;
-		case EHitDirection::Left: HitMontage = HitFromLeftMontage; break;
-		case EHitDirection::Right: HitMontage = HitFromRightMontage; break;
+		case EHitDirection::Front: return Animations.Front;
+		case EHitDirection::Back: return Animations.Back;
+		case EHitDirection::Left: return Animations.Left;
+		case EHitDirection::Right: return Animations.Right;
 	}
-	return HitMontage;
+	return Animations.Front;
 }
 
 void UReactionComponent::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted)

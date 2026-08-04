@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Project_TinoKingdom/Types/ReactionTypes.h"
 #include "ReactionComponent.generated.h"
 
 UENUM(BlueprintType)
@@ -36,6 +37,8 @@ public:
 	
 	UFUNCTION(BlueprintPure, Category = "Reaction")
 	bool IsReacting() const { return bIsReacting; }
+	
+	void SetReactionSet(const FEquipmentReactionSet& ReactionSet);
 
 protected:
 	// Called when the game starts
@@ -46,24 +49,18 @@ private:
 	EHitDirection CalculateHitDirection(const AActor* DamageCauser);
 	
 	// 방향에 해당하는 피격 몽타주 반환
-	UAnimMontage* GetHitMontage(EHitDirection HitDirection) const;
+	UAnimSequenceBase* GetHitAnimation(EHitDirection HitDirection) const;
 	
 	// 현재 피격 몽타주가 종료되거나 중단되었을 때 상태 초기화
 	// TinoCombatComponent와 동일
 	void OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	
 private:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction|Hit", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAnimMontage> HitFromFrontMontage;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction|Hit", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAnimMontage> HitFromBackMontage;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction|Hit", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAnimMontage> HitFromLeftMontage;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction|Hit", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAnimMontage> HitFromRightMontage;
+	UPROPERTY(Transient)
+	FEquipmentReactionSet CurrentReactionSet;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction")
+	FName HitReactionSlotName = FName("DefaultSlot");
 	
 	UPROPERTY(Transient)
 	TObjectPtr<ACharacter> OwnerCharacter;

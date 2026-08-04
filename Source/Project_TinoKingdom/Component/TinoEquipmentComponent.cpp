@@ -6,7 +6,6 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
-#include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 #include "Project_TinoKingdom/Equipment/TinoEquipmentActor.h"
 
@@ -57,7 +56,6 @@ bool UTinoEquipmentComponent::EquipLoadout(UEquipmentLoadoutData* InLoadout)
 
 	RightHandEquipmentActor = NewRightHandActor;
 	LeftHandEquipmentActor = NewLeftHandActor;
-	CombatComponent->SetEquippedAttackData(InLoadout->AttackData);
 
 	CurrentLoadout = InLoadout;
 	OnEquipmentChanged.Broadcast(CurrentLoadout.Get());
@@ -86,11 +84,6 @@ void UTinoEquipmentComponent::BeginPlay()
 
 	OwnerCharacter = CastChecked<ACharacter>(GetOwner());
 	AttachmentMesh = OwnerCharacter->GetMesh();
-	CombatComponent = OwnerCharacter->FindComponentByClass<UTinoCombatComponent>();
-
-	checkf(CombatComponent != nullptr,
-		TEXT("%s: UTinoEquipmentComponent에는 UTinoCombatComponent가 필요합니다."),
-		*GetNameSafe(OwnerCharacter));
 
 	if (!IsValid(DefaultLoadout.Get()))
 	{
