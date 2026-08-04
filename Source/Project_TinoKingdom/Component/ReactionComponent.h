@@ -20,7 +20,6 @@ class AActor;
 class ACharacter;
 class UAnimMontage;
 class USkeletalMeshComponent;
-class UTinoCombatComponent;
 
 UCLASS( ClassGroup=(Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UReactionComponent : public UActorComponent
@@ -59,7 +58,7 @@ private:
 	UPROPERTY(Transient)
 	FEquipmentReactionSet CurrentReactionSet;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction", meta = (AllowPrivateAccess = "ture"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction", meta = (AllowPrivateAccess = "true"))
 	FName HitReactionSlotName = FName("DefaultSlot");
 	
 	UPROPERTY(Transient)
@@ -68,10 +67,6 @@ private:
 	// 몽타주를 실제로 플레이하는 Driver Mesh
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> AnimationMesh;
-	
-	// 피격시 현재 공격 상태를 취소하기 위해 캐싱
-	UPROPERTY(Transient)
-	TObjectPtr<UTinoCombatComponent> CombatComponent;
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimMontage> ActiveHitMontage;

@@ -247,14 +247,17 @@ float APlayerCharacter::TakeDamage(
 )
 {
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-
+	
 	if (StatComponent != nullptr)
 	{
 		StatComponent->ApplyDamage(DamageAmount);
 	}
+	
+	StopRunning();
+	CombatComponent->CancelAttack();
+
 	if (!StatComponent->IsDead())
 	{
-		StopRunning();
 		ReactionComponent->PlayHitReaction(DamageCauser);
 	}
 	

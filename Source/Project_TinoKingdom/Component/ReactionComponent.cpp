@@ -8,7 +8,6 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "TinoCombatComponent.h"
 
 // Sets default values for this component's properties
 UReactionComponent::UReactionComponent()
@@ -22,9 +21,6 @@ UReactionComponent::UReactionComponent()
 
 bool UReactionComponent::PlayHitReaction(AActor* DamageCauser)
 {
-	// 피격되면 현재 공격 상태를 종료한다.
-	CombatComponent->CancelAttack();
-	
 	const EHitDirection HitDirection = CalculateHitDirection(DamageCauser);
 	UAnimSequenceBase* HitAnimation = GetHitAnimation(HitDirection);
 	if (HitAnimation == nullptr)
@@ -67,7 +63,6 @@ void UReactionComponent::BeginPlay()
 
 	OwnerCharacter = Cast<ACharacter>(GetOwner());
 	AnimationMesh = OwnerCharacter->GetMesh();
-	CombatComponent = OwnerCharacter->FindComponentByClass<UTinoCombatComponent>();
 }
 
 EHitDirection UReactionComponent::CalculateHitDirection(const AActor* DamageCauser)
