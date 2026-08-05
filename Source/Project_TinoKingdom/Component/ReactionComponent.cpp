@@ -51,6 +51,29 @@ bool UReactionComponent::PlayHitReaction(AActor* DamageCauser)
 	return true;
 }
 
+bool UReactionComponent::PlayDeathReaction(AActor* DamageCauser)
+{
+	if (bDeathReactionPlayed)
+	{
+		return false;
+	}
+	const EReactionDirection DeathDirection = CalculateHitDirection(DamageCauser);
+	const FName DeathSectionName = GetDeathSectionName(DeathDirection);
+	UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance();
+	
+	if (AnimInstance->Montage_Play(DeathMontage) <= 0.f)
+	{
+		return false;
+	}
+	AnimInstance->Montage_JumpToSection(DeathSectionName, DeathMontage);
+	
+	bDeathReactionPlayed = true;
+	bIsReacting = false;
+	ActiveHitMontage = nullptr;
+	
+	return true;
+}
+
 void UReactionComponent::SetReactionSet(const FEquipmentReactionSet& ReactionSet)
 {
 	CurrentReactionSet = ReactionSet;
@@ -94,6 +117,18 @@ UAnimSequenceBase* UReactionComponent::GetHitAnimation(EReactionDirection HitDir
 		case EReactionDirection::Right: return Animations.Right;
 	}
 	return Animations.Front;
+}
+
+FName UReactionComponent::GetDeathSectionName(EReactionDirection ReactionDirection) const
+{
+	switch (ReactionDirection)
+	{
+		case EReactionDirection::Front: return FName("FromFront");
+		case EReactionDirection::Back: return FName("FromBack");
+		case EReactionDirection::Left: return FName("FromLeft");
+		case EReactionDirection::Right: return FName("FromRight");
+	}
+	return FName("FromFront");
 }
 
 void UReactionComponent::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted)
