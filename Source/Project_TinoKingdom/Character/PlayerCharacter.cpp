@@ -162,7 +162,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	// 공격 중에는 이동 입력을 받지 않는다.
-	if (CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -193,7 +193,7 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
-	if (CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -217,7 +217,7 @@ void APlayerCharacter::StopRunning()
 
 void APlayerCharacter::Attack()
 {
-	if (ReactionComponent->IsReacting())
+	if (StatComponent->IsDead() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -226,7 +226,7 @@ void APlayerCharacter::Attack()
 
 void APlayerCharacter::StartJump()
 {
-	if (CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -237,6 +237,22 @@ void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
 {
 	CombatComponent->SetEquippedAttackData(NewLoadout->AttackData.Get());
 	ReactionComponent->SetReactionSet(NewLoadout->Reactions);
+}
+
+void APlayerCharacter::HandleDeath(AActor* DamageCauser)
+{
+	if (bDeathHandled)
+	{
+		return;
+	}
+	bDeathHandled = true;
+	
+	StopRunning();
+	CombatComponent->CancelAttack();
+	GetCharacterMovement()->DisableMovement();
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	ReactionComponent->PlayDeathReaction(DamageCauser);
 }
 
 float APlayerCharacter::TakeDamage(
@@ -252,12 +268,15 @@ float APlayerCharacter::TakeDamage(
 	{
 		StatComponent->ApplyDamage(DamageAmount);
 	}
-	
-	StopRunning();
-	CombatComponent->CancelAttack();
 
-	if (!StatComponent->IsDead())
+	if (StatComponent->IsDead())
 	{
+		HandleDeath(DamageCauser);
+	}
+	else
+	{
+		StopRunning();
+		CombatComponent->CancelAttack();
 		ReactionComponent->PlayHitReaction(DamageCauser);
 	}
 	

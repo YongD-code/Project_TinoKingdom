@@ -121,8 +121,13 @@ protected:
 private:
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
+	
+	bool bDeathHandled = false;
 
 private:
 	UFUNCTION()
 	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
+	
+	UFUNCTION()
+	void HandleDeath(AActor* DamageCauser);
 };

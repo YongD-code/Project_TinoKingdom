@@ -34,6 +34,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Reaction|Hit")
 	bool PlayHitReaction(AActor* DamageCauser);
 	
+	UFUNCTION(BlueprintCallable, Category = "Reaction|Death")
+	bool PlayDeathReaction(AActor* DamageCauser);
+	
 	UFUNCTION(BlueprintPure, Category = "Reaction")
 	bool IsReacting() const { return bIsReacting; }
 	
@@ -50,6 +53,10 @@ private:
 	// 방향에 해당하는 피격 몽타주 반환
 	UAnimSequenceBase* GetHitAnimation(EReactionDirection HitDirection) const;
 	
+	// Death Animation은 한 몽타주 안에 4개의 방향을 가진 Animation을 넣을 예정이기 때문에
+	// Montage Section Name을 반환
+	FName GetDeathSectionName(EReactionDirection ReactionDirection) const;
+	
 	// 현재 피격 몽타주가 종료되거나 중단되었을 때 상태 초기화
 	// TinoCombatComponent와 동일
 	void OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted);
@@ -60,6 +67,9 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Reaction|Hit", meta = (AllowPrivateAccess = "true"))
 	FName HitReactionSlotName = FName("DefaultSlot");
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Reaction|Death", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimMontage> DeathMontage;
 	
 	UPROPERTY(Transient)
 	TObjectPtr<ACharacter> OwnerCharacter;
@@ -73,4 +83,7 @@ private:
 	
 	UPROPERTY(Transient)
 	bool bIsReacting = false;
+	
+	UPROPERTY(Transient)
+	bool bDeathReactionPlayed = false;
 };
