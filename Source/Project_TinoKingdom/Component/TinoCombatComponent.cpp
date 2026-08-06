@@ -6,6 +6,7 @@
 #include "CollisionShape.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
+#include "KismetTraceUtils.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -285,42 +286,59 @@ void UTinoCombatComponent::PerformAttackTrace()
 		return;
 	}
 
-	const FComboAttackSectionData& AttackSection =
-		ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
-
+	const FComboAttackSectionData& AttackSection = ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
+	
 	// MaxHitTargets가 0이면 대상 수 제한이 없다.
 	if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
 	{
 		return;
 	}
+	
+	FVector CurrentTraceBaseLocation = FVector::ZeroVector;
+	FVector CurrentTraceTipLocation = FVector::ZeroVector;
+	GetAttackTracePoints(AttackSection.AttackSource, CurrentTraceBaseLocation, CurrentTraceTipLocation);
 
 	UWorld* World = GetWorld();
 	const FVector Forward = OwnerCharacter->GetActorForwardVector();
-	const FVector Up = OwnerCharacter->GetActorUpVector();
-	const FVector Start = OwnerCharacter->GetActorLocation()
-		+ Forward * AttackSection.TraceStartForwardOffset
-		+ Up * AttackSection.TraceHeightOffset;
-	const FVector End = Start + Forward * AttackSection.TraceDistance;
-
+	
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TinoMeleeTrace), false, OwnerCharacter);
 	TArray<FHitResult> HitResults;
-	World->SweepMultiByChannel(HitResults, Start, End, FQuat::Identity,
-		TinoCollision::Action, FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
-
+	constexpr int32 TraceCount = 5;
+	
+	for (int32 SampleIndex = 0; SampleIndex < TraceCount; ++SampleIndex)
+	{
+		const float Alpha = static_cast<float>(SampleIndex) / static_cast<float>(TraceCount - 1);
+		const FVector SweepStart = FMath::Lerp(PreviousTraceBaseLocation, PreviousTraceTipLocation, Alpha);
+		const FVector SweepEnd = FMath::Lerp(CurrentTraceBaseLocation, CurrentTraceTipLocation, Alpha);
+		
+		TArray<FHitResult> SampleHitResults;
+		World->SweepMultiByChannel(SampleHitResults, SweepStart, SweepEnd, FQuat::Identity,
+			TinoCollision::Action, FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
+		HitResults.Append(SampleHitResults);
+		
+		const FColor DebugColor = SampleHitResults.IsEmpty() ? FColor::Green : FColor::Red;
+		DrawDebugSweptSphere(
+			World,
+			SweepStart,
+			SweepEnd,
+			AttackSection.TraceRadius,
+			DebugColor,
+			false,  // 영구 표시하지 않음
+			0.75f,  // 0.75초간 유지
+			0
+		);
+	}
+	
+	PreviousTraceBaseLocation = CurrentTraceBaseLocation;
+	PreviousTraceTipLocation = CurrentTraceTipLocation;
+	
 	HitResults.Sort(
 		[](const FHitResult& A, const FHitResult& B)
 		{
-			return A.Distance < B.Distance;
-		});
-
-	const FColor DebugColor = HitResults.IsEmpty() ? FColor::Green : FColor::Red;
-	DrawDebugSphere(World, Start, AttackSection.TraceRadius, 16, DebugColor, 
-		false, 0.1f, 0, 1.f);
-	DrawDebugSphere(World, End, AttackSection.TraceRadius, 16, DebugColor, 
-		false, 0.1f, 0, 1.f);
-	DrawDebugLine(World, Start, End, DebugColor, 
-		false, 0.1f, 0, 1.f);
-
+			return A.Time < B.Time;
+		}
+	);
+	
 	for (const FHitResult& HitResult : HitResults)
 	{
 		AActor* HitActor = HitResult.GetActor();
@@ -328,20 +346,23 @@ void UTinoCombatComponent::PerformAttackTrace()
 		{
 			continue;
 		}
-
+		
 		const TObjectKey<AActor> HitActorKey(HitActor);
+		// 하나의 Hit Window에서는 한 번만 피해를 입히게
 		if (HitActorsThisWindow.Contains(HitActorKey))
 		{
 			continue;
 		}
-
-		HitActorsThisWindow.Add(HitActorKey);
-
-		UGameplayStatics::ApplyPointDamage(HitActor, AttackSection.Damage, Forward, HitResult,
+		
+		// 당장은 크게 필요없음. 나중에 적도 공격방향별로 피격 애니메이션을 다르게 할 때 사용
+		FVector HitDirection = (HitResult.TraceEnd - HitResult.TraceStart).GetSafeNormal();
+		if (HitDirection.IsNearlyZero())
+		{
+			HitDirection = Forward;
+		}
+		UGameplayStatics::ApplyPointDamage(HitActor, AttackSection.Damage, HitDirection, HitResult, 
 			OwnerCharacter->GetController(), OwnerCharacter, UDamageType::StaticClass());
-
-		UE_LOG(LogTinoCombat, Log, TEXT("%s 공격이 %s를 검출"), *GetNameSafe(OwnerCharacter), *GetNameSafe(HitActor));
-
+		
 		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
 		{
 			break;
