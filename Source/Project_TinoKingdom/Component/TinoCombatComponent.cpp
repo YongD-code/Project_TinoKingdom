@@ -17,6 +17,15 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
+namespace
+{
+	const FName RightHandTraceBaseSocketName = FName("RightHandTraceBase");
+	const FName RightHandTraceTipSocketName = FName("RightHandTraceTip");
+	const FName LeftHandTraceBaseSocketName = FName("LeftHandTraceBase");
+	const FName LeftHandTraceTipSocketName = FName("LeftHandTraceTip");
+	const FName RightFootTraceBaseSocketName = FName("RightFootTraceBase");
+	const FName RightFootTraceTipSocketName = FName("RightFootTraceTip");
+}
 UTinoCombatComponent::UTinoCombatComponent()
 {
 	// 공격 판정은 Anim Notify State 구간에서만 실행하므로 상시 Tick은 필요 없다.
@@ -329,6 +338,53 @@ void UTinoCombatComponent::PerformAttackTrace()
 		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
 		{
 			break;
+		}
+	}
+}
+
+void UTinoCombatComponent::GetAttackTracePoints(EAttackSource AttackSource, FVector& OutBaseLocation,
+	FVector& OutTipLocation) const
+{
+	switch (AttackSource)
+	{
+	case EAttackSource::RightWeapon:
+		{
+			RightHandWeapon->GetWeaponTracePoints(OutBaseLocation, OutTipLocation);
+		}
+	case EAttackSource::LeftWeapon:
+		{
+			LeftHandWeapon->GetWeaponTracePoints(OutBaseLocation, OutTipLocation);
+		}
+	case EAttackSource::RightHand:
+		{
+			checkf(AnimationMesh->DoesSocketExist(RightHandTraceBaseSocketName), TEXT("오른손 Base소켓이 없습니다."));
+			checkf(AnimationMesh->DoesSocketExist(RightHandTraceTipSocketName), TEXT("오른손 Tip 소켓이 없습니다."));
+			OutBaseLocation = AnimationMesh->GetSocketLocation(RightHandTraceBaseSocketName);
+			OutTipLocation = AnimationMesh->GetSocketLocation(RightHandTraceTipSocketName);
+			return;
+		}
+	case EAttackSource::LeftHand:
+		{
+			checkf(AnimationMesh->DoesSocketExist(LeftHandTraceBaseSocketName), TEXT("왼손 Base소켓이 없습니다."));
+			checkf(AnimationMesh->DoesSocketExist(LeftHandTraceTipSocketName), TEXT("왼손 Tip 소켓이 없습니다."));
+			OutBaseLocation = AnimationMesh->GetSocketLocation(LeftHandTraceBaseSocketName);
+			OutTipLocation = AnimationMesh->GetSocketLocation(LeftHandTraceTipSocketName);
+			return;
+		}
+	case EAttackSource::RightFoot:
+		{
+			checkf(AnimationMesh->DoesSocketExist(RightFootTraceBaseSocketName), TEXT("오른발 Base소켓이 없습니다."));
+			checkf(AnimationMesh->DoesSocketExist(RightFootTraceTipSocketName), TEXT("오른발 Tip 소켓이 없습니다."));
+			OutBaseLocation = AnimationMesh->GetSocketLocation(RightFootTraceBaseSocketName);
+			OutTipLocation = AnimationMesh->GetSocketLocation(RightFootTraceTipSocketName);
+			return;
+		}
+	case EAttackSource::LeftFoot:
+	case EAttackSource::None:
+	default:
+		{
+			UE_LOG(LogTinoCombat, Error, TEXT("Attack Source가 지정되지 않았습니다."));
+			return;
 		}
 	}
 }

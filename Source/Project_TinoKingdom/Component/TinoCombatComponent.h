@@ -15,6 +15,8 @@ class USkeletalMeshComponent;
 class UAttackComboData;
 class ATinoEquipmentActor;
 
+enum class EAttackSource : uint8;
+
 UCLASS( ClassGroup = (Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UTinoCombatComponent : public UActorComponent
 {
@@ -82,6 +84,8 @@ private:
 
 	// 현재 공격 섹션의 범위를 Sweep하고 중복되지 않은 대상에 피해를 적용한다.
 	void PerformAttackTrace();
+	
+	void GetAttackTracePoints(EAttackSource AttackSource, FVector& OutBaseLocation, FVector& OutTipLocation) const;
 
 private:
 	// 장착 공격 데이터가 없을 때 사용할 캐릭터의 기본 공격 데이터.
