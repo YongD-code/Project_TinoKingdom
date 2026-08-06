@@ -127,6 +127,10 @@ private:
 
 	// 현재 공격 판정에 사용하고 있는 ComboSection 인덱스.
 	int32 ActiveAttackSectionIndex = INDEX_NONE;
+	
+	// 한 번의 스윙을 여러 구간으로 나누어 현재의 Location과 보간할 예정
+	FVector PreviousTraceBaseLocation = FVector::ZeroVector;
+	FVector PreviousTraceTipLocation = FVector::ZeroVector;
 
 	// 현재 공격 판정 Anim Notify 구간이 열려 있는지 나타낸다.
 	bool bAttackHitWindowOpen = false;

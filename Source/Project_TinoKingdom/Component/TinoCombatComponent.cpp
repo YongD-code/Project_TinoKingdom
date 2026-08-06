@@ -109,6 +109,10 @@ void UTinoCombatComponent::BeginAttackHitWindow()
 	}
 
 	ActiveAttackSectionIndex = FoundSectionIndex;
+	const FComboAttackSectionData& AttackSection = ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
+	GetAttackTracePoints(AttackSection.AttackSource, PreviousTraceBaseLocation, PreviousTraceTipLocation);
+	
+	// 최초로 위치 저장이 끝난 후 판정창을 연다.
 	bAttackHitWindowOpen = true;
 
 	// Notify 구간이 짧더라도 최소 한 번은 판정한다.
@@ -125,6 +129,9 @@ void UTinoCombatComponent::EndAttackHitWindow()
 	bAttackHitWindowOpen = false;
 	ActiveAttackSectionIndex = INDEX_NONE;
 	HitActorsThisWindow.Reset();
+	
+	PreviousTraceBaseLocation = FVector::ZeroVector;
+	PreviousTraceTipLocation = FVector::ZeroVector;
 }
 
 void UTinoCombatComponent::CancelAttack()
@@ -350,10 +357,12 @@ void UTinoCombatComponent::GetAttackTracePoints(EAttackSource AttackSource, FVec
 	case EAttackSource::RightWeapon:
 		{
 			RightHandWeapon->GetWeaponTracePoints(OutBaseLocation, OutTipLocation);
+			return;
 		}
 	case EAttackSource::LeftWeapon:
 		{
 			LeftHandWeapon->GetWeaponTracePoints(OutBaseLocation, OutTipLocation);
+			return;
 		}
 	case EAttackSource::RightHand:
 		{
