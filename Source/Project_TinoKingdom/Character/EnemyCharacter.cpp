@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
+#include "Project_TinoKingdom/Constants/TinoCollision.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -140,6 +141,7 @@ void AEnemyCharacter::HandleDead()
 	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
 	if (AnimInstance != nullptr && DeathMontage != nullptr)
 	{
+		AnimInstance->Montage_Stop(0.1f);
 		const float DeathLength = AnimInstance->Montage_Play(DeathMontage);
 		SetLifeSpan(DeathLength > 0.0f ? DeathLength + 1.0f : DeadLifeSpan);
 	}
@@ -151,18 +153,27 @@ void AEnemyCharacter::HandleDead()
 
 void AEnemyCharacter::PlayHitReaction()
 {
-	if (bDead || bAttacking)
+	if (bDead)
 	{
 		return;
 	}
 
 	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
-	if (AnimInstance != nullptr && HitMontage != nullptr)
+	if (AnimInstance == nullptr || HitMontage == nullptr)
 	{
-		AnimInstance->Montage_Play(HitMontage);
+		return;
 	}
-}
 
+	bAttacking = false;
+	CombatTarget = nullptr;
+
+	if (AttackMontage != nullptr && AnimInstance->Montage_IsPlaying(AttackMontage))
+	{
+		AnimInstance->Montage_Stop(0.1f, AttackMontage);
+	}
+
+	AnimInstance->Montage_Play(HitMontage);
+}
 void AEnemyCharacter::PerformAttackTrace()
 {
 	if (bDead)
@@ -188,7 +199,7 @@ void AEnemyCharacter::PerformAttackTrace()
 		Start,
 		End,
 		FQuat::Identity,
-		ECC_Pawn,
+		TinoCollision::Action,
 		FCollisionShape::MakeSphere(AttackTraceRadius),
 		Params
 	);
