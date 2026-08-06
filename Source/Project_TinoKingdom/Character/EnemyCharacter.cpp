@@ -7,11 +7,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
+#include "Project_TinoKingdom/Constants/TinoCollision.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
-
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
@@ -25,6 +24,7 @@ AEnemyCharacter::AEnemyCharacter()
 	
 	AIControllerClass = AEnemyAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	PrimaryActorTick.bCanEverTick = true;
 }
 
 void AEnemyCharacter::BeginPlay()
@@ -63,7 +63,7 @@ float AEnemyCharacter::TakeDamage(
 
 bool AEnemyCharacter::CanAttack() const
 {
-	if (bAttacking)
+	if (bAttacking || bHitReacting)
 	{
 		return false;
 	}
@@ -115,14 +115,6 @@ bool AEnemyCharacter::RequestAttack()
 	return true;
 }
 
-void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	if (Montage == AttackMontage)
-	{
-		bAttacking = false;
-	}
-}
-
 void AEnemyCharacter::HandleDead()
 {
 	if (bDead)
@@ -132,7 +124,9 @@ void AEnemyCharacter::HandleDead()
 
 	bDead = true;
 	bAttacking = false;
-
+	bHitReacting = false;
+	CombatTarget = nullptr;
+	
 	if (AController* CurrentController = GetController())
 	{
 		if (AAIController* AIController = Cast<AAIController>(CurrentController))
@@ -149,8 +143,9 @@ void AEnemyCharacter::HandleDead()
 	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
 	if (AnimInstance != nullptr && DeathMontage != nullptr)
 	{
+		AnimInstance->Montage_Stop(0.1f);
 		const float DeathLength = AnimInstance->Montage_Play(DeathMontage);
-		SetLifeSpan(DeathLength > 0.0f ? DeathLength + 1.0f : DeadLifeSpan);
+		SetLifeSpan(DeathLength > 0.0f ? DeathLength + 2.0f : DeadLifeSpan);
 	}
 	else
 	{
@@ -160,15 +155,43 @@ void AEnemyCharacter::HandleDead()
 
 void AEnemyCharacter::PlayHitReaction()
 {
-	if (bDead || bAttacking)
+	if (bDead)
 	{
 		return;
 	}
 
 	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
-	if (AnimInstance != nullptr && HitMontage != nullptr)
+	if (AnimInstance == nullptr || HitMontage == nullptr)
 	{
-		AnimInstance->Montage_Play(HitMontage);
+		return;
+	}
+
+	bAttacking = false;
+	bHitReacting = true;
+	CombatTarget = nullptr;
+
+	if (AttackMontage != nullptr && AnimInstance->Montage_IsPlaying(AttackMontage))
+	{
+		AnimInstance->Montage_Stop(0.1f, AttackMontage);
+	}
+
+	const float PlayLength = AnimInstance->Montage_Play(HitMontage);
+	if (PlayLength <= 0.0f)
+	{
+		bHitReacting = false;
+		return;
+	}
+
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &AEnemyCharacter::OnHitMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, HitMontage);
+}
+
+void AEnemyCharacter::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage == HitMontage)
+	{
+		bHitReacting = false;
 	}
 }
 
@@ -191,17 +214,19 @@ void AEnemyCharacter::PerformAttackTrace()
 
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(EnemyAttackTrace), false, this);
 
-	FHitResult HitResult;
-	const bool bHit = World->SweepSingleByChannel(
-		HitResult,
+	TArray<FHitResult> HitResults;
+	World->SweepMultiByChannel(
+		HitResults,
 		Start,
 		End,
 		FQuat::Identity,
-		ECC_Pawn,
+		TinoCollision::Action,
 		FCollisionShape::MakeSphere(AttackTraceRadius),
 		Params
 	);
-
+	
+	const bool bHit = HitResults.Num() > 0;
+	
 	DrawDebugSphere(World, End, AttackTraceRadius, 16, bHit ? FColor::Red : FColor::Green, false, 1.0f);
 
 	if (!bHit)
@@ -209,17 +234,62 @@ void AEnemyCharacter::PerformAttackTrace()
 		return;
 	}
 
-	AActor* HitActor = HitResult.GetActor();
-	if (HitActor == nullptr || HitActor == this)
+	for (const FHitResult& HitResult : HitResults)
+	{
+		AActor* HitActor = HitResult.GetActor();
+		if (HitActor == nullptr || HitActor == this)
+		{
+			continue;
+		}
+
+		UGameplayStatics::ApplyDamage(
+			HitActor,
+			AttackDamage,
+			GetController(),
+			this,
+			UDamageType::StaticClass()
+		);
+	}
+}
+
+void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
+{
+	CombatTarget = NewTarget;
+}
+
+void AEnemyCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!bAttacking || CombatTarget == nullptr || bDead)
 	{
 		return;
 	}
 
-	UGameplayStatics::ApplyDamage(
-		HitActor,
-		AttackDamage,
-		GetController(),
-		this,
-		UDamageType::StaticClass()
+	const FVector Direction = CombatTarget->GetActorLocation() - GetActorLocation();
+	if (Direction.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FRotator CurrentRotation = GetActorRotation();
+	const FRotator TargetRotation = FRotator(0.0f, Direction.Rotation().Yaw, 0.0f);
+
+	const FRotator NewRotation = FMath::RInterpConstantTo(
+		CurrentRotation,
+		TargetRotation,
+		DeltaSeconds,
+		AttackTurnSpeed
 	);
+
+	SetActorRotation(NewRotation);
+}
+
+void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage == AttackMontage)
+	{
+		bAttacking = false;
+		CombatTarget = nullptr;
+	}
 }
