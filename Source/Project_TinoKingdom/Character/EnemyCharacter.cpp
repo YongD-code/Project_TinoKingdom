@@ -10,8 +10,6 @@
 
 AEnemyCharacter::AEnemyCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
-
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
