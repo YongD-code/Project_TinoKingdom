@@ -25,6 +25,7 @@ AEnemyCharacter::AEnemyCharacter()
 	
 	AIControllerClass = AEnemyAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	PrimaryActorTick.bCanEverTick = true;
 }
 
 void AEnemyCharacter::BeginPlay()
@@ -222,4 +223,46 @@ void AEnemyCharacter::PerformAttackTrace()
 		this,
 		UDamageType::StaticClass()
 	);
+}
+
+void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
+{
+	CombatTarget = NewTarget;
+}
+
+void AEnemyCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!bAttacking || CombatTarget == nullptr || bDead)
+	{
+		return;
+	}
+
+	const FVector Direction = CombatTarget->GetActorLocation() - GetActorLocation();
+	if (Direction.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FRotator CurrentRotation = GetActorRotation();
+	const FRotator TargetRotation = FRotator(0.0f, Direction.Rotation().Yaw, 0.0f);
+
+	const FRotator NewRotation = FMath::RInterpConstantTo(
+		CurrentRotation,
+		TargetRotation,
+		DeltaSeconds,
+		AttackTurnSpeed
+	);
+
+	SetActorRotation(NewRotation);
+}
+
+void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage == AttackMontage)
+	{
+		bAttacking = false;
+		CombatTarget = nullptr;
+	}
 }

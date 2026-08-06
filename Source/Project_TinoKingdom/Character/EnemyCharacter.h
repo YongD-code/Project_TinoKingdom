@@ -41,6 +41,8 @@ public:
 	void PerformAttackTrace();
 
 	void PlayHitReaction();
+	
+	void SetCombatTarget(AActor* Target);
 
 protected:
 	
@@ -87,6 +89,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
 	float AttackTraceDistance = 120.f;
 	
+	UPROPERTY(Transient)
+	TObjectPtr<AActor> CombatTarget;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
+	float AttackTurnSpeed = 720.0f;
+	
+	virtual void Tick(float DeltaSeconds) override;
 private:
 	UPROPERTY(Transient)
 	bool bAttacking = false;

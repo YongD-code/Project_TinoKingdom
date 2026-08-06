@@ -5,6 +5,8 @@
 
 #include "AIController.h"
 #include "Project_TinoKingdom/Character/EnemyCharacter.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Project_TinoKingdom/AI/EnemyAIController.h"
 
 UBTTaskAttack::UBTTaskAttack()
 {
@@ -23,6 +25,20 @@ EBTNodeResult::Type UBTTaskAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp
 		return EBTNodeResult::Failed;
 	}
 
+	UBlackboardComponent* BlackboardComponent = OwnerComp.GetBlackboardComponent();
+	AActor* TargetActor = BlackboardComponent != nullptr
+		? Cast<AActor>(BlackboardComponent->GetValueAsObject(AEnemyAIController::TargetPlayer))
+		: nullptr;
+
+	if (TargetActor != nullptr)
+	{
+		EnemyCharacter->SetCombatTarget(TargetActor);
+		const FVector Direction = TargetActor->GetActorLocation() - EnemyCharacter->GetActorLocation();
+		const FRotator LookRotation = Direction.Rotation();
+
+		EnemyCharacter->SetActorRotation(FRotator(0.0f, LookRotation.Yaw, 0.0f));
+	}
+	
 	return EnemyCharacter->RequestAttack()
 		? EBTNodeResult::Succeeded
 		: EBTNodeResult::Failed;
