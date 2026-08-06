@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
+#include "Project_TinoKingdom/Equipment/TinoEquipmentActor.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
@@ -31,6 +32,13 @@ void UTinoCombatComponent::SetEquippedAttackData(UAttackComboData* InAttackData)
 {
 	// nullptr도 유효한 입력, 무기를 해제하면 nullptr이 전달되고 GetEffectiveAttackData()가 DefaultAttackData를 선택
 	EquippedAttackData = InAttackData;
+}
+
+void UTinoCombatComponent::SetEquipmentWeaponActors(ATinoEquipmentActor* InRightHandWeapon,
+	ATinoEquipmentActor* InLeftHandWeapon)
+{
+	RightHandWeapon = InRightHandWeapon;
+	LeftHandWeapon = InLeftHandWeapon;
 }
 
 bool UTinoCombatComponent::RequestAttack()

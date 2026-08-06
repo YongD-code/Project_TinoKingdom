@@ -13,6 +13,7 @@ class UAnimInstance;
 class UAnimMontage;
 class USkeletalMeshComponent;
 class UAttackComboData;
+class ATinoEquipmentActor;
 
 UCLASS( ClassGroup = (Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UTinoCombatComponent : public UActorComponent
@@ -28,6 +29,8 @@ public:
 
 	// 장착 완료된 무기의 공격 데이터를 다음 공격용으로 저장한다.
 	void SetEquippedAttackData(UAttackComboData* InAttackData);
+	
+	void SetEquipmentWeaponActors(ATinoEquipmentActor* InRightHandWeapon, ATinoEquipmentActor* InLeftHandWeapon);
 
 	// 새 공격을 시작하거나 열린 입력창에서 다음 콤보를 예약한다.
 	UFUNCTION(BlueprintCallable, Category = "Combat")
@@ -88,6 +91,14 @@ private:
 	// 실제 장착 완료된 무기가 다음 공격에 제공할 공격 데이터.
 	UPROPERTY(Transient)
 	TObjectPtr<UAttackComboData> EquippedAttackData;
+	
+	// CombatComponent는 장비를 소유하지 않고 참조만
+	// 장비 생명주기는 AEquipmentActor가 관리
+	UPROPERTY(Transient)
+	TWeakObjectPtr<ATinoEquipmentActor> RightHandWeapon;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<ATinoEquipmentActor> LeftHandWeapon;
 
 	// 현재 공격이 종료될 때까지 고정해서 사용하는 공격 데이터.
 	UPROPERTY(Transient)

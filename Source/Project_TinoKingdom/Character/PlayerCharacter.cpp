@@ -235,7 +235,12 @@ void APlayerCharacter::StartJump()
 
 void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
 {
+	// 공격 도중 장비가 변경되면 공격 데이터와 로드아웃 외형 & 콤보 공격 몽타주가 섞이지 않도록
+	CombatComponent->CancelAttack();
+	
 	CombatComponent->SetEquippedAttackData(NewLoadout->AttackData.Get());
+	CombatComponent->SetEquipmentWeaponActors(EquipmentComponent->GetRightHandEquipmentActor(),
+		EquipmentComponent->GetLeftHandEquipmentActor());
 	ReactionComponent->SetReactionSet(NewLoadout->Reactions);
 }
 
