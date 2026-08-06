@@ -145,7 +145,7 @@ void AEnemyCharacter::HandleDead()
 	{
 		AnimInstance->Montage_Stop(0.1f);
 		const float DeathLength = AnimInstance->Montage_Play(DeathMontage);
-		SetLifeSpan(DeathLength > 0.0f ? DeathLength + 1.0f : DeadLifeSpan);
+		SetLifeSpan(DeathLength > 0.0f ? DeathLength + 2.0f : DeadLifeSpan);
 	}
 	else
 	{
@@ -214,9 +214,9 @@ void AEnemyCharacter::PerformAttackTrace()
 
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(EnemyAttackTrace), false, this);
 
-	FHitResult HitResult;
-	const bool bHit = World->SweepSingleByChannel(
-		HitResult,
+	TArray<FHitResult> HitResults;
+	World->SweepMultiByChannel(
+		HitResults,
 		Start,
 		End,
 		FQuat::Identity,
@@ -224,7 +224,9 @@ void AEnemyCharacter::PerformAttackTrace()
 		FCollisionShape::MakeSphere(AttackTraceRadius),
 		Params
 	);
-
+	
+	const bool bHit = HitResults.Num() > 0;
+	
 	DrawDebugSphere(World, End, AttackTraceRadius, 16, bHit ? FColor::Red : FColor::Green, false, 1.0f);
 
 	if (!bHit)
@@ -232,19 +234,22 @@ void AEnemyCharacter::PerformAttackTrace()
 		return;
 	}
 
-	AActor* HitActor = HitResult.GetActor();
-	if (HitActor == nullptr || HitActor == this)
+	for (const FHitResult& HitResult : HitResults)
 	{
-		return;
-	}
+		AActor* HitActor = HitResult.GetActor();
+		if (HitActor == nullptr || HitActor == this)
+		{
+			continue;
+		}
 
-	UGameplayStatics::ApplyDamage(
-		HitActor,
-		AttackDamage,
-		GetController(),
-		this,
-		UDamageType::StaticClass()
-	);
+		UGameplayStatics::ApplyDamage(
+			HitActor,
+			AttackDamage,
+			GetController(),
+			this,
+			UDamageType::StaticClass()
+		);
+	}
 }
 
 void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
