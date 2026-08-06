@@ -116,14 +116,6 @@ bool AEnemyCharacter::RequestAttack()
 	return true;
 }
 
-void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	if (Montage == AttackMontage)
-	{
-		bAttacking = false;
-	}
-}
-
 void AEnemyCharacter::HandleDead()
 {
 	if (bDead)
