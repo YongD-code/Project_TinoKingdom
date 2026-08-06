@@ -63,7 +63,7 @@ float AEnemyCharacter::TakeDamage(
 
 bool AEnemyCharacter::CanAttack() const
 {
-	if (bAttacking)
+	if (bAttacking || bHitReacting)
 	{
 		return false;
 	}
@@ -124,7 +124,9 @@ void AEnemyCharacter::HandleDead()
 
 	bDead = true;
 	bAttacking = false;
-
+	bHitReacting = false;
+	CombatTarget = nullptr;
+	
 	if (AController* CurrentController = GetController())
 	{
 		if (AAIController* AIController = Cast<AAIController>(CurrentController))
@@ -165,6 +167,7 @@ void AEnemyCharacter::PlayHitReaction()
 	}
 
 	bAttacking = false;
+	bHitReacting = true;
 	CombatTarget = nullptr;
 
 	if (AttackMontage != nullptr && AnimInstance->Montage_IsPlaying(AttackMontage))
@@ -172,8 +175,26 @@ void AEnemyCharacter::PlayHitReaction()
 		AnimInstance->Montage_Stop(0.1f, AttackMontage);
 	}
 
-	AnimInstance->Montage_Play(HitMontage);
+	const float PlayLength = AnimInstance->Montage_Play(HitMontage);
+	if (PlayLength <= 0.0f)
+	{
+		bHitReacting = false;
+		return;
+	}
+
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &AEnemyCharacter::OnHitMontageEnded);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, HitMontage);
 }
+
+void AEnemyCharacter::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage == HitMontage)
+	{
+		bHitReacting = false;
+	}
+}
+
 void AEnemyCharacter::PerformAttackTrace()
 {
 	if (bDead)
