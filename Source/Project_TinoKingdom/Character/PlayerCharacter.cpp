@@ -90,6 +90,9 @@ void APlayerCharacter::BeginPlay()
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
+	StopSlowMotion();
+	
 	if (IsValid(EquipmentComponent))
 	{
 		EquipmentComponent->OnEquipmentChanged.RemoveDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
@@ -276,6 +279,10 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 		return;
 	}
 	bDeathHandled = true;
+	
+	// 마찬가지로 사망해도 장비창을 안전하게 닫기
+	CancelEquipmentWheel();
+	StopSlowMotion();
 	
 	StopRunning();
 	CombatComponent->CancelAttack();
