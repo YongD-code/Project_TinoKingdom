@@ -18,6 +18,8 @@ public:
 	// Sets default values for this actor's properties
 	ATinoEquipmentActor();
 	
+	void GetWeaponTracePoints(FVector& OutBaseLocation, FVector& OutTipLocation) const;
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> EquipmentMesh;

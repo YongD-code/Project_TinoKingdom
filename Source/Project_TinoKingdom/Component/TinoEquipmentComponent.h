@@ -31,6 +31,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Equipment")
 	UEquipmentLoadoutData* GetCurrentLoadout() const { return CurrentLoadout.Get(); }
 	
+	ATinoEquipmentActor* GetRightHandEquipmentActor() const { return RightHandEquipmentActor.Get(); }
+	ATinoEquipmentActor* GetLeftHandEquipmentActor() const { return LeftHandEquipmentActor.Get(); }
+	
 	// 장비 장착 또는 해제 시 UI 등의 구독자에게 변경 결과를 알리는 이벤트
 	// 블루프린트가 C++ 함수를 호출하는 것은 아니고 델리게이트에 이벤트를 등록할 수 있게
 	UPROPERTY(BlueprintAssignable, Category = "Equipment")

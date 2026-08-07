@@ -6,6 +6,12 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 
+namespace
+{
+	const FName WeaponTraceBaseSocketName(TEXT("WeaponTraceBase"));
+	const FName WeaponTraceTipSocketName(TEXT("WeaponTraceTip"));
+}
+
 // Sets default values
 ATinoEquipmentActor::ATinoEquipmentActor()
 {
@@ -21,4 +27,15 @@ ATinoEquipmentActor::ATinoEquipmentActor()
 	EquipmentMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	EquipmentMesh->SetGenerateOverlapEvents(false);
 	EquipmentMesh->SetCanEverAffectNavigation(false);
+}
+
+void ATinoEquipmentActor::GetWeaponTracePoints(FVector& OutBaseLocation, FVector& OutTipLocation) const
+{
+	checkf(EquipmentMesh->DoesSocketExist(WeaponTraceBaseSocketName), TEXT("%s : 무기에 %s이 없습니다."),
+		*GetNameSafe(this), *WeaponTraceBaseSocketName.ToString());
+	checkf(EquipmentMesh->DoesSocketExist(WeaponTraceTipSocketName), TEXT("%s : 무기에 %s이 없습니다."),
+		*GetNameSafe(this), *WeaponTraceTipSocketName.ToString());
+	
+	OutBaseLocation = EquipmentMesh->GetSocketLocation(WeaponTraceBaseSocketName);
+	OutTipLocation = EquipmentMesh->GetSocketLocation(WeaponTraceTipSocketName);
 }

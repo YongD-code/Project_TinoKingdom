@@ -13,6 +13,9 @@ class UAnimInstance;
 class UAnimMontage;
 class USkeletalMeshComponent;
 class UAttackComboData;
+class ATinoEquipmentActor;
+
+enum class EAttackSource : uint8;
 
 UCLASS( ClassGroup = (Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UTinoCombatComponent : public UActorComponent
@@ -28,6 +31,8 @@ public:
 
 	// 장착 완료된 무기의 공격 데이터를 다음 공격용으로 저장한다.
 	void SetEquippedAttackData(UAttackComboData* InAttackData);
+	
+	void SetEquipmentWeaponActors(ATinoEquipmentActor* InRightHandWeapon, ATinoEquipmentActor* InLeftHandWeapon);
 
 	// 새 공격을 시작하거나 열린 입력창에서 다음 콤보를 예약한다.
 	UFUNCTION(BlueprintCallable, Category = "Combat")
@@ -79,6 +84,8 @@ private:
 
 	// 현재 공격 섹션의 범위를 Sweep하고 중복되지 않은 대상에 피해를 적용한다.
 	void PerformAttackTrace();
+	
+	void GetAttackTracePoints(EAttackSource AttackSource, FVector& OutBaseLocation, FVector& OutTipLocation) const;
 
 private:
 	// 장착 공격 데이터가 없을 때 사용할 캐릭터의 기본 공격 데이터.
@@ -88,6 +95,14 @@ private:
 	// 실제 장착 완료된 무기가 다음 공격에 제공할 공격 데이터.
 	UPROPERTY(Transient)
 	TObjectPtr<UAttackComboData> EquippedAttackData;
+	
+	// CombatComponent는 장비를 소유하지 않고 참조만
+	// 장비 생명주기는 AEquipmentActor가 관리
+	UPROPERTY(Transient)
+	TWeakObjectPtr<ATinoEquipmentActor> RightHandWeapon;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<ATinoEquipmentActor> LeftHandWeapon;
 
 	// 현재 공격이 종료될 때까지 고정해서 사용하는 공격 데이터.
 	UPROPERTY(Transient)
@@ -112,6 +127,10 @@ private:
 
 	// 현재 공격 판정에 사용하고 있는 ComboSection 인덱스.
 	int32 ActiveAttackSectionIndex = INDEX_NONE;
+	
+	// 한 번의 스윙을 여러 구간으로 나누어 현재의 Location과 보간할 예정
+	FVector PreviousTraceBaseLocation = FVector::ZeroVector;
+	FVector PreviousTraceTipLocation = FVector::ZeroVector;
 
 	// 현재 공격 판정 Anim Notify 구간이 열려 있는지 나타낸다.
 	bool bAttackHitWindowOpen = false;
