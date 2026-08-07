@@ -7,6 +7,7 @@
 #include "TinoEquipmentActor.generated.h"
 
 class UStaticMeshComponent;
+class USceneComponent;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoEquipmentActor : public AActor
@@ -17,8 +18,13 @@ public:
 	// Sets default values for this actor's properties
 	ATinoEquipmentActor();
 	
+	void GetWeaponTracePoints(FVector& OutBaseLocation, FVector& OutTipLocation) const;
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> EquipmentMesh;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment", meta = (AllowPrivateAccess = "true"))
+    	TObjectPtr<USceneComponent> AttachmentRoot;
 
 };

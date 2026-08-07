@@ -4,14 +4,47 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Project_TinoKingdom/Types/ReactionTypes.h"
 #include "EquipmentLoadoutData.generated.h"
 
 /**
  * 
  */
 
+UENUM(BlueprintType)
+enum class EEquipmentGrade : uint8
+{
+	Unrated UMETA(DisplayName = "미설정"),
+	Low UMETA(DisplayName = "하"),
+	Medium UMETA(DisplayName = "중"),
+	High UMETA(DisplayName = "상")
+};
+
+class UBlendSpace;
+class UAnimSequenceBase;
+
+USTRUCT(BlueprintType)
+struct PROJECT_TINOKINGDOM_API FEquipmentLocomotionSet
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UBlendSpace> GroundMovement;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAnimSequenceBase> Jump;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAnimSequenceBase> FallLoop;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAnimSequenceBase> Land;
+};
+
 class ATinoEquipmentActor;
 class UAttackComboData;
+class UTexture2D;
+
 UCLASS(BlueprintType)
 class PROJECT_TINOKINGDOM_API UEquipmentLoadoutData : public UDataAsset
 {
@@ -26,4 +59,26 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UAttackComboData> AttackData;
+	
+	// UI에 표시할 장비 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	FText DisplayName;
+	
+	// UI에 표시할 아이콘
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UTexture2D> Icon;
+	
+	// UI에 표시할 피해량 등급
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	EEquipmentGrade DamageGrade = EEquipmentGrade::Unrated;
+	
+	// UI에 표시할 사거리 등급
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	EEquipmentGrade ReachGrade = EEquipmentGrade::Unrated;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	FEquipmentLocomotionSet Locomotion;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	FEquipmentReactionSet Reactions;
 };

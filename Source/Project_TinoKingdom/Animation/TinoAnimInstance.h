@@ -11,7 +11,11 @@
  */
 
 class ACharacter;
+class UAnimSequenceBase;
+class UBlendSpace;
 class UCharacterMovementComponent;
+class UEquipmentLoadoutData;
+class UTinoEquipmentComponent;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API UTinoAnimInstance : public UAnimInstance
@@ -22,8 +26,8 @@ public:
 	UTinoAnimInstance();
 	
 	virtual void NativeInitializeAnimation() override;
+	virtual void NativeUninitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
-	
 private:
 	// 런타임에 한 번 찾아서 캐시하는 참조
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|References", meta = (AllowPrivateAccess = "true"))
@@ -63,4 +67,23 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Settings", meta = (AllowPrivateAccess = "true"))
 	float LandingSpeedThreshold = 80.f;
+
+	// 동적 애니메이션 전환을 위한 이벤트 함수와 참조
+	UFUNCTION()
+	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
+	
+	UPROPERTY(Transient)
+	TObjectPtr<UTinoEquipmentComponent> EquipmentComponent = nullptr;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Equipment", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UBlendSpace> CurrentGroundMovement = nullptr;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Equipment", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimSequenceBase> CurrentJump = nullptr;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Equipment", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimSequenceBase> CurrentFallLoop = nullptr;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Equipment", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimSequenceBase> CurrentLand = nullptr;
 };

@@ -6,6 +6,7 @@
 #include "CollisionShape.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
+#include "KismetTraceUtils.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -13,9 +14,19 @@
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
+#include "Project_TinoKingdom/Equipment/TinoEquipmentActor.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
+namespace
+{
+	const FName RightHandTraceBaseSocketName = FName("RightHandTraceBase");
+	const FName RightHandTraceTipSocketName = FName("RightHandTraceTip");
+	const FName LeftHandTraceBaseSocketName = FName("LeftHandTraceBase");
+	const FName LeftHandTraceTipSocketName = FName("LeftHandTraceTip");
+	const FName RightFootTraceBaseSocketName = FName("RightFootTraceBase");
+	const FName RightFootTraceTipSocketName = FName("RightFootTraceTip");
+}
 UTinoCombatComponent::UTinoCombatComponent()
 {
 	// 공격 판정은 Anim Notify State 구간에서만 실행하므로 상시 Tick은 필요 없다.
@@ -31,6 +42,13 @@ void UTinoCombatComponent::SetEquippedAttackData(UAttackComboData* InAttackData)
 {
 	// nullptr도 유효한 입력, 무기를 해제하면 nullptr이 전달되고 GetEffectiveAttackData()가 DefaultAttackData를 선택
 	EquippedAttackData = InAttackData;
+}
+
+void UTinoCombatComponent::SetEquipmentWeaponActors(ATinoEquipmentActor* InRightHandWeapon,
+	ATinoEquipmentActor* InLeftHandWeapon)
+{
+	RightHandWeapon = InRightHandWeapon;
+	LeftHandWeapon = InLeftHandWeapon;
 }
 
 bool UTinoCombatComponent::RequestAttack()
@@ -92,6 +110,10 @@ void UTinoCombatComponent::BeginAttackHitWindow()
 	}
 
 	ActiveAttackSectionIndex = FoundSectionIndex;
+	const FComboAttackSectionData& AttackSection = ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
+	GetAttackTracePoints(AttackSection.AttackSource, PreviousTraceBaseLocation, PreviousTraceTipLocation);
+	
+	// 최초로 위치 저장이 끝난 후 판정창을 연다.
 	bAttackHitWindowOpen = true;
 
 	// Notify 구간이 짧더라도 최소 한 번은 판정한다.
@@ -108,6 +130,27 @@ void UTinoCombatComponent::EndAttackHitWindow()
 	bAttackHitWindowOpen = false;
 	ActiveAttackSectionIndex = INDEX_NONE;
 	HitActorsThisWindow.Reset();
+	
+	PreviousTraceBaseLocation = FVector::ZeroVector;
+	PreviousTraceTipLocation = FVector::ZeroVector;
+}
+
+void UTinoCombatComponent::CancelAttack()
+{
+	if (!IsAttacking())
+	{
+		return;
+	}
+	// ResetCombo 이후 ActiveAttackData가 nullptr이 되므로 중단할 몽타주를 먼저 저장한다.
+	UAnimMontage* AttackMontage = ActiveAttackData->AttackMontage;
+	ResetCombo();
+	
+	UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance();
+	if (AnimInstance->Montage_IsPlaying(AttackMontage))
+	{
+		const float CancelBlendOutTime = 0.05f;
+		AnimInstance->Montage_Stop(CancelBlendOutTime, AttackMontage);
+	}
 }
 
 void UTinoCombatComponent::BeginPlay()
@@ -243,42 +286,62 @@ void UTinoCombatComponent::PerformAttackTrace()
 		return;
 	}
 
-	const FComboAttackSectionData& AttackSection =
-		ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
-
+	const FComboAttackSectionData& AttackSection = ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
+	
 	// MaxHitTargets가 0이면 대상 수 제한이 없다.
 	if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
 	{
 		return;
 	}
+	
+	FVector CurrentTraceBaseLocation = FVector::ZeroVector;
+	FVector CurrentTraceTipLocation = FVector::ZeroVector;
+	GetAttackTracePoints(AttackSection.AttackSource, CurrentTraceBaseLocation, CurrentTraceTipLocation);
 
 	UWorld* World = GetWorld();
 	const FVector Forward = OwnerCharacter->GetActorForwardVector();
-	const FVector Up = OwnerCharacter->GetActorUpVector();
-	const FVector Start = OwnerCharacter->GetActorLocation()
-		+ Forward * AttackSection.TraceStartForwardOffset
-		+ Up * AttackSection.TraceHeightOffset;
-	const FVector End = Start + Forward * AttackSection.TraceDistance;
-
+	
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TinoMeleeTrace), false, OwnerCharacter);
 	TArray<FHitResult> HitResults;
-	World->SweepMultiByChannel(HitResults, Start, End, FQuat::Identity,
-		TinoCollision::Action, FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
-
+	constexpr int32 TraceCount = 5;
+	
+	for (int32 SampleIndex = 0; SampleIndex < TraceCount; ++SampleIndex)
+	{
+		const float Alpha = static_cast<float>(SampleIndex) / static_cast<float>(TraceCount - 1);
+		const FVector SweepStart = FMath::Lerp(PreviousTraceBaseLocation, PreviousTraceTipLocation, Alpha);
+		const FVector SweepEnd = FMath::Lerp(CurrentTraceBaseLocation, CurrentTraceTipLocation, Alpha);
+		
+		// 충돌 결과들을 모음, HitResults에 같은 Actor들이 들어갈 수 있음 FHitResult는 여러 충돌 정보를 갖고 있기 때문
+		TArray<FHitResult> SampleHitResults;
+		World->SweepMultiByChannel(SampleHitResults, SweepStart, SweepEnd, FQuat::Identity,
+			TinoCollision::Action, FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
+		HitResults.Append(SampleHitResults);
+		
+#if ENABLE_DRAW_DEBUG
+		const FColor DebugColor = SampleHitResults.IsEmpty() ? FColor::Green : FColor::Red;
+		DrawDebugSweptSphere(
+			World,
+			SweepStart,
+			SweepEnd,
+			AttackSection.TraceRadius,
+			DebugColor,
+			false,  // 영구 표시하지 않음
+			0.75f,  // 0.75초간 유지
+			0
+		);
+#endif
+	}
+	
+	PreviousTraceBaseLocation = CurrentTraceBaseLocation;
+	PreviousTraceTipLocation = CurrentTraceTipLocation;
+	
 	HitResults.Sort(
 		[](const FHitResult& A, const FHitResult& B)
 		{
-			return A.Distance < B.Distance;
-		});
-
-	const FColor DebugColor = HitResults.IsEmpty() ? FColor::Green : FColor::Red;
-	DrawDebugSphere(World, Start, AttackSection.TraceRadius, 16, DebugColor, 
-		false, 0.1f, 0, 1.f);
-	DrawDebugSphere(World, End, AttackSection.TraceRadius, 16, DebugColor, 
-		false, 0.1f, 0, 1.f);
-	DrawDebugLine(World, Start, End, DebugColor, 
-		false, 0.1f, 0, 1.f);
-
+			return A.Time < B.Time;
+		}
+	);
+	
 	for (const FHitResult& HitResult : HitResults)
 	{
 		AActor* HitActor = HitResult.GetActor();
@@ -286,23 +349,77 @@ void UTinoCombatComponent::PerformAttackTrace()
 		{
 			continue;
 		}
-
+		
 		const TObjectKey<AActor> HitActorKey(HitActor);
+		// 하나의 Hit Window에서는 한 번만 피해를 입히게
 		if (HitActorsThisWindow.Contains(HitActorKey))
 		{
 			continue;
 		}
-
+		// 이번 Hit Window에 처리한 Actor로 등록
 		HitActorsThisWindow.Add(HitActorKey);
-
-		UGameplayStatics::ApplyPointDamage(HitActor, AttackSection.Damage, Forward, HitResult,
+		
+		// 당장은 크게 필요없음. 나중에 적도 공격방향별로 피격 애니메이션을 다르게 할 때 사용
+		FVector HitDirection = (HitResult.TraceEnd - HitResult.TraceStart).GetSafeNormal();
+		if (HitDirection.IsNearlyZero())
+		{
+			HitDirection = Forward;
+		}
+		UGameplayStatics::ApplyPointDamage(HitActor, AttackSection.Damage, HitDirection, HitResult, 
 			OwnerCharacter->GetController(), OwnerCharacter, UDamageType::StaticClass());
-
-		UE_LOG(LogTinoCombat, Log, TEXT("%s 공격이 %s를 검출"), *GetNameSafe(OwnerCharacter), *GetNameSafe(HitActor));
-
+		
 		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
 		{
 			break;
+		}
+	}
+}
+
+void UTinoCombatComponent::GetAttackTracePoints(EAttackSource AttackSource, FVector& OutBaseLocation,
+	FVector& OutTipLocation) const
+{
+	switch (AttackSource)
+	{
+	case EAttackSource::RightWeapon:
+		{
+			RightHandWeapon->GetWeaponTracePoints(OutBaseLocation, OutTipLocation);
+			return;
+		}
+	case EAttackSource::LeftWeapon:
+		{
+			LeftHandWeapon->GetWeaponTracePoints(OutBaseLocation, OutTipLocation);
+			return;
+		}
+	case EAttackSource::RightHand:
+		{
+			checkf(AnimationMesh->DoesSocketExist(RightHandTraceBaseSocketName), TEXT("오른손 Base소켓이 없습니다."));
+			checkf(AnimationMesh->DoesSocketExist(RightHandTraceTipSocketName), TEXT("오른손 Tip 소켓이 없습니다."));
+			OutBaseLocation = AnimationMesh->GetSocketLocation(RightHandTraceBaseSocketName);
+			OutTipLocation = AnimationMesh->GetSocketLocation(RightHandTraceTipSocketName);
+			return;
+		}
+	case EAttackSource::LeftHand:
+		{
+			checkf(AnimationMesh->DoesSocketExist(LeftHandTraceBaseSocketName), TEXT("왼손 Base소켓이 없습니다."));
+			checkf(AnimationMesh->DoesSocketExist(LeftHandTraceTipSocketName), TEXT("왼손 Tip 소켓이 없습니다."));
+			OutBaseLocation = AnimationMesh->GetSocketLocation(LeftHandTraceBaseSocketName);
+			OutTipLocation = AnimationMesh->GetSocketLocation(LeftHandTraceTipSocketName);
+			return;
+		}
+	case EAttackSource::RightFoot:
+		{
+			checkf(AnimationMesh->DoesSocketExist(RightFootTraceBaseSocketName), TEXT("오른발 Base소켓이 없습니다."));
+			checkf(AnimationMesh->DoesSocketExist(RightFootTraceTipSocketName), TEXT("오른발 Tip 소켓이 없습니다."));
+			OutBaseLocation = AnimationMesh->GetSocketLocation(RightFootTraceBaseSocketName);
+			OutTipLocation = AnimationMesh->GetSocketLocation(RightFootTraceTipSocketName);
+			return;
+		}
+	case EAttackSource::LeftFoot:
+	case EAttackSource::None:
+	default:
+		{
+			UE_LOG(LogTinoCombat, Error, TEXT("Attack Source가 지정되지 않았습니다."));
+			return;
 		}
 	}
 }

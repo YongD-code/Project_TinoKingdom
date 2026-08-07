@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Project_TinoKingdom/Component/StatComponent.h"
 #include "PlayerCharacter.generated.h"
 
+class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
@@ -13,6 +15,7 @@ class USkeletalMeshComponent;
 class UStatComponent;
 class UTinoCombatComponent;
 class UTinoEquipmentComponent;
+class UEquipmentLoadoutData;
 struct FInputActionValue;
 
 UCLASS()
@@ -22,9 +25,15 @@ class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter
 
 public:
 	APlayerCharacter();
+	
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
+		class AController* EventInstigator, AActor* DamageCauser) override;
 
+	virtual void Tick(float DeltaTime) override;
+	
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 protected:
@@ -62,6 +71,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> AttackAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ToggleEquipmentMenuAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> DodgeAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
@@ -77,6 +92,27 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Equipment")
 	TObjectPtr<UTinoEquipmentComponent> EquipmentComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Reaction")
+	TObjectPtr<UReactionComponent> ReactionComponent;
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
+	void OpenEquipmentWheel();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
+	void ConfirmEquipmentWheel();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
+	void CancelEquipmentWheel();
+	
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StartSlowMotion();
+	
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StopSlowMotion();
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Time")
+	float TimeDilation = 0.2f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RunningStamina = 15.0f;
@@ -92,9 +128,21 @@ protected:
 	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
 
 private:
+	UPROPERTY(Transient)
+	float SavedGlobalTimeDilation = 1.f;
+	
+	UPROPERTY(Transient)
+	bool bEquipmentWheelSlowMotionActive = false;
+	
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
+	
+	bool bDeathHandled = false;
 
-public:
-	virtual void Tick(float DeltaTime) override;
+private:
+	UFUNCTION()
+	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
+	
+	UFUNCTION()
+	void HandleDeath(AActor* DamageCauser);
 };

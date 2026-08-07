@@ -11,10 +11,13 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
+#include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
+#include "Project_TinoKingdom/Component/ReactionComponent.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
+#include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -44,6 +47,7 @@ APlayerCharacter::APlayerCharacter()
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
+	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
@@ -63,8 +67,15 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	EquipmentComponent->OnEquipmentChanged.AddUniqueDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
+	// EquipmentComponent의 BeginPlay가 먼저 실행됐을 수 있기 때문에 현재 값도 직접 반영
+	if (UEquipmentLoadoutData* CurrentLoadout = EquipmentComponent->GetCurrentLoadout())
+	{
+		HandleEquipmentChanged(CurrentLoadout);
+	}
+	
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-
+	
 	static const FName AnimationBodyTag(TEXT("AnimationBody"));
 	VisibleBodyMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
 
@@ -75,6 +86,18 @@ void APlayerCharacter::BeginPlay()
 	// 숨겨진 Driver Mesh의 포즈를 보이는 Body Mesh에 전달한다.
 	// Body Mesh는 별도로 포즈를 계산하지 않고 Leader Pose를 따라간다.
 	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
+}
+
+void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
+	StopSlowMotion();
+	
+	if (IsValid(EquipmentComponent))
+	{
+		EquipmentComponent->OnEquipmentChanged.RemoveDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 // Called every frame
@@ -128,18 +151,22 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::StartJump);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Attack);
-	if (SprintAction != nullptr)
-	{
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
-	}
+
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
+	
+	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::OpenEquipmentWheel);
+	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
+	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
+	
+	// EnhancedInputComponent->BindAction(ETriggerEvent::Started, this, &APlayerCharacter::DodgeAttack);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	// 공격 중에는 이동 입력을 받지 않는다.
-	if (CombatComponent->IsAttacking())
+	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -170,7 +197,7 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
-	if (CombatComponent->IsAttacking())
+	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
@@ -194,14 +221,101 @@ void APlayerCharacter::StopRunning()
 
 void APlayerCharacter::Attack()
 {
+	if (StatComponent->IsDead() || ReactionComponent->IsReacting())
+	{
+		return;
+	}
 	CombatComponent->RequestAttack();
 }
 
 void APlayerCharacter::StartJump()
 {
-	if (CombatComponent->IsAttacking())
+	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
 	Jump();
+}
+
+void APlayerCharacter::StartSlowMotion()
+{
+	if (bEquipmentWheelSlowMotionActive)
+	{
+		return;
+	}
+	SavedGlobalTimeDilation = UGameplayStatics::GetGlobalTimeDilation(this);
+	UGameplayStatics::SetGlobalTimeDilation(this, TimeDilation);
+	
+	bEquipmentWheelSlowMotionActive = true;
+}
+
+void APlayerCharacter::StopSlowMotion()
+{
+	if (!bEquipmentWheelSlowMotionActive)
+	{
+		return;
+	}
+	UGameplayStatics::SetGlobalTimeDilation(this, SavedGlobalTimeDilation);
+	
+	bEquipmentWheelSlowMotionActive = false;
+	SavedGlobalTimeDilation = 1.f;
+}
+
+void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
+{
+	// 공격 도중 장비가 변경되면 공격 데이터와 로드아웃 외형 & 콤보 공격 몽타주가 섞이지 않도록
+	CombatComponent->CancelAttack();
+	
+	CombatComponent->SetEquippedAttackData(NewLoadout->AttackData.Get());
+	CombatComponent->SetEquipmentWeaponActors(EquipmentComponent->GetRightHandEquipmentActor(),
+		EquipmentComponent->GetLeftHandEquipmentActor());
+	ReactionComponent->SetReactionSet(NewLoadout->Reactions);
+}
+
+void APlayerCharacter::HandleDeath(AActor* DamageCauser)
+{
+	if (bDeathHandled)
+	{
+		return;
+	}
+	bDeathHandled = true;
+	
+	// 마찬가지로 사망해도 장비창을 안전하게 닫기
+	CancelEquipmentWheel();
+	StopSlowMotion();
+	
+	StopRunning();
+	CombatComponent->CancelAttack();
+	GetCharacterMovement()->DisableMovement();
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	ReactionComponent->PlayDeathReaction(DamageCauser);
+}
+
+float APlayerCharacter::TakeDamage(
+	float DamageAmount,
+	FDamageEvent const& DamageEvent,
+	AController* EventInstigator,
+	AActor* DamageCauser
+)
+{
+	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	
+	if (StatComponent != nullptr)
+	{
+		StatComponent->ApplyDamage(DamageAmount);
+	}
+
+	if (StatComponent->IsDead())
+	{
+		HandleDeath(DamageCauser);
+	}
+	else
+	{
+		StopRunning();
+		CombatComponent->CancelAttack();
+		ReactionComponent->PlayHitReaction(DamageCauser);
+	}
+	
+	return AppliedDamage;
 }

@@ -6,7 +6,6 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
-#include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 #include "Project_TinoKingdom/Equipment/TinoEquipmentActor.h"
 
@@ -24,6 +23,11 @@ bool UTinoEquipmentComponent::EquipLoadout(UEquipmentLoadoutData* InLoadout)
 		UE_LOG(LogTinoEquipment, Warning, TEXT("%s: 장착할 EquipmentLoadoutData가 없습니다."),
 			*GetNameSafe(GetOwner()));
 		return false;
+	}
+	
+	if (CurrentLoadout == InLoadout)
+	{
+		return true;
 	}
 
 	// 새 조합이 완성될 때까지 기존 장비를 유지한다.
@@ -52,18 +56,26 @@ bool UTinoEquipmentComponent::EquipLoadout(UEquipmentLoadoutData* InLoadout)
 
 	RightHandEquipmentActor = NewRightHandActor;
 	LeftHandEquipmentActor = NewLeftHandActor;
-	CombatComponent->SetEquippedAttackData(InLoadout->AttackData);
 
+	CurrentLoadout = InLoadout;
+	OnEquipmentChanged.Broadcast(CurrentLoadout.Get());
+	
 	return true;
 }
 
-void UTinoEquipmentComponent::Unequip()
+TArray<UEquipmentLoadoutData*> UTinoEquipmentComponent::GetSelectableLoadouts() const
 {
-	DestroyEquipmentActor(RightHandEquipmentActor);
-	DestroyEquipmentActor(LeftHandEquipmentActor);
-
-	// nullptr을 전달하면 CombatComponent가 맨손 공격 데이터를 사용한다.
-	CombatComponent->SetEquippedAttackData(nullptr);
+	TArray<UEquipmentLoadoutData*> Result;
+	Result.Reserve(SelectableLoadouts.Num());
+	
+	for (const TObjectPtr<UEquipmentLoadoutData>& Loadout : SelectableLoadouts)
+	{
+		if (IsValid(Loadout.Get()))
+		{
+			Result.Add(Loadout.Get());
+		}
+	}
+	return Result;
 }
 
 void UTinoEquipmentComponent::BeginPlay()
@@ -72,23 +84,29 @@ void UTinoEquipmentComponent::BeginPlay()
 
 	OwnerCharacter = CastChecked<ACharacter>(GetOwner());
 	AttachmentMesh = OwnerCharacter->GetMesh();
-	CombatComponent = OwnerCharacter->FindComponentByClass<UTinoCombatComponent>();
 
-	checkf(CombatComponent != nullptr,
-		TEXT("%s: UTinoEquipmentComponent에는 UTinoCombatComponent가 필요합니다."),
-		*GetNameSafe(OwnerCharacter));
-
-	if (DefaultLoadout != nullptr && !EquipLoadout(DefaultLoadout))
+	if (!IsValid(DefaultLoadout.Get()))
 	{
-		UE_LOG(LogTinoEquipment, Error, TEXT("%s: 기본 장비 조합 %s 장착에 실패했습니다."),
-			*GetNameSafe(OwnerCharacter), *GetNameSafe(DefaultLoadout));
+		UE_LOG(LogTinoEquipment, Error, TEXT("%s: DefaultLoadout이 지정되지 않았습니다."),
+			*GetNameSafe(OwnerCharacter));
+		return;
+	}
+	
+	if (!EquipLoadout(DefaultLoadout.Get()))
+	{
+		UE_LOG(LogTinoEquipment, Error, TEXT("%s: 기본 로드아웃 %s 적용에 실패했습니다."),
+			*GetNameSafe(OwnerCharacter), *GetNameSafe(DefaultLoadout.Get()));
 	}
 }
 
 void UTinoEquipmentComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	// 컴포넌트가 생성한 장비 Actor는 직접 정리한다.
-	Unequip();
+	DestroyEquipmentActor(RightHandEquipmentActor);
+	DestroyEquipmentActor(LeftHandEquipmentActor);
+
+	CurrentLoadout = nullptr;
+	AttachmentMesh = nullptr;
+	OwnerCharacter = nullptr;
 	Super::EndPlay(EndPlayReason);
 }
 

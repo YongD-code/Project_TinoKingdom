@@ -10,6 +10,18 @@
  * 
  */
 
+UENUM(BlueprintType)
+enum class EAttackSource : uint8
+{
+	None,
+	RightWeapon,
+	LeftWeapon,
+	RightHand,
+	LeftHand,
+	LeftFoot,
+	RightFoot
+};
+
 USTRUCT(BlueprintType)
 struct FComboAttackSectionData
 {
@@ -17,6 +29,9 @@ struct FComboAttackSectionData
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	FName SectionName = NAME_None;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	EAttackSource AttackSource = EAttackSource::None;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
 	float Damage = 10.f;
