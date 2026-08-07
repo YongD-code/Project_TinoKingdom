@@ -104,6 +104,15 @@ protected:
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void CancelEquipmentWheel();
+	
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StartSlowMotion();
+	
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StopSlowMotion();
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Time")
+	float TimeDilation = 0.2f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RunningStamina = 15.0f;
@@ -119,6 +128,12 @@ protected:
 	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
 
 private:
+	UPROPERTY(Transient)
+	float SavedGlobalTimeDilation = 1.f;
+	
+	UPROPERTY(Transient)
+	bool bEquipmentWheelSlowMotionActive = false;
+	
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
 	

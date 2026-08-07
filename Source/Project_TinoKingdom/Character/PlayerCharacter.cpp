@@ -11,6 +11,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputActionValue.h"
+#include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
@@ -231,6 +232,30 @@ void APlayerCharacter::StartJump()
 		return;
 	}
 	Jump();
+}
+
+void APlayerCharacter::StartSlowMotion()
+{
+	if (bEquipmentWheelSlowMotionActive)
+	{
+		return;
+	}
+	SavedGlobalTimeDilation = UGameplayStatics::GetGlobalTimeDilation(this);
+	UGameplayStatics::SetGlobalTimeDilation(this, TimeDilation);
+	
+	bEquipmentWheelSlowMotionActive = true;
+}
+
+void APlayerCharacter::StopSlowMotion()
+{
+	if (!bEquipmentWheelSlowMotionActive)
+	{
+		return;
+	}
+	UGameplayStatics::SetGlobalTimeDilation(this, SavedGlobalTimeDilation);
+	
+	bEquipmentWheelSlowMotionActive = false;
+	SavedGlobalTimeDilation = 1.f;
 }
 
 void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
