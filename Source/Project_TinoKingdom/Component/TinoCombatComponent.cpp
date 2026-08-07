@@ -311,11 +311,13 @@ void UTinoCombatComponent::PerformAttackTrace()
 		const FVector SweepStart = FMath::Lerp(PreviousTraceBaseLocation, PreviousTraceTipLocation, Alpha);
 		const FVector SweepEnd = FMath::Lerp(CurrentTraceBaseLocation, CurrentTraceTipLocation, Alpha);
 		
+		// 충돌 결과들을 모음, HitResults에 같은 Actor들이 들어갈 수 있음 FHitResult는 여러 충돌 정보를 갖고 있기 때문
 		TArray<FHitResult> SampleHitResults;
 		World->SweepMultiByChannel(SampleHitResults, SweepStart, SweepEnd, FQuat::Identity,
 			TinoCollision::Action, FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
 		HitResults.Append(SampleHitResults);
 		
+#if ENABLE_DRAW_DEBUG
 		const FColor DebugColor = SampleHitResults.IsEmpty() ? FColor::Green : FColor::Red;
 		DrawDebugSweptSphere(
 			World,
@@ -327,6 +329,7 @@ void UTinoCombatComponent::PerformAttackTrace()
 			0.75f,  // 0.75초간 유지
 			0
 		);
+#endif
 	}
 	
 	PreviousTraceBaseLocation = CurrentTraceBaseLocation;
@@ -353,6 +356,8 @@ void UTinoCombatComponent::PerformAttackTrace()
 		{
 			continue;
 		}
+		// 이번 Hit Window에 처리한 Actor로 등록
+		HitActorsThisWindow.Add(HitActorKey);
 		
 		// 당장은 크게 필요없음. 나중에 적도 공격방향별로 피격 애니메이션을 다르게 할 때 사용
 		FVector HitDirection = (HitResult.TraceEnd - HitResult.TraceStart).GetSafeNormal();
