@@ -64,12 +64,23 @@ float AEnemyCharacter::TakeDamage(
 
 bool AEnemyCharacter::CanAttack() const
 {
-	if (bAttacking || bHitReacting)
+	if (bAttacking || bHitReacting || bDead)
 	{
 		return false;
 	}
 
 	if (StatComponent != nullptr && StatComponent->IsDead())
+	{
+		return false;
+	}
+
+	if (AttackMontage == nullptr)
+	{
+		return false;
+	}
+
+	const USkeletalMeshComponent* MeshComponent = GetMesh();
+	if (MeshComponent == nullptr || MeshComponent->GetAnimInstance() == nullptr)
 	{
 		return false;
 	}
@@ -88,12 +99,14 @@ bool AEnemyCharacter::RequestAttack()
 {
 	if (!CanAttack())
 	{
+		CombatTarget = nullptr;
 		return false;
 	}
 
 	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
 	if (AnimInstance == nullptr || AttackMontage == nullptr)
 	{
+		CombatTarget = nullptr;
 		return false;
 	}
 
@@ -104,9 +117,19 @@ bool AEnemyCharacter::RequestAttack()
 	if (PlayLength <= 0.f)
 	{
 		bAttacking = false;
+		CombatTarget = nullptr;
 		return false;
 	}
 
+	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		AttackResetTimerHandle,
+		this,
+		&AEnemyCharacter::ResetAttackState,
+		PlayLength + 0.2f,
+		false
+	);
+	
 	FOnMontageEnded EndDelegate;
 	EndDelegate.BindUObject(this, &AEnemyCharacter::OnAttackMontageEnded);
 	AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
@@ -171,6 +194,8 @@ void AEnemyCharacter::PlayHitReaction()
 	bHitReacting = true;
 	CombatTarget = nullptr;
 
+	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
+	
 	if (AttackMontage != nullptr && AnimInstance->Montage_IsPlaying(AttackMontage))
 	{
 		AnimInstance->Montage_Stop(0.1f, AttackMontage);
@@ -182,17 +207,36 @@ void AEnemyCharacter::PlayHitReaction()
 		bHitReacting = false;
 		return;
 	}
-
+	
+	GetWorldTimerManager().ClearTimer(HitReactionResetTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		HitReactionResetTimerHandle,
+		this,
+		&AEnemyCharacter::ResetHitReactionState,
+		PlayLength + 0.2f,
+		false
+	);
+	
 	FOnMontageEnded EndDelegate;
 	EndDelegate.BindUObject(this, &AEnemyCharacter::OnHitMontageEnded);
 	AnimInstance->Montage_SetEndDelegate(EndDelegate, HitMontage);
+}
+
+void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage == AttackMontage)
+	{
+		GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
+		ResetAttackState();
+	}
 }
 
 void AEnemyCharacter::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	if (Montage == HitMontage)
 	{
-		bHitReacting = false;
+		GetWorldTimerManager().ClearTimer(HitReactionResetTimerHandle);
+		ResetHitReactionState();
 	}
 }
 
@@ -209,9 +253,25 @@ void AEnemyCharacter::PerformAttackTrace()
 		return;
 	}
 
-	const FVector Forward = GetActorForwardVector();
-	const FVector Start = GetActorLocation() + Forward * 50.0f;
-	const FVector End = Start + Forward * AttackTraceDistance;
+	FVector AttackDirection = GetActorForwardVector();
+
+	if (CombatTarget != nullptr)
+	{
+		AttackDirection = CombatTarget->GetActorLocation() - GetActorLocation();
+		AttackDirection.Z = 0.0f;
+
+		if (AttackDirection.IsNearlyZero())
+		{
+			AttackDirection = GetActorForwardVector();
+		}
+		else
+		{
+			AttackDirection.Normalize();
+		}
+	}
+
+	const FVector Start = GetActorLocation() + FVector(0.0f, 0.0f, 50.0f) + AttackDirection * 20.0f;
+	const FVector End = Start + AttackDirection * AttackTraceDistance;
 
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(EnemyAttackTrace), false, this);
 
@@ -262,12 +322,14 @@ void AEnemyCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (!bAttacking || CombatTarget == nullptr || bDead)
+	if (CombatTarget == nullptr || bDead)
 	{
 		return;
 	}
 
-	const FVector Direction = CombatTarget->GetActorLocation() - GetActorLocation();
+	FVector Direction = CombatTarget->GetActorLocation() - GetActorLocation();
+	Direction.Z = 0.0f;
+	
 	if (Direction.IsNearlyZero())
 	{
 		return;
@@ -284,15 +346,6 @@ void AEnemyCharacter::Tick(float DeltaSeconds)
 	);
 
 	SetActorRotation(NewRotation);
-}
-
-void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	if (Montage == AttackMontage)
-	{
-		bAttacking = false;
-		CombatTarget = nullptr;
-	}
 }
 
 void AEnemyCharacter::ApplyKnockbackFrom(AActor* DamageCauser)
@@ -319,3 +372,13 @@ void AEnemyCharacter::ApplyKnockbackFrom(AActor* DamageCauser)
 	LaunchCharacter(KnockbackVelocity,true, true);
 		
 }
+
+void AEnemyCharacter::ResetAttackState()
+{
+	bAttacking = false;
+}
+
+void AEnemyCharacter::ResetHitReactionState()
+{
+	bHitReacting = false;
+}	

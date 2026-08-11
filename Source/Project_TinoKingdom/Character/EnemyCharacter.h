@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "TimerManager.h"
 #include "EnemyCharacter.generated.h"
 
-class UBehaviorTree;
+class UBehaviorTree;	
 class UStatComponent;
 class UAnimMontage;
 class AEnemyAIController;
@@ -97,7 +98,7 @@ protected:
 	TObjectPtr<AActor> CombatTarget;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
-	float AttackTurnSpeed = 720.0f;
+	float AttackTurnSpeed = 1440.0f;
 	
 	UPROPERTY(Transient)
 	bool bHitReacting = false;
@@ -120,4 +121,10 @@ private:
 	
 	UPROPERTY(Transient)
 	float LastAttackTime = -999.f;
+	
+	FTimerHandle AttackResetTimerHandle;
+	FTimerHandle HitReactionResetTimerHandle;
+
+	void ResetAttackState();
+	void ResetHitReactionState();
 };

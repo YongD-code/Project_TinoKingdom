@@ -15,7 +15,7 @@ UBTService_UpdateTarget::UBTService_UpdateTarget()
 	RandomDeviation = 0.05f;
 }
 
-void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* NodeMemory,float DeltaSeconds)
+void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
 	Super::TickNode(OwnerComp, NodeMemory, DeltaSeconds);
 
@@ -28,41 +28,27 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 		return;
 	}
 
-	AActor* CurrentTarget = Cast<AActor>(
-		BlackboardComponent->GetValueAsObject(AEnemyAIController::TargetPlayer)
-	);
-
-	if (CurrentTarget != nullptr)
-	{
-		const float DistanceToCurrentTarget = FVector::Dist(
-			OwnerPawn->GetActorLocation(),
-			CurrentTarget->GetActorLocation()
-		);
-
-		if (DistanceToCurrentTarget <= LoseRadius)
-		{
-			return;
-		}
-
-		BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
-	}
-
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(OwnerPawn, 0);
 	if (PlayerPawn == nullptr)
 	{
+		BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
 		return;
 	}
 
-	const float DistanceToPlayer = FVector::Dist(
+	const float DistanceToPlayer = FVector::Dist2D(
 		OwnerPawn->GetActorLocation(),
 		PlayerPawn->GetActorLocation()
 	);
 
-	if (DistanceToPlayer <= DetectRadius)
+	if (DistanceToPlayer <= LoseRadius)
 	{
 		BlackboardComponent->SetValueAsObject(
 			AEnemyAIController::TargetPlayer,
 			PlayerPawn
 		);
+	}
+	else
+	{
+		BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
 	}
 }
