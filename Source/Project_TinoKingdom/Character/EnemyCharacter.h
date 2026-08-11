@@ -44,6 +44,7 @@ public:
 	
 	void SetCombatTarget(AActor* Target);
 	
+	void ApplyKnockbackFrom(AActor* DamageCauser);
 	
 
 protected:
@@ -100,6 +101,14 @@ protected:
 	
 	UPROPERTY(Transient)
 	bool bHitReacting = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Hit", meta = (ClampMin = "0.0"))
+	float KnockbackPower = 250.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Hit", meta = (ClampMin = "0.0"))
+	float KnockbackUpPower = 80.0f;
+	
+	
 	
 	virtual void Tick(float DeltaSeconds) override;
 private:

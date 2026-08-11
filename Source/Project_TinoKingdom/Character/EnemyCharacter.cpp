@@ -54,6 +54,7 @@ float AEnemyCharacter::TakeDamage(
 
 		if (!StatComponent->IsDead())
 		{
+			ApplyKnockbackFrom(DamageCauser);
 			PlayHitReaction();
 		}
 	}
@@ -292,4 +293,29 @@ void AEnemyCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrup
 		bAttacking = false;
 		CombatTarget = nullptr;
 	}
+}
+
+void AEnemyCharacter::ApplyKnockbackFrom(AActor* DamageCauser)
+{
+	if (DamageCauser == nullptr || bDead)
+	{
+		return;
+	}
+	
+	FVector KnockbackDirection = GetActorLocation() - DamageCauser->GetActorLocation();
+	KnockbackDirection.Z = 0.0f;
+	
+	if (KnockbackDirection.IsNearlyZero())
+	{
+		KnockbackDirection = -GetActorForwardVector();
+		
+		
+	}
+	
+	KnockbackDirection.Normalize();
+	
+	const FVector KnockbackVelocity = KnockbackDirection * KnockbackPower + FVector::UpVector * KnockbackUpPower;
+	
+	LaunchCharacter(KnockbackVelocity,true, true);
+		
 }
