@@ -12,6 +12,11 @@ public class Project_TinoKingdom : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
+		if (Target.bBuildEditor)
+		{
+			PrivateDependencyModuleNames.AddRange(new string[] { "Landscape", "Foliage", "UnrealEd" });
+		}
+
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 		
