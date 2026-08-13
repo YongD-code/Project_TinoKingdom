@@ -43,29 +43,18 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 		AEnemyCharacter* OwnerEnemy = Cast<AEnemyCharacter>(OwnerPawn);
 		AEnemyCharacter* TargetEnemy = Cast<AEnemyCharacter>(CurrentTarget);
 
-		if (TargetEnemy != nullptr && TargetEnemy->IsDead())
-		{
-			BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
-
-			if (OwnerEnemy != nullptr)
-			{
-				OwnerEnemy->SetCombatTarget(nullptr);
-			}
-
-			return;
-		}
+		const bool bTargetDead = TargetEnemy != nullptr && TargetEnemy->IsDead();
 
 		const float DistanceFromHome = FVector::Dist2D(
 			OwnerLocation,
 			HomeLocation
 		);
 
-		const float DistanceToCurrentTarget = FVector::Dist2D(
-			OwnerLocation,
-			CurrentTarget->GetActorLocation()
-		);
+		const float DistanceToCurrentTarget = bTargetDead
+			? TNumericLimits<float>::Max()
+			: FVector::Dist2D(OwnerLocation, CurrentTarget->GetActorLocation());
 
-		if (DistanceFromHome > LeashRadius || DistanceToCurrentTarget > LoseRadius)
+		if (bTargetDead || DistanceFromHome > LeashRadius || DistanceToCurrentTarget > LoseRadius)
 		{
 			BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
 
@@ -73,9 +62,13 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 			{
 				OwnerEnemy->SetCombatTarget(nullptr);
 			}
-		}
 
-		return;
+			CurrentTarget = nullptr;
+		}
+		else
+		{
+			return;
+		}
 	}
 
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(OwnerPawn, 0);

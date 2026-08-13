@@ -205,7 +205,6 @@ void AEnemyCharacter::PlayHitReaction()
 
 	bAttacking = false;
 	bHitReacting = true;
-	CombatTarget = nullptr;
 
 	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
 	
@@ -348,7 +347,16 @@ void AEnemyCharacter::Tick(float DeltaSeconds)
 	{
 		return;
 	}
-
+	
+	if (AEnemyCharacter* TargetEnemy = Cast<AEnemyCharacter>(CombatTarget))
+	{
+		if (TargetEnemy->IsDead())
+		{
+			CombatTarget = nullptr;
+			return;
+		}
+	}
+	
 	FVector Direction = CombatTarget->GetActorLocation() - GetActorLocation();
 	Direction.Z = 0.0f;
 	

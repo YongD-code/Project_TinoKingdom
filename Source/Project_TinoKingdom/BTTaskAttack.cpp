@@ -42,6 +42,18 @@ EBTNodeResult::Type UBTTaskAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp
 		return EBTNodeResult::Failed;
 	}
 	
+	if (AEnemyCharacter* TargetEnemy = Cast<AEnemyCharacter>(TargetActor))
+	{
+		if (TargetEnemy->IsDead())
+		{
+			EnemyCharacter->SetCombatTarget(nullptr);
+			return EBTNodeResult::Failed;
+		}
+	}
+	
+	EnemyCharacter->SetCombatTarget(TargetActor);
+	
+	
 	FVector Direction = TargetActor->GetActorLocation() - EnemyCharacter->GetActorLocation();
 	Direction.Z = 0.0f;
 
