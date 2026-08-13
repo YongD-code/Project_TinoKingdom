@@ -41,6 +41,12 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Combat")
 	void PerformAttackTrace();
+	
+	UFUNCTION(BlueprintCallable, Category = "Enemy|AI")
+	void SetAggroTarget(AActor* NewTarget);
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|State")
+	bool IsDead() const { return bDead; }
 
 	void PlayHitReaction();
 	

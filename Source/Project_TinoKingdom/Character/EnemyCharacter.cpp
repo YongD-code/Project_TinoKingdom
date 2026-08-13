@@ -1,5 +1,9 @@
 #include "EnemyCharacter.h"
 
+#include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "BehaviorTree/BehaviorTreeComponent.h"
+#include "GameFramework/Controller.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/CapsuleComponent.h"
@@ -8,6 +12,7 @@
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
+
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -54,7 +59,16 @@ float AEnemyCharacter::TakeDamage(
 
 		if (!StatComponent->IsDead())
 		{
-			ApplyKnockbackFrom(DamageCauser);
+			AActor* AggroTarget = DamageCauser;
+
+			if (EventInstigator != nullptr && EventInstigator->GetPawn() != nullptr)
+			{
+				AggroTarget = EventInstigator->GetPawn();
+			}
+
+			SetAggroTarget(AggroTarget);
+
+			ApplyKnockbackFrom(AggroTarget);
 			PlayHitReaction();
 		}
 	}
@@ -99,7 +113,6 @@ bool AEnemyCharacter::RequestAttack()
 {
 	if (!CanAttack())
 	{
-		CombatTarget = nullptr;
 		return false;
 	}
 
@@ -310,6 +323,15 @@ void AEnemyCharacter::PerformAttackTrace()
 			this,
 			UDamageType::StaticClass()
 		);
+		
+		if (AEnemyCharacter* HitEnemy = Cast<AEnemyCharacter>(HitActor))
+		{
+			if (!HitEnemy->IsDead())
+			{
+				SetAggroTarget(HitEnemy);
+				HitEnemy->SetAggroTarget(this);
+			}
+		}
 	}
 }
 
@@ -382,3 +404,30 @@ void AEnemyCharacter::ResetHitReactionState()
 {
 	bHitReacting = false;
 }	
+
+void AEnemyCharacter::SetAggroTarget(AActor* NewTarget)
+{
+	if (NewTarget == nullptr || NewTarget == this || bDead)
+	{
+		return;
+	}
+
+	CombatTarget = NewTarget;
+
+	AAIController* AIController = Cast<AAIController>(GetController());
+	if (AIController == nullptr)
+	{
+		return;
+	}
+
+	UBlackboardComponent* BlackboardComponent = AIController->GetBlackboardComponent();
+	if (BlackboardComponent == nullptr)
+	{
+		return;
+	}
+
+	BlackboardComponent->SetValueAsObject(
+		AEnemyAIController::TargetPlayer,
+		NewTarget
+	);
+}

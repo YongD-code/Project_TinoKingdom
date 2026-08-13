@@ -7,6 +7,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
+#include "Project_TinoKingdom/Character/EnemyCharacter.h"
 
 UBTService_UpdateTarget::UBTService_UpdateTarget()
 {
@@ -39,6 +40,21 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 
 	if (CurrentTarget != nullptr)
 	{
+		AEnemyCharacter* OwnerEnemy = Cast<AEnemyCharacter>(OwnerPawn);
+		AEnemyCharacter* TargetEnemy = Cast<AEnemyCharacter>(CurrentTarget);
+
+		if (TargetEnemy != nullptr && TargetEnemy->IsDead())
+		{
+			BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
+
+			if (OwnerEnemy != nullptr)
+			{
+				OwnerEnemy->SetCombatTarget(nullptr);
+			}
+
+			return;
+		}
+
 		const float DistanceFromHome = FVector::Dist2D(
 			OwnerLocation,
 			HomeLocation
@@ -52,6 +68,11 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 		if (DistanceFromHome > LeashRadius || DistanceToCurrentTarget > LoseRadius)
 		{
 			BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
+
+			if (OwnerEnemy != nullptr)
+			{
+				OwnerEnemy->SetCombatTarget(nullptr);
+			}
 		}
 
 		return;
