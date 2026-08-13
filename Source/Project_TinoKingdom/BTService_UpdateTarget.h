@@ -30,4 +30,7 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI", meta = (ClampMin = "0.0"))
 	float LoseRadius = 1600.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI", meta = (ClampMin = "0.0"))
+	float LeashRadius = 2500.0f;
 };

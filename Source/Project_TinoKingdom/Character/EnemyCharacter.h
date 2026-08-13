@@ -11,6 +11,7 @@ class UBehaviorTree;
 class UStatComponent;
 class UAnimMontage;
 class AEnemyAIController;
+class ATargetPoint;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter
@@ -47,6 +48,9 @@ public:
 	
 	void ApplyKnockbackFrom(AActor* DamageCauser);
 	
+	const TArray<TObjectPtr<ATargetPoint>>& GetPatrolPoints() const {return PatrolPoints;}
+	
+	
 
 protected:
 	
@@ -63,6 +67,9 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI")
 	TObjectPtr<UBehaviorTree> BehaviorTree;
+	
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Enemy|AI")
+	TArray<TObjectPtr<ATargetPoint>> PatrolPoints;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Movement", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 180.0f;
@@ -109,6 +116,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Hit", meta = (ClampMin = "0.0"))
 	float KnockbackUpPower = 80.0f;
 	
+
 	
 	
 	virtual void Tick(float DeltaSeconds) override;

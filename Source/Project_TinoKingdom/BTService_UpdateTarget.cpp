@@ -15,7 +15,7 @@ UBTService_UpdateTarget::UBTService_UpdateTarget()
 	RandomDeviation = 0.05f;
 }
 
-void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* NodeMemory,float DeltaSeconds)
 {
 	Super::TickNode(OwnerComp, NodeMemory, DeltaSeconds);
 
@@ -28,27 +28,51 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp, uint8*
 		return;
 	}
 
+	const FVector OwnerLocation = OwnerPawn->GetActorLocation();
+	const FVector HomeLocation = BlackboardComponent->GetValueAsVector(
+		AEnemyAIController::HomeLocation
+	);
+
+	AActor* CurrentTarget = Cast<AActor>(
+		BlackboardComponent->GetValueAsObject(AEnemyAIController::TargetPlayer)
+	);
+
+	if (CurrentTarget != nullptr)
+	{
+		const float DistanceFromHome = FVector::Dist2D(
+			OwnerLocation,
+			HomeLocation
+		);
+
+		const float DistanceToCurrentTarget = FVector::Dist2D(
+			OwnerLocation,
+			CurrentTarget->GetActorLocation()
+		);
+
+		if (DistanceFromHome > LeashRadius || DistanceToCurrentTarget > LoseRadius)
+		{
+			BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
+		}
+
+		return;
+	}
+
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(OwnerPawn, 0);
 	if (PlayerPawn == nullptr)
 	{
-		BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
 		return;
 	}
 
 	const float DistanceToPlayer = FVector::Dist2D(
-		OwnerPawn->GetActorLocation(),
+		OwnerLocation,
 		PlayerPawn->GetActorLocation()
 	);
 
-	if (DistanceToPlayer <= LoseRadius)
+	if (DistanceToPlayer <= DetectRadius)
 	{
 		BlackboardComponent->SetValueAsObject(
 			AEnemyAIController::TargetPlayer,
 			PlayerPawn
 		);
-	}
-	else
-	{
-		BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
 	}
 }
