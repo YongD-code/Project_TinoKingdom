@@ -8,6 +8,7 @@
 
 const FName AEnemyAIController::TargetPlayer(TEXT("TargetPlayer"));
 const FName AEnemyAIController::HomeLocation(TEXT("HomeLocation"));
+const FName AEnemyAIController::PatrolLocation(TEXT("PatrolLocation"));
 
 AEnemyAIController::AEnemyAIController()
 {

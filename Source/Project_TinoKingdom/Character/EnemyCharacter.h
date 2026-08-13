@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "TimerManager.h"
 #include "EnemyCharacter.generated.h"
 
-class UBehaviorTree;
+class UBehaviorTree;	
 class UStatComponent;
 class UAnimMontage;
 class AEnemyAIController;
+class ATargetPoint;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter
@@ -39,10 +41,20 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Combat")
 	void PerformAttackTrace();
+	
+	UFUNCTION(BlueprintCallable, Category = "Enemy|AI")
+	void SetAggroTarget(AActor* NewTarget);
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|State")
+	bool IsDead() const { return bDead; }
 
 	void PlayHitReaction();
 	
 	void SetCombatTarget(AActor* Target);
+	
+	void ApplyKnockbackFrom(AActor* DamageCauser);
+	
+	const TArray<TObjectPtr<ATargetPoint>>& GetPatrolPoints() const {return PatrolPoints;}
 	
 	
 
@@ -61,6 +73,9 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI")
 	TObjectPtr<UBehaviorTree> BehaviorTree;
+	
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Enemy|AI")
+	TArray<TObjectPtr<ATargetPoint>> PatrolPoints;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Movement", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 180.0f;
@@ -96,10 +111,19 @@ protected:
 	TObjectPtr<AActor> CombatTarget;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
-	float AttackTurnSpeed = 720.0f;
+	float AttackTurnSpeed = 1440.0f;
 	
 	UPROPERTY(Transient)
 	bool bHitReacting = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Hit", meta = (ClampMin = "0.0"))
+	float KnockbackPower = 250.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Hit", meta = (ClampMin = "0.0"))
+	float KnockbackUpPower = 80.0f;
+	
+
+	
 	
 	virtual void Tick(float DeltaSeconds) override;
 private:
@@ -111,4 +135,10 @@ private:
 	
 	UPROPERTY(Transient)
 	float LastAttackTime = -999.f;
+	
+	FTimerHandle AttackResetTimerHandle;
+	FTimerHandle HitReactionResetTimerHandle;
+
+	void ResetAttackState();
+	void ResetHitReactionState();
 };

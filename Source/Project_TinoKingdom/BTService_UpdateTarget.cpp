@@ -7,6 +7,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
+#include "Project_TinoKingdom/Character/EnemyCharacter.h"
 
 UBTService_UpdateTarget::UBTService_UpdateTarget()
 {
@@ -28,23 +29,46 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 		return;
 	}
 
+	const FVector OwnerLocation = OwnerPawn->GetActorLocation();
+	const FVector HomeLocation = BlackboardComponent->GetValueAsVector(
+		AEnemyAIController::HomeLocation
+	);
+
 	AActor* CurrentTarget = Cast<AActor>(
 		BlackboardComponent->GetValueAsObject(AEnemyAIController::TargetPlayer)
 	);
 
 	if (CurrentTarget != nullptr)
 	{
-		const float DistanceToCurrentTarget = FVector::Dist(
-			OwnerPawn->GetActorLocation(),
-			CurrentTarget->GetActorLocation()
+		AEnemyCharacter* OwnerEnemy = Cast<AEnemyCharacter>(OwnerPawn);
+		AEnemyCharacter* TargetEnemy = Cast<AEnemyCharacter>(CurrentTarget);
+
+		const bool bTargetDead = TargetEnemy != nullptr && TargetEnemy->IsDead();
+
+		const float DistanceFromHome = FVector::Dist2D(
+			OwnerLocation,
+			HomeLocation
 		);
 
-		if (DistanceToCurrentTarget <= LoseRadius)
+		const float DistanceToCurrentTarget = bTargetDead
+			? TNumericLimits<float>::Max()
+			: FVector::Dist2D(OwnerLocation, CurrentTarget->GetActorLocation());
+
+		if (bTargetDead || DistanceFromHome > LeashRadius || DistanceToCurrentTarget > LoseRadius)
+		{
+			BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
+
+			if (OwnerEnemy != nullptr)
+			{
+				OwnerEnemy->SetCombatTarget(nullptr);
+			}
+
+			CurrentTarget = nullptr;
+		}
+		else
 		{
 			return;
 		}
-
-		BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
 	}
 
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(OwnerPawn, 0);
@@ -53,8 +77,8 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 		return;
 	}
 
-	const float DistanceToPlayer = FVector::Dist(
-		OwnerPawn->GetActorLocation(),
+	const float DistanceToPlayer = FVector::Dist2D(
+		OwnerLocation,
 		PlayerPawn->GetActorLocation()
 	);
 

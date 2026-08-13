@@ -30,15 +30,39 @@ EBTNodeResult::Type UBTTaskAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp
 		? Cast<AActor>(BlackboardComponent->GetValueAsObject(AEnemyAIController::TargetPlayer))
 		: nullptr;
 
-	if (TargetActor != nullptr)
+	if (TargetActor == nullptr)
 	{
-		EnemyCharacter->SetCombatTarget(TargetActor);
-		const FVector Direction = TargetActor->GetActorLocation() - EnemyCharacter->GetActorLocation();
-		const FRotator LookRotation = Direction.Rotation();
+		return EBTNodeResult::Failed;
+	}
 
-		EnemyCharacter->SetActorRotation(FRotator(0.0f, LookRotation.Yaw, 0.0f));
+	EnemyCharacter->SetCombatTarget(TargetActor);
+
+	if (!EnemyCharacter->CanAttack())
+	{
+		return EBTNodeResult::Failed;
 	}
 	
+	if (AEnemyCharacter* TargetEnemy = Cast<AEnemyCharacter>(TargetActor))
+	{
+		if (TargetEnemy->IsDead())
+		{
+			EnemyCharacter->SetCombatTarget(nullptr);
+			return EBTNodeResult::Failed;
+		}
+	}
+	
+	EnemyCharacter->SetCombatTarget(TargetActor);
+	
+	
+	FVector Direction = TargetActor->GetActorLocation() - EnemyCharacter->GetActorLocation();
+	Direction.Z = 0.0f;
+
+	if (!Direction.IsNearlyZero())
+	{
+		const FRotator LookRotation = Direction.Rotation();
+		EnemyCharacter->SetActorRotation(FRotator(0.0f, LookRotation.Yaw, 0.0f));
+	}
+
 	return EnemyCharacter->RequestAttack()
 		? EBTNodeResult::Succeeded
 		: EBTNodeResult::Failed;

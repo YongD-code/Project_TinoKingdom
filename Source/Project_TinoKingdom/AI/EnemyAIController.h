@@ -17,6 +17,7 @@ class PROJECT_TINOKINGDOM_API AEnemyAIController : public AAIController
 public:
 	static const FName TargetPlayer;
 	static const FName HomeLocation;
+	static const FName PatrolLocation;
 	
 	AEnemyAIController();
 	
