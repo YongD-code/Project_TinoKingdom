@@ -282,7 +282,7 @@ void AEnemyCharacter::PerformAttackTrace()
 		}
 	}
 
-	const FVector Start = GetActorLocation() + FVector(0.0f, 0.0f, 50.0f) + AttackDirection * 20.0f;
+	const FVector Start = GetActorLocation() + AttackDirection * 20.0f;
 	const FVector End = Start + AttackDirection * AttackTraceDistance;
 
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(EnemyAttackTrace), false, this);
