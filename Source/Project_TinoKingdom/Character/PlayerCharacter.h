@@ -81,6 +81,9 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> DodgeAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ToggleInventoryAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
@@ -111,6 +114,9 @@ protected:
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void CancelEquipmentWheel();
+	
+	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
+	void ToggleInventory();
 	
 	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
 	void StartSlowMotion();

@@ -89,6 +89,15 @@ protected:
     	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Death")
 	TObjectPtr<UAnimMontage> DeathMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Drop")
+	FName DropItemId = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Drop")
+	FText DropItemName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Drop", meta = (ClampMin = "0"))
+	int32 DropItemCount = 1;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
 	float AttackRange = 150.0f;
@@ -136,6 +145,9 @@ private:
 	
 	UPROPERTY(Transient)
 	float LastAttackTime = -999.f;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<AActor> LastDamageCauser;
 	
 	FTimerHandle AttackResetTimerHandle;
 	FTimerHandle HitReactionResetTimerHandle;

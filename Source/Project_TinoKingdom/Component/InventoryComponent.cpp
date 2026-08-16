@@ -37,6 +37,9 @@ void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count)
 
 	Items.Add(NewStack);
 	OnItemAdded.Broadcast(NewStack, Count);
+		
+	//임시로 인벤토리로 들어오는지 확인용 코드
+	UE_LOG(LogTemp,Log,TEXT("AddItem: %s x%d / Total: %d"),*DisplayName.ToString(),Count,GetItemCount(ItemId));
 }
 
 int32 UInventoryComponent::GetItemCount(FName ItemId) const
