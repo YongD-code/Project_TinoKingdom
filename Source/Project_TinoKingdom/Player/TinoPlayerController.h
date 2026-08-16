@@ -19,6 +19,10 @@ class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	
+public:
+	UFUNCTION(BlueprintPure, Category = "UI")
+	UUserWidget* GetPlayerUIWidget() const { return PlayerUIWidget; }
+	
 protected:
 	virtual void BeginPlay() override;
 	
