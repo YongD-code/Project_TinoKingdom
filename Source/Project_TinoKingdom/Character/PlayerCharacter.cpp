@@ -15,6 +15,7 @@
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
+#include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
@@ -48,6 +49,7 @@ APlayerCharacter::APlayerCharacter()
 	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
+	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
 	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;

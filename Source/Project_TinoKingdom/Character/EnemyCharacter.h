@@ -12,6 +12,7 @@ class UStatComponent;
 class UAnimMontage;
 class AEnemyAIController;
 class ATargetPoint;
+class APlayerCharacter;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter

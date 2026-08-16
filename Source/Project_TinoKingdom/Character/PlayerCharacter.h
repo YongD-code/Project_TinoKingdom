@@ -16,6 +16,7 @@ class UStatComponent;
 class UTinoCombatComponent;
 class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
+class UInventoryComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -49,6 +50,9 @@ protected:
 public:
 	UFUNCTION(BlueprintPure, Category = "Stat")
 	UStatComponent* GetStatComponent() const { return StatComponent; }
+	
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
@@ -95,6 +99,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Reaction")
 	TObjectPtr<UReactionComponent> ReactionComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	TObjectPtr<UInventoryComponent> InventoryComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();
