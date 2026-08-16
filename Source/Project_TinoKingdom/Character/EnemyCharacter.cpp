@@ -12,6 +12,8 @@
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
+#include "Project_TinoKingdom/Character/PlayerCharacter.h"
+#include "Project_TinoKingdom/Component/InventoryComponent.h"
 
 
 AEnemyCharacter::AEnemyCharacter()
@@ -55,6 +57,13 @@ float AEnemyCharacter::TakeDamage(
 
 	if (StatComponent != nullptr)
 	{
+		LastDamageCauser = DamageCauser;
+
+		if (EventInstigator != nullptr && EventInstigator->GetPawn() != nullptr)
+		{
+			LastDamageCauser = EventInstigator->GetPawn();
+		}
+		
 		StatComponent->ApplyDamage(DamageAmount);
 
 		if (!StatComponent->IsDead())
@@ -163,6 +172,17 @@ void AEnemyCharacter::HandleDead()
 	bAttacking = false;
 	bHitReacting = false;
 	CombatTarget = nullptr;
+	
+	if (!DropItemId.IsNone() && DropItemCount > 0)
+	{
+		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(LastDamageCauser))
+		{
+			if (UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
+			{
+				InventoryComponent->AddItem(DropItemId, DropItemName, DropItemCount);
+			}
+		}
+	}
 	
 	if (AController* CurrentController = GetController())
 	{
