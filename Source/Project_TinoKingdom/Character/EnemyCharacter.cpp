@@ -179,7 +179,7 @@ void AEnemyCharacter::HandleDead()
 		{
 			if (UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 			{
-				InventoryComponent->AddItem(DropItemId, DropItemName, DropItemCount, DropItemIcon);
+				InventoryComponent->AddItem(DropItemId, DropItemName, DropItemCount, DropItemIcon	);
 			}
 		}
 	}
@@ -279,6 +279,11 @@ void AEnemyCharacter::PerformAttackTrace()
 		return;
 	}
 
+	if (CombatTarget == nullptr)
+	{
+		return;
+	}
+	
 	UWorld* World = GetWorld();
 	if (World == nullptr)
 	{
@@ -335,6 +340,11 @@ void AEnemyCharacter::PerformAttackTrace()
 			continue;
 		}
 
+		if (HitActor != CombatTarget)
+		{
+			continue;
+		}
+		
 		UGameplayStatics::ApplyDamage(
 			HitActor,
 			AttackDamage,
@@ -351,6 +361,7 @@ void AEnemyCharacter::PerformAttackTrace()
 				HitEnemy->SetAggroTarget(this);
 			}
 		}
+		break;
 	}
 }
 
