@@ -49,6 +49,9 @@ protected:
 	ATinoNPCCharacter* FindNearbyNPC() const;
 	void Attack();
 	void StartJump();
+	void MoveDebugFlyUp();
+	
+	void ToggleDebugFly();
 
 	UPROPERTY()
 	AActor* PreviousViewTarget;
@@ -94,6 +97,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ToggleInventoryAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
+	TObjectPtr<UInputAction> ToggleDebugAction;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
 

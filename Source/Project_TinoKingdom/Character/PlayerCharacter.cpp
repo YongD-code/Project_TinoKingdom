@@ -154,6 +154,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
 	EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::StartJump);
+	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &APlayerCharacter::MoveDebugFlyUp);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Attack);
 	
@@ -167,18 +168,26 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
 	
+	if (ToggleDebugAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
+	}
 	// EnhancedInputComponent->BindAction(ETriggerEvent::Started, this, &APlayerCharacter::DodgeAttack);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
-	// 공격 중에는 이동 입력을 받지 않는다.
-	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (MovementComponent == nullptr || Controller == nullptr)
 	{
 		return;
 	}
 
-	if (Controller == nullptr)
+	const bool bDebugFlying = MovementComponent->IsFlying();
+
+	// 디버그 비행 중에는 사망/공격/피격 상태와 관계없이 이동할 수 있게 한다.
+	if (!bDebugFlying &&
+		(StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting()))
 	{
 		return;
 	}
@@ -186,8 +195,10 @@ void APlayerCharacter::Move(const FInputActionValue& Value)
 	const FVector2D MovementInput = Value.Get<FVector2D>();
 	const FRotator ControlRotation = Controller->GetControlRotation();
 	const FRotator YawRotation(0.f, ControlRotation.Yaw, 0.f);
+	const FRotator ForwardRotation = bDebugFlying ? ControlRotation : YawRotation;
 
-	const FVector Forward = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	// 비행 중에는 카메라 Pitch를 포함하므로 위/아래를 바라보고 전진하면 상승/하강한다.
+	const FVector Forward = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::X);
 	const FVector Right = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
 	AddMovementInput(Forward, MovementInput.Y);
@@ -294,11 +305,53 @@ void APlayerCharacter::Attack()
 
 void APlayerCharacter::StartJump()
 {
+	// 비행 중 Space는 점프가 아니라 MoveDebugFlyUp에서 상승 입력으로 처리한다.
+	if (GetCharacterMovement()->IsFlying())
+	{
+		return;
+	}
+
 	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
 	{
 		return;
 	}
 	Jump();
+}
+
+void APlayerCharacter::MoveDebugFlyUp()
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (Movement == nullptr || !Movement->IsFlying())
+	{
+		return;
+	}
+
+	AddMovementInput(FVector::UpVector, 1.f);
+}
+
+void APlayerCharacter::ToggleDebugFly()
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (Movement == nullptr)
+	{
+		return;
+	}
+
+	Movement->StopMovementImmediately();
+
+	if (Movement->IsFlying())
+	{
+		Movement->bCheatFlying = false;
+		Movement->SetMovementMode(MOVE_Falling);
+		return;
+	}
+
+	StopRunning();
+	Movement->bCheatFlying = true;
+	Movement->MaxFlySpeed = 6000.f;
+	Movement->MaxAcceleration = 6000.f;
+	Movement->BrakingDecelerationFlying = 6000.f;
+	Movement->SetMovementMode(MOVE_Flying);
 }
 
 void APlayerCharacter::StartSlowMotion()

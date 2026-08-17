@@ -5,8 +5,6 @@
 #include "CollisionQueryParams.h"
 #include "CollisionShape.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "DrawDebugHelpers.h"
-#include "KismetTraceUtils.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -15,6 +13,7 @@
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
 #include "Project_TinoKingdom/Equipment/TinoEquipmentActor.h"
+#include "Project_TinoKingdom/TinoRuntimeDebugDraw.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
@@ -316,20 +315,16 @@ void UTinoCombatComponent::PerformAttackTrace()
 		World->SweepMultiByChannel(SampleHitResults, SweepStart, SweepEnd, FQuat::Identity,
 			TinoCollision::Action, FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
 		HitResults.Append(SampleHitResults);
-		
-#if ENABLE_DRAW_DEBUG
+
 		const FColor DebugColor = SampleHitResults.IsEmpty() ? FColor::Green : FColor::Red;
-		DrawDebugSweptSphere(
+		TinoRuntimeDebugDraw::DrawSweptSphere(
 			World,
 			SweepStart,
 			SweepEnd,
 			AttackSection.TraceRadius,
 			DebugColor,
-			false,  // 영구 표시하지 않음
-			0.75f,  // 0.75초간 유지
-			0
+			0.75f
 		);
-#endif
 	}
 	
 	PreviousTraceBaseLocation = CurrentTraceBaseLocation;
