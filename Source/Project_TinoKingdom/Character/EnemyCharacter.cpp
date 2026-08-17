@@ -332,36 +332,50 @@ void AEnemyCharacter::PerformAttackTrace()
 		return;
 	}
 
+	AActor* SelectedHitActor = nullptr;
+
 	for (const FHitResult& HitResult : HitResults)
 	{
 		AActor* HitActor = HitResult.GetActor();
+
 		if (HitActor == nullptr || HitActor == this)
 		{
 			continue;
 		}
 
-		if (HitActor != CombatTarget)
+		AEnemyCharacter* HitEnemy = Cast<AEnemyCharacter>(HitActor);
+		if (HitEnemy != nullptr && !HitEnemy->IsDead())
 		{
-			continue;
+			SelectedHitActor = HitActor;
+			break;
 		}
-		
-		UGameplayStatics::ApplyDamage(
-			HitActor,
-			AttackDamage,
-			GetController(),
-			this,
-			UDamageType::StaticClass()
-		);
-		
-		if (AEnemyCharacter* HitEnemy = Cast<AEnemyCharacter>(HitActor))
+
+		if (HitActor == CombatTarget && SelectedHitActor == nullptr)
 		{
-			if (!HitEnemy->IsDead())
-			{
-				SetAggroTarget(HitEnemy);
-				HitEnemy->SetAggroTarget(this);
-			}
+			SelectedHitActor = HitActor;
 		}
-		break;
+	}
+
+	if (SelectedHitActor == nullptr)
+	{
+		return;
+	}
+
+	UGameplayStatics::ApplyDamage(
+		SelectedHitActor,
+		AttackDamage,
+		GetController(),
+		this,
+		UDamageType::StaticClass()
+	);
+
+	if (AEnemyCharacter* HitEnemy = Cast<AEnemyCharacter>(SelectedHitActor))
+	{
+		if (!HitEnemy->IsDead())
+		{
+			SetAggroTarget(HitEnemy);
+			HitEnemy->SetAggroTarget(this);
+		}
 	}
 }
 
