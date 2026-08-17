@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
+#include "Camera/CameraComponent.h"
 #include "PlayerCharacter.generated.h"
 
 class UReactionComponent;
@@ -48,6 +49,12 @@ protected:
 	ATinoNPCCharacter* FindNearbyNPC() const;
 	void Attack();
 	void StartJump();
+
+	UPROPERTY()
+	AActor* PreviousViewTarget;
+
+	UPROPERTY()
+	APlayerController* DialoguePlayerController;
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Stat")

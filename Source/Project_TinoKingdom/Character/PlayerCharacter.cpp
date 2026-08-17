@@ -279,7 +279,10 @@ void APlayerCharacter::Attack()
 {
 	if (ATinoNPCCharacter* NearbyNPC = FindNearbyNPC())
 	{
-		NearbyNPC->StartDialogue();
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			NearbyNPC->StartDialogue(PC);
+		}
 		return;
 	}
 	if (StatComponent->IsDead() || ReactionComponent->IsReacting())

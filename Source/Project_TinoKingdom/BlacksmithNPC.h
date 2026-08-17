@@ -15,6 +15,8 @@ class PROJECT_TINOKINGDOM_API ABlacksmithNPC : public ATinoNPCCharacter
 	GENERATED_BODY()
 	
 public:
-	virtual void StartDialogue() override;
+	virtual void StartDialogue(APlayerController* PlayerController) override;
+	
+	virtual TArray<FText> GetDialogueLines() const override;
 	
 };
