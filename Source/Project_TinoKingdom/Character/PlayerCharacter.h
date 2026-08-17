@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
+#include "Camera/CameraComponent.h"
 #include "PlayerCharacter.generated.h"
 
 class UReactionComponent;
@@ -17,6 +18,7 @@ class UTinoCombatComponent;
 class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
 class UInventoryComponent;
+class ATinoNPCCharacter;
 struct FInputActionValue;
 
 UCLASS()
@@ -44,8 +46,15 @@ protected:
 	void StartRunning();
 	void StopRunning();
 
+	ATinoNPCCharacter* FindNearbyNPC() const;
 	void Attack();
 	void StartJump();
+
+	UPROPERTY()
+	AActor* PreviousViewTarget;
+
+	UPROPERTY()
+	APlayerController* DialoguePlayerController;
 
 public:
 	UFUNCTION(BlueprintPure, Category = "Stat")
