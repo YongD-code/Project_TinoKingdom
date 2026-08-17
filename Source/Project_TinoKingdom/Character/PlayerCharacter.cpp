@@ -223,8 +223,18 @@ void APlayerCharacter::StopRunning()
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
+bool APlayerCharacter::IsNearbyNPC()
+{
+	UE_LOG(LogTemp, Warning, TEXT("NPC check"));
+	return false;
+}
+
 void APlayerCharacter::Attack()
 {
+	if (IsNearbyNPC())
+	{
+		return;
+	}
 	if (StatComponent->IsDead() || ReactionComponent->IsReacting())
 	{
 		return;

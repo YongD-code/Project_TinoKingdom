@@ -44,6 +44,7 @@ protected:
 	void StartRunning();
 	void StopRunning();
 
+	bool IsNearbyNPC();
 	void Attack();
 	void StartJump();
 
