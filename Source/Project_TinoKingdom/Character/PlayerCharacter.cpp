@@ -19,6 +19,9 @@
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
+#include "TinoNPCCharacter.h"
+#include "DrawDebugHelpers.h"
+#include "Engine/OverlapResult.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -223,16 +226,60 @@ void APlayerCharacter::StopRunning()
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
-bool APlayerCharacter::IsNearbyNPC()
+ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
 {
-	UE_LOG(LogTemp, Warning, TEXT("NPC check"));
-	return false;
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+	
+	const FVector Center = GetActorLocation();
+	const float Radius = 300.0f;
+	
+	TArray<FOverlapResult> Overlaps;
+	
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(NPCInterractionCheck), false, this);
+	Params.AddIgnoredActor(this);
+	
+	const bool bHit = World->OverlapMultiByObjectType(
+		Overlaps,
+		Center,
+		FQuat::Identity,
+		FCollisionObjectQueryParams(ECC_Pawn),
+		FCollisionShape::MakeSphere(Radius),
+		Params
+	);
+	
+	DrawDebugSphere(World, Center, Radius, 24, FColor::Green, false, 1.0f);
+	
+	if (!bHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Nearby NPC 없음"));
+		return nullptr;
+	}
+	
+	for(const FOverlapResult& Result : Overlaps)
+	{
+		ATinoNPCCharacter* NPC = Cast<ATinoNPCCharacter>(Result.GetActor());
+		
+		if (NPC)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Neary NPC 찾음: %s"), *NPC->GetName());
+			return NPC;
+		}
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("Overlap은 됐지만 ATinoNPCCharacter가 없음"));
+	return nullptr;
+		
 }
 
 void APlayerCharacter::Attack()
 {
-	if (IsNearbyNPC())
+	if (ATinoNPCCharacter* NearbyNPC = FindNearbyNPC())
 	{
+		NearbyNPC->StartDialogue();
 		return;
 	}
 	if (StatComponent->IsDead() || ReactionComponent->IsReacting())

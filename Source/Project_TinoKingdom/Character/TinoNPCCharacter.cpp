@@ -27,7 +27,7 @@ void ATinoNPCCharacter::Tick(float DeltaTime)
 
 void ATinoNPCCharacter::StartDialogue()
 {
-	UE_LOG(LogTemp, Warning, TEXT("NPC 대화 시작"));
+	UE_LOG(LogTemp, Warning, TEXT("공통 NPC 대화 시작"));
 }
 
 void ATinoNPCCharacter::EndDialogue()

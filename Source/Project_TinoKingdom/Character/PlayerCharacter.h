@@ -17,6 +17,7 @@ class UTinoCombatComponent;
 class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
 class UInventoryComponent;
+class ATinoNPCCharacter;
 struct FInputActionValue;
 
 UCLASS()
@@ -44,7 +45,7 @@ protected:
 	void StartRunning();
 	void StopRunning();
 
-	bool IsNearbyNPC();
+	ATinoNPCCharacter* FindNearbyNPC() const;
 	void Attack();
 	void StartJump();
 
