@@ -6,6 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "InventoryComponent.generated.h"
 
+
+class UTexture2D;
+
+
 USTRUCT(BlueprintType)
 struct FInventoryItemStack
 {
@@ -19,6 +23,9 @@ struct FInventoryItemStack
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
 	int32 Count = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
+	TObjectPtr<UTexture2D> Icon = nullptr;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
@@ -39,7 +46,7 @@ public:
 	UInventoryComponent();
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void AddItem(FName ItemId, FText DisplayName, int32 Count);
+	void AddItem(FName ItemId, FText DisplayName, int32 Count, UTexture2D* Icon);
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	int32 GetItemCount(FName ItemId) const;

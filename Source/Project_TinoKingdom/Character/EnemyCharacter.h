@@ -13,6 +13,7 @@ class UAnimMontage;
 class AEnemyAIController;
 class ATargetPoint;
 class APlayerCharacter;
+class UTexture2D;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter
@@ -98,6 +99,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Drop", meta = (ClampMin = "0"))
 	int32 DropItemCount = 1;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Drop")
+	TObjectPtr<UTexture2D> DropItemIcon = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
 	float AttackRange = 150.0f;

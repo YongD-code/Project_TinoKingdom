@@ -13,7 +13,7 @@ UInventoryComponent::UInventoryComponent()
 	// ...
 }
 
-void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count)
+void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count, UTexture2D* Icon)
 {
 	if (ItemId.IsNone() || Count <= 0)
 	{
@@ -25,6 +25,12 @@ void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count)
 		if (ItemStack.ItemId == ItemId)
 		{
 			ItemStack.Count += Count;
+			
+			if (ItemStack.Icon == nullptr && Icon != nullptr)
+			{
+				ItemStack.Icon = Icon;
+			}
+			
 			OnItemAdded.Broadcast(ItemStack, Count);
 			return;
 		}
@@ -34,7 +40,8 @@ void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count)
 	NewStack.ItemId = ItemId;
 	NewStack.DisplayName = DisplayName;
 	NewStack.Count = Count;
-
+	NewStack.Icon = Icon;
+	
 	Items.Add(NewStack);
 	OnItemAdded.Broadcast(NewStack, Count);
 		

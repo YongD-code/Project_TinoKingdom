@@ -179,7 +179,7 @@ void AEnemyCharacter::HandleDead()
 		{
 			if (UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 			{
-				InventoryComponent->AddItem(DropItemId, DropItemName, DropItemCount);
+				InventoryComponent->AddItem(DropItemId, DropItemName, DropItemCount, DropItemIcon);
 			}
 		}
 	}
