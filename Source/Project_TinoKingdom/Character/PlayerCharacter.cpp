@@ -21,6 +21,7 @@
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
+#include "Project_TinoKingdom/Component/DodgeComponent.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
@@ -56,6 +57,7 @@ APlayerCharacter::APlayerCharacter()
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
 	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
+	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
 	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
@@ -356,6 +358,26 @@ void APlayerCharacter::ToggleDebugFly()
 
 void APlayerCharacter::Dodge()
 {
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Dodge))
+	{
+		return;
+	}
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (!MovementComponent->IsMovingOnGround())
+	{
+		return;
+	}
+	
+	FVector DodgeDirection = GetLastMovementInputVector().GetSafeNormal2D();
+	if (DodgeDirection.IsNearlyZero())
+	{
+		const FRotator ControlRotation = Controller->GetControlRotation();
+		const FRotator CameraYawRotation(0.f, ControlRotation.Yaw, 0.f);
+		DodgeDirection = FRotationMatrix(CameraYawRotation).GetUnitAxis(EAxis::X);
+	}
+	
+	StopRunning();
+	DodgeComponent->StartDodge(DodgeDirection);
 }
 
 void APlayerCharacter::StartSlowMotion()
@@ -408,6 +430,7 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	
 	StopRunning();
 	CombatComponent->CancelAttack();
+	DodgeComponent->CancelDodge();
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
@@ -436,6 +459,7 @@ float APlayerCharacter::TakeDamage(
 	{
 		StopRunning();
 		CombatComponent->CancelAttack();
+		DodgeComponent->CancelDodge();
 		ReactionComponent->PlayHitReaction(DamageCauser);
 	}
 	

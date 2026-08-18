@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "PlayerCharacter.generated.h"
 
+class UDodgeComponent;
 class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
@@ -125,6 +126,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	TObjectPtr<UTinoStateComponent> CharacterStateComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dodge")
+	TObjectPtr<UDodgeComponent> DodgeComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();

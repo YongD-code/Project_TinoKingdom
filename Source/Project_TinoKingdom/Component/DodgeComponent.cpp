@@ -25,12 +25,8 @@ void UDodgeComponent::StartDodge(const FVector& DodgeDirection)
 	}
 	
 	FVector NormalizedDirection = DodgeDirection.GetSafeNormal2D();
-	if (NormalizedDirection.IsNearlyZero())
-	{
-		NormalizedDirection = OwnerCharacter->GetActorForwardVector().GetSafeNormal2D();
-	}
+
 	OwnerCharacter->SetActorRotation(NormalizedDirection.Rotation());
-	
 	OwnerCharacter->ConsumeMovementInputVector();
 	OwnerCharacter->GetCharacterMovement()->StopMovementImmediately();
 	
