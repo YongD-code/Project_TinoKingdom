@@ -20,6 +20,7 @@
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
+#include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
@@ -400,6 +401,7 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	}
 	bDeathHandled = true;
 	
+	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);
 	// 마찬가지로 사망해도 장비창을 안전하게 닫기
 	CancelEquipmentWheel();
 	StopSlowMotion();
