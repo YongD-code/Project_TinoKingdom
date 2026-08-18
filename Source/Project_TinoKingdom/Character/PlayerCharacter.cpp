@@ -19,6 +19,7 @@
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
+#include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
@@ -53,6 +54,7 @@ APlayerCharacter::APlayerCharacter()
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
 	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
@@ -168,11 +170,9 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
 	
-	if (ToggleDebugAction != nullptr)
-	{
-		EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
-	}
-	// EnhancedInputComponent->BindAction(ETriggerEvent::Started, this, &APlayerCharacter::DodgeAttack);
+	EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
+
+	EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started, this, &APlayerCharacter::Dodge);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -186,8 +186,7 @@ void APlayerCharacter::Move(const FInputActionValue& Value)
 	const bool bDebugFlying = MovementComponent->IsFlying();
 
 	// 디버그 비행 중에는 사망/공격/피격 상태와 관계없이 이동할 수 있게 한다.
-	if (!bDebugFlying &&
-		(StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting()))
+	if (!bDebugFlying && !CharacterStateComponent->CanPerformAction(ETinoAction::Move))
 	{
 		return;
 	}
@@ -215,7 +214,7 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
-	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Sprint))
 	{
 		return;
 	}
@@ -296,7 +295,7 @@ void APlayerCharacter::Attack()
 		}
 		return;
 	}
-	if (StatComponent->IsDead() || ReactionComponent->IsReacting())
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Attack))
 	{
 		return;
 	}
@@ -311,7 +310,7 @@ void APlayerCharacter::StartJump()
 		return;
 	}
 
-	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Jump))
 	{
 		return;
 	}
@@ -352,6 +351,10 @@ void APlayerCharacter::ToggleDebugFly()
 	Movement->MaxAcceleration = 6000.f;
 	Movement->BrakingDecelerationFlying = 6000.f;
 	Movement->SetMovementMode(MOVE_Flying);
+}
+
+void APlayerCharacter::Dodge()
+{
 }
 
 void APlayerCharacter::StartSlowMotion()

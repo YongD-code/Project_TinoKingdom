@@ -19,6 +19,7 @@ class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
 class UInventoryComponent;
 class ATinoNPCCharacter;
+class UTinoStateComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -52,6 +53,7 @@ protected:
 	void MoveDebugFlyUp();
 	
 	void ToggleDebugFly();
+	void Dodge();
 
 	UPROPERTY()
 	AActor* PreviousViewTarget;
@@ -120,6 +122,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+	TObjectPtr<UTinoStateComponent> CharacterStateComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();

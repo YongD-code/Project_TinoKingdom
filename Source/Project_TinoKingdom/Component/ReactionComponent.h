@@ -20,6 +20,7 @@ class AActor;
 class ACharacter;
 class UAnimMontage;
 class USkeletalMeshComponent;
+class UTinoStateComponent;
 
 UCLASS( ClassGroup=(Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UReactionComponent : public UActorComponent
@@ -57,6 +58,8 @@ private:
 	// Montage Section Name을 반환
 	FName GetDeathSectionName(EReactionDirection ReactionDirection) const;
 	
+	void SetReacting(bool bNewIsReacting);
+	
 	// 현재 피격 몽타주가 종료되거나 중단되었을 때 상태 초기화
 	// TinoCombatComponent와 동일
 	void OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted);
@@ -70,6 +73,9 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Reaction|Death", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAnimMontage> DeathMontage;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<UTinoStateComponent> StateComponent;
 	
 	UPROPERTY(Transient)
 	TObjectPtr<ACharacter> OwnerCharacter;

@@ -14,6 +14,8 @@
 #include "Project_TinoKingdom/DataAsset/AttackComboData.h"
 #include "Project_TinoKingdom/Equipment/TinoEquipmentActor.h"
 #include "Project_TinoKingdom/TinoRuntimeDebugDraw.h"
+#include "Project_TinoKingdom/Component/TinoStateComponent.h"
+#include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
@@ -158,7 +160,7 @@ void UTinoCombatComponent::BeginPlay()
 
 	// 이 컴포넌트는 ACharacter 전용이다.
 	OwnerCharacter = CastChecked<ACharacter>(GetOwner());
-
+	StateComponent = OwnerCharacter->FindComponentByClass<UTinoStateComponent>();
 	// 일반 캐릭터는 GetMesh(), 별도 Driver Mesh를 쓰는 캐릭터는 InitializeCombat()으로 지정한다.
 	if (AnimationMesh == nullptr)
 	{
@@ -193,6 +195,7 @@ bool UTinoCombatComponent::StartComboAttack(UAnimInstance* AnimInstance, UAttack
 	}
 	
 	ActiveAttackData = AttackData;
+	StateComponent->AddStateTag(TinoGameplayTags::State_Action_Attacking);
 	QueuedComboIndex = 0;
 	bComboInputWindowOpen = false;
 	bComboInputConsumed = false;
@@ -243,12 +246,18 @@ bool UTinoCombatComponent::TryQueueNextCombo(UAnimInstance* AnimInstance)
 
 void UTinoCombatComponent::ResetCombo()
 {
+	const bool bWasAttacking = ActiveAttackData != nullptr;
 	QueuedComboIndex = INDEX_NONE;
 	bComboInputWindowOpen = false;
 	bComboInputConsumed = false;
 
 	EndAttackHitWindow();
 	ActiveAttackData = nullptr;
+	
+	if (bWasAttacking)
+	{
+		StateComponent->RemoveStateTag(TinoGameplayTags::State_Action_Attacking);
+	}
 }
 
 void UTinoCombatComponent::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
