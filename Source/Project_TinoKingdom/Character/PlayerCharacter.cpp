@@ -45,6 +45,11 @@ APlayerCharacter::APlayerCharacter()
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 350.f;
 	CameraBoom->bUsePawnControlRotation = true;
+	
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 15.f;
+	CameraBoom->CameraLagMaxDistance = 40.f;
+	CameraBoom->bUseCameraLagSubstepping = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -369,12 +374,6 @@ void APlayerCharacter::Dodge()
 	}
 	
 	FVector DodgeDirection = GetLastMovementInputVector().GetSafeNormal2D();
-	if (DodgeDirection.IsNearlyZero())
-	{
-		const FRotator ControlRotation = Controller->GetControlRotation();
-		const FRotator CameraYawRotation(0.f, ControlRotation.Yaw, 0.f);
-		DodgeDirection = FRotationMatrix(CameraYawRotation).GetUnitAxis(EAxis::X);
-	}
 	
 	StopRunning();
 	DodgeComponent->StartDodge(DodgeDirection);
