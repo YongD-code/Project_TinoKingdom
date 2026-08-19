@@ -20,6 +20,9 @@ public:
 	
 	void StartDodge(const FVector& DodgeDirection);
 	void CancelDodge();
+	
+	void BeginInvincibilityWindow();
+	void EndInvincibilityWindow();
 
 protected:
 	virtual void BeginPlay() override;
@@ -44,4 +47,7 @@ private:
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UTinoStateComponent> StateComponent;
+	
+	UPROPERTY(Transient)
+	bool bInvincibilityWindowActive = false;
 };

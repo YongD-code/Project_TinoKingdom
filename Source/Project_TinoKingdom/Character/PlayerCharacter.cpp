@@ -47,7 +47,7 @@ APlayerCharacter::APlayerCharacter()
 	CameraBoom->bUsePawnControlRotation = true;
 	
 	CameraBoom->bEnableCameraLag = true;
-	CameraBoom->CameraLagSpeed = 15.f;
+	CameraBoom->CameraLagSpeed = 10.f;
 	CameraBoom->CameraLagMaxDistance = 40.f;
 	CameraBoom->bUseCameraLagSubstepping = true;
 
@@ -443,6 +443,10 @@ float APlayerCharacter::TakeDamage(
 	AActor* DamageCauser
 )
 {
+	if (CharacterStateComponent->HasStateTag(TinoGameplayTags::State_Invincible))
+	{
+		return 0.f;
+	}
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	
 	if (StatComponent != nullptr)

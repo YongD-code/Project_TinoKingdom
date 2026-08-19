@@ -60,6 +60,30 @@ void UDodgeComponent::CancelDodge()
 	}
 }
 
+void UDodgeComponent::BeginInvincibilityWindow()
+{
+	if (ActiveDodgeMontage == nullptr)
+	{
+		return;
+	}
+	if (bInvincibilityWindowActive)
+	{
+		return;
+	}
+	bInvincibilityWindowActive = true;
+	StateComponent->AddStateTag(TinoGameplayTags::State_Invincible);
+}
+
+void UDodgeComponent::EndInvincibilityWindow()
+{
+	if (!bInvincibilityWindowActive)
+	{
+		return;
+	}
+	bInvincibilityWindowActive = false;
+	StateComponent->RemoveStateTag(TinoGameplayTags::State_Invincible);
+}
+
 
 // Called when the game starts
 void UDodgeComponent::BeginPlay()
@@ -78,6 +102,7 @@ void UDodgeComponent::FinishDodge()
 	{
 		return;
 	}
+	EndInvincibilityWindow();
 	ActiveDodgeMontage = nullptr;
 	StateComponent->RemoveStateTag(TinoGameplayTags::State_Action_Dodging);
 }
