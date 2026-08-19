@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "PlayerCharacter.generated.h"
 
+class UTargetingComponent;
 class UDodgeComponent;
 class UReactionComponent;
 class UCameraComponent;
@@ -129,6 +130,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dodge")
 	TObjectPtr<UDodgeComponent> DodgeComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Targeting")
+	TObjectPtr<UTargetingComponent> TargetingComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();
