@@ -8,6 +8,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Project_TinoKingdom/Component/TinoStateComponent.h"
+#include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 
 // Sets default values for this component's properties
 UReactionComponent::UReactionComponent()
@@ -42,7 +44,7 @@ bool UReactionComponent::PlayHitReaction(AActor* DamageCauser)
 		1.f, 1);
 	
 	ActiveHitMontage = DynamicHitMontage;
-	bIsReacting = true;
+	SetReacting(true);
 	
 	FOnMontageEnded MontageEndedDelegate;
 	MontageEndedDelegate.BindUObject(this, &UReactionComponent::OnHitMontageEnded);
@@ -68,8 +70,8 @@ bool UReactionComponent::PlayDeathReaction(AActor* DamageCauser)
 	AnimInstance->Montage_JumpToSection(DeathSectionName, DeathMontage);
 	
 	bDeathReactionPlayed = true;
-	bIsReacting = false;
 	ActiveHitMontage = nullptr;
+	SetReacting(false);
 	
 	return true;
 }
@@ -86,6 +88,7 @@ void UReactionComponent::BeginPlay()
 
 	OwnerCharacter = Cast<ACharacter>(GetOwner());
 	AnimationMesh = OwnerCharacter->GetMesh();
+	StateComponent = OwnerCharacter->FindComponentByClass<UTinoStateComponent>();
 }
 
 EReactionDirection UReactionComponent::CalculateHitDirection(const AActor* DamageCauser)
@@ -131,6 +134,23 @@ FName UReactionComponent::GetDeathSectionName(EReactionDirection ReactionDirecti
 	return FName("FromFront");
 }
 
+void UReactionComponent::SetReacting(bool bNewIsReacting)
+{
+	if (bIsReacting == bNewIsReacting)
+	{
+		return;
+	}
+	bIsReacting = bNewIsReacting;
+	if (bIsReacting)
+	{
+		StateComponent->AddStateTag(TinoGameplayTags::State_Action_HitReacting);
+	}
+	else
+	{
+		StateComponent->RemoveStateTag(TinoGameplayTags::State_Action_HitReacting);
+	}
+}
+
 void UReactionComponent::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	if (Montage != ActiveHitMontage)
@@ -138,5 +158,5 @@ void UReactionComponent::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrup
 		return;
 	}
 	ActiveHitMontage = nullptr;
-	bIsReacting = false;
+	SetReacting(false);
 }

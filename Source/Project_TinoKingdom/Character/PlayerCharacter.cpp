@@ -19,6 +19,9 @@
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
 #include "Project_TinoKingdom/DataAsset/EquipmentLoadoutData.h"
+#include "Project_TinoKingdom/Component/TinoStateComponent.h"
+#include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
+#include "Project_TinoKingdom/Component/DodgeComponent.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
@@ -42,6 +45,11 @@ APlayerCharacter::APlayerCharacter()
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 350.f;
 	CameraBoom->bUsePawnControlRotation = true;
+	
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 10.f;
+	CameraBoom->CameraLagMaxDistance = 40.f;
+	CameraBoom->bUseCameraLagSubstepping = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -53,6 +61,8 @@ APlayerCharacter::APlayerCharacter()
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
+	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
 	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
@@ -168,11 +178,9 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
 	
-	if (ToggleDebugAction != nullptr)
-	{
-		EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
-	}
-	// EnhancedInputComponent->BindAction(ETriggerEvent::Started, this, &APlayerCharacter::DodgeAttack);
+	EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
+
+	EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started, this, &APlayerCharacter::Dodge);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -186,8 +194,7 @@ void APlayerCharacter::Move(const FInputActionValue& Value)
 	const bool bDebugFlying = MovementComponent->IsFlying();
 
 	// 디버그 비행 중에는 사망/공격/피격 상태와 관계없이 이동할 수 있게 한다.
-	if (!bDebugFlying &&
-		(StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting()))
+	if (!bDebugFlying && !CharacterStateComponent->CanPerformAction(ETinoAction::Move))
 	{
 		return;
 	}
@@ -215,7 +222,7 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
-	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Sprint))
 	{
 		return;
 	}
@@ -296,7 +303,7 @@ void APlayerCharacter::Attack()
 		}
 		return;
 	}
-	if (StatComponent->IsDead() || ReactionComponent->IsReacting())
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Attack))
 	{
 		return;
 	}
@@ -311,7 +318,7 @@ void APlayerCharacter::StartJump()
 		return;
 	}
 
-	if (StatComponent->IsDead() || CombatComponent->IsAttacking() || ReactionComponent->IsReacting())
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Jump))
 	{
 		return;
 	}
@@ -352,6 +359,24 @@ void APlayerCharacter::ToggleDebugFly()
 	Movement->MaxAcceleration = 6000.f;
 	Movement->BrakingDecelerationFlying = 6000.f;
 	Movement->SetMovementMode(MOVE_Flying);
+}
+
+void APlayerCharacter::Dodge()
+{
+	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Dodge))
+	{
+		return;
+	}
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (!MovementComponent->IsMovingOnGround())
+	{
+		return;
+	}
+	
+	FVector DodgeDirection = GetLastMovementInputVector().GetSafeNormal2D();
+	
+	StopRunning();
+	DodgeComponent->StartDodge(DodgeDirection);
 }
 
 void APlayerCharacter::StartSlowMotion()
@@ -397,12 +422,14 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	}
 	bDeathHandled = true;
 	
+	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);
 	// 마찬가지로 사망해도 장비창을 안전하게 닫기
 	CancelEquipmentWheel();
 	StopSlowMotion();
 	
 	StopRunning();
 	CombatComponent->CancelAttack();
+	DodgeComponent->CancelDodge();
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
@@ -416,6 +443,10 @@ float APlayerCharacter::TakeDamage(
 	AActor* DamageCauser
 )
 {
+	if (CharacterStateComponent->HasStateTag(TinoGameplayTags::State_Invincible))
+	{
+		return 0.f;
+	}
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	
 	if (StatComponent != nullptr)
@@ -431,6 +462,7 @@ float APlayerCharacter::TakeDamage(
 	{
 		StopRunning();
 		CombatComponent->CancelAttack();
+		DodgeComponent->CancelDodge();
 		ReactionComponent->PlayHitReaction(DamageCauser);
 	}
 	

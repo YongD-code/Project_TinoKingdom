@@ -14,6 +14,7 @@ class UAnimMontage;
 class USkeletalMeshComponent;
 class UAttackComboData;
 class ATinoEquipmentActor;
+class UTinoStateComponent;
 
 enum class EAttackSource : uint8;
 
@@ -108,6 +109,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UAttackComboData> ActiveAttackData;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UTinoStateComponent> StateComponent;
+	
 	// 위치, 이동, 컨트롤러에 접근하기 위한 소유 Character 캐시.
 	UPROPERTY(Transient)
 	TObjectPtr<ACharacter> OwnerCharacter;

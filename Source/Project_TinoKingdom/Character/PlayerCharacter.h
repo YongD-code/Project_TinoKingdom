@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "PlayerCharacter.generated.h"
 
+class UDodgeComponent;
 class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
@@ -19,6 +20,7 @@ class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
 class UInventoryComponent;
 class ATinoNPCCharacter;
+class UTinoStateComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -52,6 +54,7 @@ protected:
 	void MoveDebugFlyUp();
 	
 	void ToggleDebugFly();
+	void Dodge();
 
 	UPROPERTY()
 	AActor* PreviousViewTarget;
@@ -120,6 +123,12 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
+	TObjectPtr<UTinoStateComponent> CharacterStateComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dodge")
+	TObjectPtr<UDodgeComponent> DodgeComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();
