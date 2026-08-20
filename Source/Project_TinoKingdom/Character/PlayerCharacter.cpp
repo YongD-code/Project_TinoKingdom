@@ -429,7 +429,7 @@ void APlayerCharacter::RequestTargeting()
         return;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("Lock On 입력 확인: Aim 모드입니다."));
+    TargetingComponent->TryLockOnFromCrosshair();
 }
 
 void APlayerCharacter::UpdateAimCamera(float DeltaTime)

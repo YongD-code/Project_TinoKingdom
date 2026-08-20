@@ -39,7 +39,10 @@ AEnemyCharacter::AEnemyCharacter()
 	
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("TinoCapsule"));
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+
 }
 
 void AEnemyCharacter::BeginPlay()

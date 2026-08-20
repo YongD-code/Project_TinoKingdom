@@ -17,6 +17,8 @@ class PROJECT_TINOKINGDOM_API UTargetingComponent : public UActorComponent
 
 public:
 	UTargetingComponent();
+	
+	void TryLockOnFromCrosshair();
 
 	UFUNCTION(BlueprintPure, Category = "Targeting")
 	bool IsLockedOn() const { return CurrentTarget.IsValid(); }
@@ -38,4 +40,6 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<USpringArmComponent> CameraBoom = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Targeting", meta = (ClampMin = "0.0", Units = "cm"))
+	float MaxTargetingDistance = 10000.f;
 };
