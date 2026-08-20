@@ -59,6 +59,7 @@ protected:
 	
 	void StartAiming();
 	void StopAiming();
+	void RequestTargeting();
 	void UpdateAimCamera(float DeltaTime);
 
 	UPROPERTY()
@@ -122,6 +123,9 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> AimAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> TargetingAction;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;

@@ -196,6 +196,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &APlayerCharacter::StartAiming);
 	EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopAiming);
 	EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopAiming);
+
+	EnhancedInputComponent->BindAction(TargetingAction, ETriggerEvent::Started, this, &APlayerCharacter::RequestTargeting);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -417,6 +419,17 @@ void APlayerCharacter::StopAiming()
 	{
 		PlayerController->SetCrosshairVisible(false);
 	}
+}
+
+void APlayerCharacter::RequestTargeting()
+{
+	if (!bIsAiming)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Lock On 무시: Aim 모드가 아닙니다."));
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Lock On 입력 확인: Aim 모드입니다."));
 }
 
 void APlayerCharacter::UpdateAimCamera(float DeltaTime)
