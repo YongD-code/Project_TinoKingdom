@@ -56,6 +56,10 @@ protected:
 	
 	void ToggleDebugFly();
 	void Dodge();
+	
+	void StartAiming();
+	void StopAiming();
+	void UpdateAimCamera(float DeltaTime);
 
 	UPROPERTY()
 	AActor* PreviousViewTarget;
@@ -77,6 +81,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<UCameraComponent> FollowCamera;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Aim", meta = (ClampMin = "0.0", Units = "cm"))
+	float AimCameraArmLength = 200.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Aim", meta = (Units = "cm"))
+	FVector AimCameraSocketOffset = FVector(0.0f, 65.0f, 0.0f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Aim", meta = (ClampMin = "5.0", ClampMax = "170.0", Units = "deg"))
+	float AimFieldOfView = 80.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Aim", meta = (ClampMin = "0.0"))
+	float AimCameraInterpSpeed = 10.0f;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> MoveAction;
 
@@ -103,6 +119,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
 	TObjectPtr<UInputAction> ToggleDebugAction;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> AimAction;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
@@ -179,6 +198,13 @@ private:
 	float StaminaDelayTime = 0.0f;
 	
 	bool bDeathHandled = false;
+	
+	bool bIsAiming = false;
+	bool bAimCameraTransition = false;
+
+	float DefaultCameraArmLength = 0.0f;
+	FVector DefaultCameraSocketOffset = FVector::ZeroVector;
+	float DefaultCameraFieldOfView = 90.0f;
 
 private:
 	UFUNCTION()

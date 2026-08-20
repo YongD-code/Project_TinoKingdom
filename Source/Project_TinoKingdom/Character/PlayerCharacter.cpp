@@ -26,6 +26,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
+#include "Project_TinoKingdom/Player/TinoPlayerController.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -84,6 +85,10 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	DefaultCameraArmLength = CameraBoom->TargetArmLength;
+	DefaultCameraSocketOffset = CameraBoom->SocketOffset;
+	DefaultCameraFieldOfView = FollowCamera->FieldOfView;
+	
 	EquipmentComponent->OnEquipmentChanged.AddUniqueDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
 	// EquipmentComponent의 BeginPlay가 먼저 실행됐을 수 있기 때문에 현재 값도 직접 반영
 	if (UEquipmentLoadoutData* CurrentLoadout = EquipmentComponent->GetCurrentLoadout())
@@ -109,6 +114,7 @@ void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
 	StopSlowMotion();
+	StopAiming();
 	
 	if (IsValid(EquipmentComponent))
 	{
@@ -122,7 +128,10 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-
+	if (bAimCameraTransition)
+	{
+		UpdateAimCamera(DeltaTime);
+	}
 	// 달리는 동안 스태미나를 소비하고, 휴식 중에는 지연 후 회복한다.
 	if (StatComponent == nullptr)
 	{
@@ -183,6 +192,10 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
 
 	EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started, this, &APlayerCharacter::Dodge);
+
+	EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &APlayerCharacter::StartAiming);
+	EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopAiming);
+	EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopAiming);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -381,6 +394,101 @@ void APlayerCharacter::Dodge()
 	DodgeComponent->StartDodge(DodgeDirection);
 }
 
+void APlayerCharacter::StartAiming()
+{
+	if (CharacterStateComponent->HasStateTag(TinoGameplayTags::State_Dead))
+	{
+		return;
+	}
+	bIsAiming = true;
+	bAimCameraTransition = true;
+	
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetCrosshairVisible(true);
+	}
+}
+
+void APlayerCharacter::StopAiming()
+{
+	bIsAiming = false;
+	bAimCameraTransition = true;
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetCrosshairVisible(false);
+	}
+}
+
+void APlayerCharacter::UpdateAimCamera(float DeltaTime)
+{
+	const float TargetArmLength =
+		bIsAiming
+			? AimCameraArmLength
+			: DefaultCameraArmLength;
+
+	const FVector TargetSocketOffset =
+		bIsAiming
+			? AimCameraSocketOffset
+			: DefaultCameraSocketOffset;
+
+	const float TargetFieldOfView =
+		bIsAiming
+			? AimFieldOfView
+			: DefaultCameraFieldOfView;
+
+	const float NewArmLength = FMath::FInterpTo(
+		CameraBoom->TargetArmLength,
+		TargetArmLength,
+		DeltaTime,
+		AimCameraInterpSpeed
+	);
+
+	const FVector NewSocketOffset = FMath::VInterpTo(
+		CameraBoom->SocketOffset,
+		TargetSocketOffset,
+		DeltaTime,
+		AimCameraInterpSpeed
+	);
+
+	const float NewFieldOfView = FMath::FInterpTo(
+		FollowCamera->FieldOfView,
+		TargetFieldOfView,
+		DeltaTime,
+		AimCameraInterpSpeed
+	);
+
+	CameraBoom->TargetArmLength = NewArmLength;
+	CameraBoom->SocketOffset = NewSocketOffset;
+	FollowCamera->SetFieldOfView(NewFieldOfView);
+
+	const bool bReachedTarget =
+		FMath::IsNearlyEqual(
+			NewArmLength,
+			TargetArmLength,
+			0.1f
+		)
+		&& NewSocketOffset.Equals(
+			TargetSocketOffset,
+			0.1f
+		)
+		&& FMath::IsNearlyEqual(
+			NewFieldOfView,
+			TargetFieldOfView,
+			0.01f
+		);
+
+	if (bReachedTarget)
+	{
+		// 보간 잔여 오차를 없앤다.
+		CameraBoom->TargetArmLength = TargetArmLength;
+		CameraBoom->SocketOffset = TargetSocketOffset;
+		FollowCamera->SetFieldOfView(TargetFieldOfView);
+
+		// 이후 Tick에서는 UpdateAimCamera를 호출하지 않는다.
+		bAimCameraTransition = false;
+	}
+}
+
 void APlayerCharacter::StartSlowMotion()
 {
 	if (bEquipmentWheelSlowMotionActive)
@@ -423,7 +531,7 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 		return;
 	}
 	bDeathHandled = true;
-	
+	StopAiming();
 	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);
 	// 마찬가지로 사망해도 장비창을 안전하게 닫기
 	CancelEquipmentWheel();

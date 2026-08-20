@@ -7,7 +7,7 @@
 #include "TargetableInterface.generated.h"
 
 // This class does not need to be modified.
-UINTERFACE(MinimalAPI)
+UINTERFACE(BlueprintType)
 class UTargetableInterface : public UInterface
 {
 	GENERATED_BODY()
@@ -20,6 +20,10 @@ class PROJECT_TINOKINGDOM_API ITargetableInterface
 {
 	GENERATED_BODY()
 
-	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Targeting")
+	bool CanBeTargeted() const;
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Targeting")
+	FVector GetLockOnLocation() const;
 };

@@ -7,6 +7,7 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -29,6 +30,8 @@ AEnemyCharacter::AEnemyCharacter()
 	MovementComponent->MaxWalkSpeed = WalkSpeed;
 
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
+	LockOnAnchor = CreateDefaultSubobject<USceneComponent>(TEXT("LockOnAnchor"));
+	LockOnAnchor->SetupAttachment(GetRootComponent());
 	
 	AIControllerClass = AEnemyAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
@@ -451,6 +454,16 @@ void AEnemyCharacter::ApplyKnockbackFrom(AActor* DamageCauser)
 	
 	LaunchCharacter(KnockbackVelocity,true, true);
 		
+}
+
+bool AEnemyCharacter::CanBeTargeted_Implementation() const
+{
+	return !IsDead();
+}
+
+FVector AEnemyCharacter::GetLockOnLocation_Implementation() const
+{
+	return LockOnAnchor->GetComponentLocation();
 }
 
 void AEnemyCharacter::ResetAttackState()

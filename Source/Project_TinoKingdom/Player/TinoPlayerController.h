@@ -13,6 +13,7 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class UTinoPlayerWidget;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
@@ -21,8 +22,9 @@ class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
 	
 public:
 	UFUNCTION(BlueprintPure, Category = "UI")
-	UUserWidget* GetPlayerUIWidget() const { return PlayerUIWidget; }
+	UTinoPlayerWidget* GetPlayerUIWidget() const { return PlayerUIWidget; }
 	
+	void SetCrosshairVisible(bool bVisible);
 protected:
 	virtual void BeginPlay() override;
 	
@@ -31,8 +33,8 @@ protected:
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UUserWidget> PlayerUIClass;
+	TSubclassOf<UTinoPlayerWidget> PlayerUIClass;
 	
 	UPROPERTY()
-	TObjectPtr<UUserWidget> PlayerUIWidget;
+	TObjectPtr<UTinoPlayerWidget> PlayerUIWidget;
 };
