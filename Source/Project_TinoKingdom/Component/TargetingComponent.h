@@ -10,6 +10,8 @@ class USpringArmComponent;
 class AActor;
 class ACharacter;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLockOnTargetChanged, AActor*, PreviousTarget, AActor*, NewTarget);
+
 UCLASS( ClassGroup=(Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UTargetingComponent : public UActorComponent
 {
@@ -19,7 +21,12 @@ public:
 	UTargetingComponent();
 	
 	void TryLockOnFromCrosshair();
-
+	void ClearTarget();
+	
+public:
+	UPROPERTY(BlueprintAssignable, Category = "Targeting")
+	FOnLockOnTargetChanged OnTargetChanged;
+	
 	UFUNCTION(BlueprintPure, Category = "Targeting")
 	bool IsLockedOn() const { return CurrentTarget.IsValid(); }
 
@@ -29,6 +36,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	
+private:
+	void SetTarget(AActor* NewTarget);
 	
 private:
 	UPROPERTY(Transient)

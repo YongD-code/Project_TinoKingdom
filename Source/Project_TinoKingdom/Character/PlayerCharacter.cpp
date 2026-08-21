@@ -545,6 +545,7 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	}
 	bDeathHandled = true;
 	StopAiming();
+	TargetingComponent->ClearTarget();
 	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);
 	// 마찬가지로 사망해도 장비창을 안전하게 닫기
 	CancelEquipmentWheel();

@@ -48,11 +48,27 @@ void UTargetingComponent::TryLockOnFromCrosshair()
 		return;
 	}
 	
-	CurrentTarget = HitActor;
+	if (CurrentTarget.Get() == HitActor)
+	{
+		ClearTarget();
+		return;
+	}
+	SetTarget(HitActor);
 	const FVector LockOnLocation = ITargetableInterface::Execute_GetLockOnLocation(HitActor);
 	
 	DrawDebugSphere(GetWorld(), LockOnLocation, 15.f, 12, FColor::Blue, false, 1.5f);
 	
+}
+
+void UTargetingComponent::ClearTarget()
+{
+	AActor* PreviousTarget = CurrentTarget.Get();
+	if (PreviousTarget == nullptr)
+	{
+		return;
+	}
+	CurrentTarget.Reset();
+	OnTargetChanged.Broadcast(PreviousTarget, nullptr);
 }
 
 void UTargetingComponent::BeginPlay()
@@ -61,4 +77,15 @@ void UTargetingComponent::BeginPlay()
 
 	OwnerCharacter = Cast<ACharacter>(GetOwner());
 	CameraBoom = OwnerCharacter->FindComponentByClass<USpringArmComponent>();
+}
+
+void UTargetingComponent::SetTarget(AActor* NewTarget)
+{
+	AActor* PreviousTarget = CurrentTarget.Get();
+	if (PreviousTarget == NewTarget)
+	{
+		return;
+	}
+	CurrentTarget = NewTarget;
+	OnTargetChanged.Broadcast(PreviousTarget, NewTarget);
 }
