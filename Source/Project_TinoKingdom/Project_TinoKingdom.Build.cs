@@ -16,7 +16,8 @@ public class Project_TinoKingdom : ModuleRules
 			"UMG",
 			"AIModule",
 			"NavigationSystem",
-			"GameplayTags"
+			"GameplayTags",
+			"LevelSequence"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

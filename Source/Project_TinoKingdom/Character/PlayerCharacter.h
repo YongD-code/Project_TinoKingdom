@@ -103,6 +103,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
 	TObjectPtr<UInputAction> ToggleDebugAction;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
+	float InteractionRadius = 300.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction|Debug")
+	bool bDrawInteractionDebug = false;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
 

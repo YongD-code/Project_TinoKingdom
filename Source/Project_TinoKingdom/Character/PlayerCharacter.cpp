@@ -253,44 +253,55 @@ ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
 	}
 	
 	const FVector Center = GetActorLocation();
-	const float Radius = 300.0f;
-	
+
 	TArray<FOverlapResult> Overlaps;
-	
+
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(NPCInterractionCheck), false, this);
 	Params.AddIgnoredActor(this);
-	
+
 	const bool bHit = World->OverlapMultiByObjectType(
 		Overlaps,
 		Center,
 		FQuat::Identity,
 		FCollisionObjectQueryParams(ECC_Pawn),
-		FCollisionShape::MakeSphere(Radius),
+		FCollisionShape::MakeSphere(InteractionRadius),
 		Params
 	);
-	
-	DrawDebugSphere(World, Center, Radius, 24, FColor::Green, false, 1.0f);
-	
+
+	if (bDrawInteractionDebug)
+	{
+		DrawDebugSphere(World, Center, InteractionRadius, 24, FColor::Green, false, 1.0f);
+	}
+
 	if (!bHit)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Nearby NPC 없음"));
 		return nullptr;
 	}
-	
-	for(const FOverlapResult& Result : Overlaps)
+
+	// OverlapMulti는 결과를 거리순으로 정렬해 주지 않으므로 가장 가까운 NPC를 직접 고른다.
+	// 제곱 거리로 비교해 매 비교마다 제곱근을 계산하지 않는다.
+	ATinoNPCCharacter* ClosestNPC = nullptr;
+	float ClosestDistanceSquared = TNumericLimits<float>::Max();
+
+	for (const FOverlapResult& Result : Overlaps)
 	{
 		ATinoNPCCharacter* NPC = Cast<ATinoNPCCharacter>(Result.GetActor());
-		
-		if (NPC)
+
+		if (NPC == nullptr)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Neary NPC 찾음: %s"), *NPC->GetName());
-			return NPC;
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(Center, NPC->GetActorLocation());
+
+		if (DistanceSquared < ClosestDistanceSquared)
+		{
+			ClosestDistanceSquared = DistanceSquared;
+			ClosestNPC = NPC;
 		}
 	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("Overlap은 됐지만 ATinoNPCCharacter가 없음"));
-	return nullptr;
-		
+
+	return ClosestNPC;
 }
 
 void APlayerCharacter::Attack()
