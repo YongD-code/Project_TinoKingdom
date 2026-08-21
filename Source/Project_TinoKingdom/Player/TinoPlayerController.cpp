@@ -6,11 +6,35 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "Blueprint/UserWidget.h"
+#include "Project_TinoKingdom/UI/TinoPlayerWidget.h"
 
+
+void ATinoPlayerController::SetCrosshairVisible(bool bVisible)
+{
+	if (PlayerUIWidget != nullptr)
+	{
+		PlayerUIWidget->SetCrosshairVisible(bVisible);
+	}
+}
+
+void ATinoPlayerController::SetLockOnMarkerTarget(AActor* NewTarget)
+{
+	PlayerUIWidget->SetLockOnMarkerTarget(NewTarget);
+}
 
 void ATinoPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (PlayerUIClass != nullptr)
+	{
+		PlayerUIWidget = CreateWidget<UTinoPlayerWidget>(this,PlayerUIClass);
+
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->AddToViewport();
+		}
+	}
 	
 	if (DefaultMappingContext == nullptr)
 	{
@@ -28,16 +52,6 @@ void ATinoPlayerController::BeginPlay()
 	
 	if (InputSubsystem != nullptr)
 	{
-		InputSubsystem->AddMappingContext(DefaultMappingContext, 0);
-	}
-	
-	if (PlayerUIClass != nullptr)
-	{
-		PlayerUIWidget = CreateWidget<UUserWidget>(this, PlayerUIClass);
-		
-		if (PlayerUIWidget != nullptr)
-		{
-			PlayerUIWidget->AddToViewport();
-		}
+		InputSubsystem->AddMappingContext(DefaultMappingContext,0);
 	}
 }
