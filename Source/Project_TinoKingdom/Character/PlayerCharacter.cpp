@@ -27,6 +27,7 @@
 #include "Engine/OverlapResult.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
+#include "Project_TinoKingdom/Interface/TargetableInterface.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -132,6 +133,10 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (TargetingComponent->IsLockedOn())
+	{
+		UpdateLockOnCamera(DeltaTime);
+	}
 	if (bAimCameraTransition)
 	{
 		UpdateAimCamera(DeltaTime);
@@ -235,6 +240,10 @@ void APlayerCharacter::Move(const FInputActionValue& Value)
 
 void APlayerCharacter::Look(const FInputActionValue& Value)
 {
+	if (TargetingComponent->IsLockedOn())
+	{
+		return;
+	}
 	const FVector2D LookInput = Value.Get<FVector2D>();
 
 	AddControllerYawInput(LookInput.X);
@@ -530,6 +539,21 @@ void APlayerCharacter::UpdateRotationMode()
 	{
 		StopRunning();
 	}
+}
+
+void APlayerCharacter::UpdateLockOnCamera(float DeltaTime)
+{
+	AActor* CurrentTarget = TargetingComponent->GetCurrentTarget();
+	const FVector TargetLocation = ITargetableInterface::Execute_GetLockOnLocation(CurrentTarget);
+	const FVector CameraLocation = FollowCamera->GetComponentLocation();
+	
+	FRotator TargetRotation = (TargetLocation - CameraLocation).Rotation();
+	TargetRotation.Pitch = FMath::Clamp(TargetRotation.Pitch, LockOnCameraMinPitch, LockOnCameraMaxPitch);
+	TargetRotation.Roll = 0.f;
+	
+	const FRotator NewControllRotation = FMath::RInterpTo(
+		Controller->GetControlRotation(), TargetRotation, DeltaTime, LockOnCameraInterpSpeed);
+	Controller->SetControlRotation(NewControllRotation);
 }
 
 void APlayerCharacter::StartSlowMotion()

@@ -64,6 +64,7 @@ protected:
 	
 	bool ShouldUseStrafeMovement() const;
 	void UpdateRotationMode();
+	void UpdateLockOnCamera(float DeltaTime);
 
 	UPROPERTY()
 	AActor* PreviousViewTarget;
@@ -96,6 +97,15 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Aim", meta = (ClampMin = "0.0"))
 	float AimCameraInterpSpeed = 10.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Lock On")
+	float LockOnCameraInterpSpeed = 8.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Lock On")
+	float LockOnCameraMinPitch = -40.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera|Lock On")
+	float LockOnCameraMaxPitch = 45.f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> MoveAction;
