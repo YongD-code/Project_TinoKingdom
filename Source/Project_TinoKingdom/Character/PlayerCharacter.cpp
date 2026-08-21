@@ -98,6 +98,7 @@ void APlayerCharacter::BeginPlay()
 	}
 	
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	UpdateRotationMode();
 	
 	static const FName AnimationBodyTag(TEXT("AnimationBody"));
 	VisibleBodyMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
@@ -242,6 +243,10 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartRunning()
 {
+	if (ShouldUseStrafeMovement())
+	{
+		return;
+	}
 	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Sprint))
 	{
 		return;
@@ -406,6 +411,7 @@ void APlayerCharacter::StartAiming()
 		return;
 	}
 	bIsAiming = true;
+	UpdateRotationMode();
 	bAimCameraTransition = true;
 	
 	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
@@ -417,6 +423,7 @@ void APlayerCharacter::StartAiming()
 void APlayerCharacter::StopAiming()
 {
 	bIsAiming = false;
+	UpdateRotationMode();
 	bAimCameraTransition = true;
 	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
 	{
@@ -505,6 +512,26 @@ void APlayerCharacter::UpdateAimCamera(float DeltaTime)
 	}
 }
 
+bool APlayerCharacter::ShouldUseStrafeMovement() const
+{
+	return bIsAiming || TargetingComponent->IsLockedOn();
+}
+
+void APlayerCharacter::UpdateRotationMode()
+{
+	const bool bUseStrafeMovement = ShouldUseStrafeMovement();
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	
+	bUseControllerRotationYaw = bUseStrafeMovement;
+	MovementComponent->bOrientRotationToMovement = !bUseStrafeMovement;
+	MovementComponent->bUseControllerDesiredRotation = false;
+	
+	if (bUseStrafeMovement)
+	{
+		StopRunning();
+	}
+}
+
 void APlayerCharacter::StartSlowMotion()
 {
 	if (bEquipmentWheelSlowMotionActive)
@@ -565,6 +592,8 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 
 void APlayerCharacter::HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget)
 {
+	UpdateRotationMode();
+	
 	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
 	{
 		PlayerController->SetLockOnMarkerTarget(NewTarget);

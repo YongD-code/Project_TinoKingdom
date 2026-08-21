@@ -61,6 +61,9 @@ protected:
 	void StopAiming();
 	void RequestTargeting();
 	void UpdateAimCamera(float DeltaTime);
+	
+	bool ShouldUseStrafeMovement() const;
+	void UpdateRotationMode();
 
 	UPROPERTY()
 	AActor* PreviousViewTarget;
