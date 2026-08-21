@@ -7,6 +7,7 @@
 #include "TinoPlayerWidget.generated.h"
 
 class UImage;
+class UCanvasPanelSlot;
 class AActor;
 
 UCLASS()
@@ -21,11 +22,19 @@ public:
 protected:
 	virtual void NativeOnInitialized() override;
 	
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> Crosshair;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> LockOnMarker;
+	
+private:
+	void UpdateLockOnMarkerPosition();
+	
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanelSlot> LockOnMarkerSlot;
 	
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> LockOnTarget;

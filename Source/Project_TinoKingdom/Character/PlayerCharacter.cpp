@@ -565,7 +565,7 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 
 void APlayerCharacter::HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget)
 {
-	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetWorld()->GetFirstPlayerController()))
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
 	{
 		PlayerController->SetLockOnMarkerTarget(NewTarget);
 	}
