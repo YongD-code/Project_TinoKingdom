@@ -17,6 +17,11 @@ void ATinoPlayerController::SetCrosshairVisible(bool bVisible)
 	}
 }
 
+void ATinoPlayerController::SetLockOnMarkerTarget(AActor* NewTarget)
+{
+	PlayerUIWidget->SetLockOnMarkerTarget(NewTarget);
+}
+
 void ATinoPlayerController::BeginPlay()
 {
 	Super::BeginPlay();

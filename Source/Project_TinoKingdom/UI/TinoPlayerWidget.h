@@ -7,9 +7,8 @@
 #include "TinoPlayerWidget.generated.h"
 
 class UImage;
-/**
- * 
- */
+class AActor;
+
 UCLASS()
 class PROJECT_TINOKINGDOM_API UTinoPlayerWidget : public UUserWidget
 {
@@ -17,10 +16,17 @@ class PROJECT_TINOKINGDOM_API UTinoPlayerWidget : public UUserWidget
 	
 public:
 	void SetCrosshairVisible(bool bVisible);
+	void SetLockOnMarkerTarget(AActor* NewTarget);
 	
 protected:
 	virtual void NativeOnInitialized() override;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> Crosshair;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> LockOnMarker;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> LockOnTarget;
 };

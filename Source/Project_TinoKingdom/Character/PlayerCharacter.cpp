@@ -89,6 +89,7 @@ void APlayerCharacter::BeginPlay()
 	DefaultCameraSocketOffset = CameraBoom->SocketOffset;
 	DefaultCameraFieldOfView = FollowCamera->FieldOfView;
 	
+	TargetingComponent->OnTargetChanged.AddUniqueDynamic(this, &APlayerCharacter::HandleLockOnTargetChanged);
 	EquipmentComponent->OnEquipmentChanged.AddUniqueDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
 	// EquipmentComponent의 BeginPlay가 먼저 실행됐을 수 있기 때문에 현재 값도 직접 반영
 	if (UEquipmentLoadoutData* CurrentLoadout = EquipmentComponent->GetCurrentLoadout())
@@ -116,6 +117,8 @@ void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	StopSlowMotion();
 	StopAiming();
 	
+	TargetingComponent->ClearTarget();
+	TargetingComponent->OnTargetChanged.RemoveDynamic(this, &APlayerCharacter::HandleLockOnTargetChanged);
 	if (IsValid(EquipmentComponent))
 	{
 		EquipmentComponent->OnEquipmentChanged.RemoveDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
@@ -558,6 +561,14 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	ReactionComponent->PlayDeathReaction(DamageCauser);
+}
+
+void APlayerCharacter::HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget)
+{
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		PlayerController->SetLockOnMarkerTarget(NewTarget);
+	}
 }
 
 float APlayerCharacter::TakeDamage(

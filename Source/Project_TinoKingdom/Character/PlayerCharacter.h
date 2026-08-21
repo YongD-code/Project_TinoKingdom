@@ -216,4 +216,7 @@ private:
 	
 	UFUNCTION()
 	void HandleDeath(AActor* DamageCauser);
+	
+	UFUNCTION()
+	void HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget);
 };

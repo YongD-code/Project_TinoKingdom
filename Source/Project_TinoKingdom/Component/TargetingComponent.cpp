@@ -40,11 +40,13 @@ void UTargetingComponent::TryLockOnFromCrosshair()
 	if (HitActor == nullptr || !HitActor->GetClass()->ImplementsInterface(UTargetableInterface::StaticClass()))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s는 타게팅 가능한 액터가 아님"), *GetNameSafe(HitActor));
+		ClearTarget();
 		return;
 	}
 	if (!ITargetableInterface::Execute_CanBeTargeted(HitActor))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("%s는 현재 타게팅 불가능"), *GetNameSafe(HitActor));
+		ClearTarget();
 		return;
 	}
 	

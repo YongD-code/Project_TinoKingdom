@@ -25,6 +25,8 @@ public:
 	UTinoPlayerWidget* GetPlayerUIWidget() const { return PlayerUIWidget; }
 	
 	void SetCrosshairVisible(bool bVisible);
+	void SetLockOnMarkerTarget(AActor* NewTarget);
+	
 protected:
 	virtual void BeginPlay() override;
 	
