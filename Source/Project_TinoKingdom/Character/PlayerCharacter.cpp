@@ -110,8 +110,7 @@ void APlayerCharacter::BeginPlay()
 	{
 		HandleEquipmentChanged(CurrentLoadout);
 	}
-
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	
 	UpdateRotationMode();
 
 	static const FName AnimationBodyTag(TEXT("AnimationBody"));
@@ -281,14 +280,13 @@ void APlayerCharacter::StartRunning()
 	}
 
 	bRunning = true;
-
-	GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+	UpdateMovementSpeed();
 }
 
 void APlayerCharacter::StopRunning()
 {
 	bRunning = false;
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	UpdateMovementSpeed();
 }
 
 ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
@@ -552,6 +550,23 @@ void APlayerCharacter::UpdateRotationMode()
 	{
 		StopRunning();
 	}
+	else
+	{
+		UpdateMovementSpeed();
+	}
+}
+
+void APlayerCharacter::UpdateMovementSpeed()
+{
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+
+	if (ShouldUseStrafeMovement())
+	{
+		MovementComponent->MaxWalkSpeed = StrafeSpeed;
+		return;
+	}
+
+	MovementComponent->MaxWalkSpeed = bRunning ? RunSpeed : WalkSpeed;
 }
 
 void APlayerCharacter::UpdateLockOnCamera(float DeltaTime)

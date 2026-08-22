@@ -64,6 +64,7 @@ protected:
 
 	bool ShouldUseStrafeMovement() const;
 	void UpdateRotationMode();
+	void UpdateMovementSpeed();
 	void UpdateLockOnCamera(float DeltaTime);
 
 	UPROPERTY()
@@ -166,6 +167,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
+	float StrafeSpeed = 300.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float RunSpeed = 400.f;
