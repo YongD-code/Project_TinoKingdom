@@ -62,6 +62,7 @@ void UTargetingComponent::ClearTarget()
 		return;
 	}
 	CurrentTarget.Reset();
+	SetComponentTickEnabled(false);
 	OnTargetChanged.Broadcast(PreviousTarget, nullptr);
 }
 
@@ -73,6 +74,17 @@ void UTargetingComponent::BeginPlay()
 	CameraBoom = OwnerCharacter->FindComponentByClass<USpringArmComponent>();
 }
 
+void UTargetingComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	if (!IsTargetableActor(CurrentTarget.Get()))
+	{
+		ClearTarget();
+	}
+}
+
 void UTargetingComponent::SetTarget(AActor* NewTarget)
 {
 	AActor* PreviousTarget = CurrentTarget.Get();
@@ -81,6 +93,7 @@ void UTargetingComponent::SetTarget(AActor* NewTarget)
 		return;
 	}
 	CurrentTarget = NewTarget;
+	SetComponentTickEnabled(true);
 	OnTargetChanged.Broadcast(PreviousTarget, NewTarget);
 }
 

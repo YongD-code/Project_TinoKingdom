@@ -47,15 +47,23 @@ APlayerCharacter::APlayerCharacter()
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 350.f;
+
 	CameraBoom->bUsePawnControlRotation = true;
-	
+	CameraBoom->bInheritPitch = true;
+	CameraBoom->bInheritYaw = true;
+	CameraBoom->bInheritRoll = false;
+
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 10.f;
 	CameraBoom->CameraLagMaxDistance = 40.f;
 	CameraBoom->bUseCameraLagSubstepping = true;
+	CameraBoom->bEnableCameraRotationLag = false;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->SetRelativeLocation(FVector(15.082244f, 0.f, 195.552685f));
+	FollowCamera->SetRelativeRotation(FRotator(-23.492965f, 0.f, 0.f));
+	FollowCamera->SetFieldOfView(90.f);
 	FollowCamera->bUsePawnControlRotation = false;
 
 	// 스탯 컴포넌트를 기본 서브오브젝트로 생성한다.
@@ -67,7 +75,7 @@ APlayerCharacter::APlayerCharacter()
 	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
 	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
 	TargetingComponent = CreateDefaultSubobject<UTargetingComponent>(TEXT("TargetingComponent"));
-	
+
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
 	MovementComponent->BrakingDecelerationWalking = 450.f;
@@ -88,8 +96,13 @@ void APlayerCharacter::BeginPlay()
 
 	DefaultCameraArmLength = CameraBoom->TargetArmLength;
 	DefaultCameraSocketOffset = CameraBoom->SocketOffset;
+	DefaultCameraTargetOffset = CameraBoom->TargetOffset;
+	DefaultFollowCameraRelativeLocation = FollowCamera->GetRelativeLocation();
+	DefaultFollowCameraRelativeRotation = FollowCamera->GetRelativeRotation();
 	DefaultCameraFieldOfView = FollowCamera->FieldOfView;
-	
+	DefaultCameraLagSpeed = CameraBoom->CameraLagSpeed;
+	DefaultCameraLagMaxDistance = CameraBoom->CameraLagMaxDistance;
+
 	TargetingComponent->OnTargetChanged.AddUniqueDynamic(this, &APlayerCharacter::HandleLockOnTargetChanged);
 	EquipmentComponent->OnEquipmentChanged.AddUniqueDynamic(this, &APlayerCharacter::HandleEquipmentChanged);
 	// EquipmentComponent의 BeginPlay가 먼저 실행됐을 수 있기 때문에 현재 값도 직접 반영
@@ -97,10 +110,10 @@ void APlayerCharacter::BeginPlay()
 	{
 		HandleEquipmentChanged(CurrentLoadout);
 	}
-	
+
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	UpdateRotationMode();
-	
+
 	static const FName AnimationBodyTag(TEXT("AnimationBody"));
 	VisibleBodyMesh = FindComponentByTag<USkeletalMeshComponent>(AnimationBodyTag);
 
@@ -118,7 +131,7 @@ void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
 	StopSlowMotion();
 	StopAiming();
-	
+
 	TargetingComponent->ClearTarget();
 	TargetingComponent->OnTargetChanged.RemoveDynamic(this, &APlayerCharacter::HandleLockOnTargetChanged);
 	if (IsValid(EquipmentComponent))
@@ -137,9 +150,9 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		UpdateLockOnCamera(DeltaTime);
 	}
-	if (bAimCameraTransition)
+	if (bCameraTransition)
 	{
-		UpdateAimCamera(DeltaTime);
+		UpdateCameraTransition(DeltaTime);
 	}
 	// 달리는 동안 스태미나를 소비하고, 휴식 중에는 지연 후 회복한다.
 	if (StatComponent == nullptr)
@@ -187,17 +200,17 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &APlayerCharacter::MoveDebugFlyUp);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Attack);
-	
+
 	EnhancedInputComponent->BindAction(ToggleInventoryAction,ETriggerEvent::Started,this,&APlayerCharacter::ToggleInventory);
-	
+
 	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
 	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
 	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopRunning);
-	
+
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Started, this, &APlayerCharacter::OpenEquipmentWheel);
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Completed, this, &APlayerCharacter::ConfirmEquipmentWheel);
 	EnhancedInputComponent->BindAction(ToggleEquipmentMenuAction, ETriggerEvent::Canceled, this, &APlayerCharacter::CancelEquipmentWheel);
-	
+
 	EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
 
 	EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started, this, &APlayerCharacter::Dodge);
@@ -285,15 +298,15 @@ ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
 	{
 		return nullptr;
 	}
-	
+
 	const FVector Center = GetActorLocation();
 	const float Radius = 300.0f;
-	
+
 	TArray<FOverlapResult> Overlaps;
-	
+
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(NPCInterractionCheck), false, this);
 	Params.AddIgnoredActor(this);
-	
+
 	const bool bHit = World->OverlapMultiByObjectType(
 		Overlaps,
 		Center,
@@ -302,29 +315,29 @@ ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
 		FCollisionShape::MakeSphere(Radius),
 		Params
 	);
-	
+
 	DrawDebugSphere(World, Center, Radius, 24, FColor::Green, false, 1.0f);
-	
+
 	if (!bHit)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Nearby NPC 없음"));
 		return nullptr;
 	}
-	
+
 	for(const FOverlapResult& Result : Overlaps)
 	{
 		ATinoNPCCharacter* NPC = Cast<ATinoNPCCharacter>(Result.GetActor());
-		
+
 		if (NPC)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Neary NPC 찾음: %s"), *NPC->GetName());
 			return NPC;
 		}
 	}
-	
+
 	UE_LOG(LogTemp, Warning, TEXT("Overlap은 됐지만 ATinoNPCCharacter가 없음"));
 	return nullptr;
-		
+
 }
 
 void APlayerCharacter::Attack()
@@ -406,9 +419,9 @@ void APlayerCharacter::Dodge()
 	{
 		return;
 	}
-	
+
 	FVector DodgeDirection = GetLastMovementInputVector().GetSafeNormal2D();
-	
+
 	StopRunning();
 	DodgeComponent->StartDodge(DodgeDirection);
 }
@@ -421,8 +434,8 @@ void APlayerCharacter::StartAiming()
 	}
 	bIsAiming = true;
 	UpdateRotationMode();
-	bAimCameraTransition = true;
-	
+	bCameraTransition = true;
+
 	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
 	{
 		PlayerController->SetCrosshairVisible(true);
@@ -433,7 +446,7 @@ void APlayerCharacter::StopAiming()
 {
 	bIsAiming = false;
 	UpdateRotationMode();
-	bAimCameraTransition = true;
+	bCameraTransition = true;
 	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
 	{
 		PlayerController->SetCrosshairVisible(false);
@@ -451,74 +464,69 @@ void APlayerCharacter::RequestTargeting()
     TargetingComponent->TryLockOnFromCrosshair();
 }
 
-void APlayerCharacter::UpdateAimCamera(float DeltaTime)
+void APlayerCharacter::UpdateCameraTransition(float DeltaTime)
 {
-	const float TargetArmLength =
-		bIsAiming
-			? AimCameraArmLength
-			: DefaultCameraArmLength;
+	float DesiredArmLength = DefaultCameraArmLength;
+	FVector DesiredSocketOffset = DefaultCameraSocketOffset;
+	FVector DesiredTargetOffset = DefaultCameraTargetOffset;
+	FVector DesiredFollowCameraLocation = DefaultFollowCameraRelativeLocation;
+	FRotator DesiredFollowCameraRotation = DefaultFollowCameraRelativeRotation;
+	float DesiredFieldOfView = DefaultCameraFieldOfView;
 
-	const FVector TargetSocketOffset =
-		bIsAiming
-			? AimCameraSocketOffset
-			: DefaultCameraSocketOffset;
-
-	const float TargetFieldOfView =
-		bIsAiming
-			? AimFieldOfView
-			: DefaultCameraFieldOfView;
+	if (TargetingComponent->IsLockedOn())
+	{
+		DesiredArmLength = LockOnCameraArmLength;
+		DesiredSocketOffset = LockOnCameraSocketOffset;
+		DesiredTargetOffset = LockOnCameraTargetOffset;
+		DesiredFollowCameraLocation = LockOnFollowCameraRelativeLocation;
+		DesiredFollowCameraRotation = LockOnFollowCameraRelativeRotation;
+		DesiredFieldOfView = LockOnFieldOfView;
+	}
+	else if (bIsAiming)
+	{
+		DesiredArmLength = AimCameraArmLength;
+		DesiredSocketOffset = AimCameraSocketOffset;
+		DesiredFieldOfView = AimFieldOfView;
+	}
 
 	const float NewArmLength = FMath::FInterpTo(
-		CameraBoom->TargetArmLength,
-		TargetArmLength,
-		DeltaTime,
-		AimCameraInterpSpeed
-	);
-
+		CameraBoom->TargetArmLength, DesiredArmLength, DeltaTime, AimCameraInterpSpeed);
 	const FVector NewSocketOffset = FMath::VInterpTo(
-		CameraBoom->SocketOffset,
-		TargetSocketOffset,
-		DeltaTime,
-		AimCameraInterpSpeed
-	);
-
+		CameraBoom->SocketOffset, DesiredSocketOffset, DeltaTime, AimCameraInterpSpeed);
+	const FVector NewTargetOffset = FMath::VInterpTo(
+		CameraBoom->TargetOffset, DesiredTargetOffset, DeltaTime, AimCameraInterpSpeed);
+	const FVector NewFollowCameraLocation = FMath::VInterpTo(
+		FollowCamera->GetRelativeLocation(), DesiredFollowCameraLocation, DeltaTime, AimCameraInterpSpeed);
+	const FRotator NewFollowCameraRotation = FMath::RInterpTo(
+		FollowCamera->GetRelativeRotation(), DesiredFollowCameraRotation, DeltaTime, AimCameraInterpSpeed);
 	const float NewFieldOfView = FMath::FInterpTo(
-		FollowCamera->FieldOfView,
-		TargetFieldOfView,
-		DeltaTime,
-		AimCameraInterpSpeed
-	);
+		FollowCamera->FieldOfView, DesiredFieldOfView, DeltaTime, AimCameraInterpSpeed);
 
 	CameraBoom->TargetArmLength = NewArmLength;
 	CameraBoom->SocketOffset = NewSocketOffset;
+	CameraBoom->TargetOffset = NewTargetOffset;
+	FollowCamera->SetRelativeLocationAndRotation(NewFollowCameraLocation, NewFollowCameraRotation);
 	FollowCamera->SetFieldOfView(NewFieldOfView);
 
 	const bool bReachedTarget =
-		FMath::IsNearlyEqual(
-			NewArmLength,
-			TargetArmLength,
-			0.1f
-		)
-		&& NewSocketOffset.Equals(
-			TargetSocketOffset,
-			0.1f
-		)
-		&& FMath::IsNearlyEqual(
-			NewFieldOfView,
-			TargetFieldOfView,
-			0.01f
-		);
+		FMath::IsNearlyEqual(NewArmLength, DesiredArmLength, 0.1f) &&
+		NewSocketOffset.Equals(DesiredSocketOffset, 0.1f) &&
+		NewTargetOffset.Equals(DesiredTargetOffset, 0.1f) &&
+		NewFollowCameraLocation.Equals(DesiredFollowCameraLocation, 0.1f) &&
+		NewFollowCameraRotation.Equals(DesiredFollowCameraRotation, 0.01f) &&
+		FMath::IsNearlyEqual(NewFieldOfView, DesiredFieldOfView, 0.01f);
 
-	if (bReachedTarget)
+	if (!bReachedTarget)
 	{
-		// 보간 잔여 오차를 없앤다.
-		CameraBoom->TargetArmLength = TargetArmLength;
-		CameraBoom->SocketOffset = TargetSocketOffset;
-		FollowCamera->SetFieldOfView(TargetFieldOfView);
-
-		// 이후 Tick에서는 UpdateAimCamera를 호출하지 않는다.
-		bAimCameraTransition = false;
+		return;
 	}
+
+	CameraBoom->TargetArmLength = DesiredArmLength;
+	CameraBoom->SocketOffset = DesiredSocketOffset;
+	CameraBoom->TargetOffset = DesiredTargetOffset;
+	FollowCamera->SetRelativeLocationAndRotation(DesiredFollowCameraLocation, DesiredFollowCameraRotation);
+	FollowCamera->SetFieldOfView(DesiredFieldOfView);
+	bCameraTransition = false;
 }
 
 bool APlayerCharacter::ShouldUseStrafeMovement() const
@@ -530,11 +538,11 @@ void APlayerCharacter::UpdateRotationMode()
 {
 	const bool bUseStrafeMovement = ShouldUseStrafeMovement();
 	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
-	
+
 	bUseControllerRotationYaw = bUseStrafeMovement;
 	MovementComponent->bOrientRotationToMovement = !bUseStrafeMovement;
 	MovementComponent->bUseControllerDesiredRotation = false;
-	
+
 	if (bUseStrafeMovement)
 	{
 		StopRunning();
@@ -546,11 +554,11 @@ void APlayerCharacter::UpdateLockOnCamera(float DeltaTime)
 	AActor* CurrentTarget = TargetingComponent->GetCurrentTarget();
 	const FVector TargetLocation = ITargetableInterface::Execute_GetLockOnLocation(CurrentTarget);
 	const FVector CameraLocation = FollowCamera->GetComponentLocation();
-	
+
 	FRotator TargetRotation = (TargetLocation - CameraLocation).Rotation();
 	TargetRotation.Pitch = FMath::Clamp(TargetRotation.Pitch, LockOnCameraMinPitch, LockOnCameraMaxPitch);
 	TargetRotation.Roll = 0.f;
-	
+
 	const FRotator NewControllRotation = FMath::RInterpTo(
 		Controller->GetControlRotation(), TargetRotation, DeltaTime, LockOnCameraInterpSpeed);
 	Controller->SetControlRotation(NewControllRotation);
@@ -564,7 +572,7 @@ void APlayerCharacter::StartSlowMotion()
 	}
 	SavedGlobalTimeDilation = UGameplayStatics::GetGlobalTimeDilation(this);
 	UGameplayStatics::SetGlobalTimeDilation(this, TimeDilation);
-	
+
 	bEquipmentWheelSlowMotionActive = true;
 }
 
@@ -575,7 +583,7 @@ void APlayerCharacter::StopSlowMotion()
 		return;
 	}
 	UGameplayStatics::SetGlobalTimeDilation(this, SavedGlobalTimeDilation);
-	
+
 	bEquipmentWheelSlowMotionActive = false;
 	SavedGlobalTimeDilation = 1.f;
 }
@@ -584,7 +592,7 @@ void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
 {
 	// 공격 도중 장비가 변경되면 공격 데이터와 로드아웃 외형 & 콤보 공격 몽타주가 섞이지 않도록
 	CombatComponent->CancelAttack();
-	
+
 	CombatComponent->SetEquippedAttackData(NewLoadout->AttackData.Get());
 	CombatComponent->SetEquipmentWeaponActors(EquipmentComponent->GetRightHandEquipmentActor(),
 		EquipmentComponent->GetLeftHandEquipmentActor());
@@ -604,20 +612,25 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	// 마찬가지로 사망해도 장비창을 안전하게 닫기
 	CancelEquipmentWheel();
 	StopSlowMotion();
-	
+
 	StopRunning();
 	CombatComponent->CancelAttack();
 	DodgeComponent->CancelDodge();
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	
+
 	ReactionComponent->PlayDeathReaction(DamageCauser);
 }
 
 void APlayerCharacter::HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget)
 {
 	UpdateRotationMode();
-	
+	bCameraTransition = true;
+
+	const bool bLockedOn = NewTarget != nullptr;
+	CameraBoom->CameraLagSpeed = bLockedOn ? LockOnCameraLagSpeed : DefaultCameraLagSpeed;
+	CameraBoom->CameraLagMaxDistance = bLockedOn ? LockOnCameraLagMaxDistance : DefaultCameraLagMaxDistance;
+
 	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
 	{
 		PlayerController->SetLockOnMarkerTarget(NewTarget);
@@ -636,7 +649,7 @@ float APlayerCharacter::TakeDamage(
 		return 0.f;
 	}
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	
+
 	if (StatComponent != nullptr)
 	{
 		StatComponent->ApplyDamage(DamageAmount);
@@ -653,6 +666,6 @@ float APlayerCharacter::TakeDamage(
 		DodgeComponent->CancelDodge();
 		ReactionComponent->PlayHitReaction(DamageCauser);
 	}
-	
+
 	return AppliedDamage;
 }
