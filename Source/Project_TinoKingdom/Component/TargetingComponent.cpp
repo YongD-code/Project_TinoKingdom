@@ -39,12 +39,6 @@ void UTargetingComponent::TryLockOnFromCrosshair()
 	}
 	if (SelectedTarget == nullptr)
 	{
-		ClearTarget();
-		return;
-	}
-	if (CurrentTarget.Get() == SelectedTarget)
-	{
-		ClearTarget();
 		return;
 	}
 
@@ -56,12 +50,14 @@ void UTargetingComponent::TryLockOnFromCrosshair()
 
 void UTargetingComponent::ClearTarget()
 {
-	AActor* PreviousTarget = CurrentTarget.Get();
-	if (PreviousTarget == nullptr)
+	if (CurrentTarget.IsExplicitlyNull())
 	{
 		return;
 	}
+	AActor* PreviousTarget = CurrentTarget.Get();
+	
 	CurrentTarget.Reset();
+	SetComponentTickEnabled(false);
 	OnTargetChanged.Broadcast(PreviousTarget, nullptr);
 }
 
@@ -73,6 +69,26 @@ void UTargetingComponent::BeginPlay()
 	CameraBoom = OwnerCharacter->FindComponentByClass<USpringArmComponent>();
 }
 
+void UTargetingComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	if (!IsTargetableActor(CurrentTarget.Get()))
+	{
+		ClearTarget();
+		return;
+	}
+	
+	const float Distance = FVector::DistSquared(
+		OwnerCharacter->GetActorLocation(), 
+		CurrentTarget.Get()->GetActorLocation());
+	if (Distance > FMath::Square(MaxTargetingDistance))
+	{
+		ClearTarget();
+	}
+}
+
 void UTargetingComponent::SetTarget(AActor* NewTarget)
 {
 	AActor* PreviousTarget = CurrentTarget.Get();
@@ -81,6 +97,7 @@ void UTargetingComponent::SetTarget(AActor* NewTarget)
 		return;
 	}
 	CurrentTarget = NewTarget;
+	SetComponentTickEnabled(true);
 	OnTargetChanged.Broadcast(PreviousTarget, NewTarget);
 }
 

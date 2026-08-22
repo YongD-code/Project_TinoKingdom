@@ -72,6 +72,20 @@ void UTinoAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		GroundSpeed = Velocity.Size2D();
 		bIsIdle = GroundSpeed < MovingSpeedThreshold;
 		
+		bIsStrafing = !MovementComponent->bOrientRotationToMovement;
+		if (bIsStrafing && !bIsIdle)
+		{
+			FVector HorizontalVelocity = Velocity;
+			HorizontalVelocity.Z = 0.f;
+			
+			const FVector LocalVelocity = OwnerCharacter->GetActorTransform().InverseTransformVectorNoScale(HorizontalVelocity);
+			MovementDirection = FMath::RadiansToDegrees(
+				FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
+		}
+		else
+		{
+			MovementDirection = 0.f;
+		}
 		const bool bIsInAir = MovementComponent->IsFalling();
 		bIsJumping = bIsInAir && (Velocity.Z > JumpingSpeedThreshold);
 		bIsFalling = bIsInAir && !bIsJumping;
