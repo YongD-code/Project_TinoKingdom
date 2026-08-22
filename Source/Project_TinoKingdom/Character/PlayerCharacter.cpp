@@ -455,6 +455,11 @@ void APlayerCharacter::StopAiming()
 
 void APlayerCharacter::RequestTargeting()
 {
+	if (TargetingComponent->IsLockedOn())
+	{
+		TargetingComponent->ClearTarget();
+		return;
+	}
 	if (!bIsAiming)
     {
         UE_LOG(LogTemp, Warning, TEXT("Lock On 무시: Aim 모드가 아닙니다."));
