@@ -18,7 +18,7 @@ class PROJECT_TINOKINGDOM_API UDodgeComponent : public UActorComponent
 public:	
 	UDodgeComponent();
 	
-	void StartDodge(const FVector& DodgeDirection);
+	void StartDodge(const FVector& DodgeDirection, bool bUseStrafeDodge);
 	void CancelDodge();
 	
 	void BeginInvincibilityWindow();
@@ -28,6 +28,7 @@ protected:
 	virtual void BeginPlay() override;
 	
 private:
+	FName SelectStrafeDodgeSection(const FVector& DodgeDirection);
 	void FinishDodge();
 	
 	void OnDodgeMontageEnded(UAnimMontage* Montage, bool bInterrupted);
@@ -35,6 +36,9 @@ private:
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dodge", meta = (AllowPrivateAccess = true))
 	TObjectPtr<UAnimMontage> DodgeMontage;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Dodge")
+	TObjectPtr<UAnimMontage> StrafeDodgeMontage;
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimMontage> ActiveDodgeMontage;

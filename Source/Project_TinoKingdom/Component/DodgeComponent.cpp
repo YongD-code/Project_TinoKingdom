@@ -11,13 +11,20 @@
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 
+namespace DodgeSections
+{
+	const FName Forward(TEXT("Forward"));
+	const FName Backward(TEXT("Backward"));
+	const FName Left(TEXT("Left"));
+	const FName Right(TEXT("Right"));
+}
 // Sets default values for this component's properties
 UDodgeComponent::UDodgeComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UDodgeComponent::StartDodge(const FVector& DodgeDirection)
+void UDodgeComponent::StartDodge(const FVector& DodgeDirection, bool bUseStrafeDodge)
 {
 	if (ActiveDodgeMontage != nullptr)
 	{
@@ -25,20 +32,32 @@ void UDodgeComponent::StartDodge(const FVector& DodgeDirection)
 	}
 	
 	FVector NormalizedDirection = DodgeDirection.GetSafeNormal2D();
-
-	OwnerCharacter->SetActorRotation(NormalizedDirection.Rotation());
+	if (!bUseStrafeDodge)
+	{
+		OwnerCharacter->SetActorRotation(NormalizedDirection.Rotation());
+	}
 	OwnerCharacter->ConsumeMovementInputVector();
 	OwnerCharacter->GetCharacterMovement()->StopMovementImmediately();
 	
-	ActiveDodgeMontage = DodgeMontage;
+	ActiveDodgeMontage = bUseStrafeDodge ? StrafeDodgeMontage : DodgeMontage;
+	const FName SelectedSection = bUseStrafeDodge ? SelectStrafeDodgeSection(NormalizedDirection) : NAME_None;
 	StateComponent->AddStateTag(TinoGameplayTags::State_Action_Dodging);
 	
 	UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance();
-	AnimInstance->Montage_Play(ActiveDodgeMontage);
+	if (AnimInstance->Montage_Play(ActiveDodgeMontage) <= 0.f)
+	{
+		FinishDodge();
+		return;
+	}
+	
+	if (bUseStrafeDodge)
+	{
+		AnimInstance->Montage_SetNextSection(SelectedSection, NAME_None, ActiveDodgeMontage);
+		AnimInstance->Montage_JumpToSection(SelectedSection, ActiveDodgeMontage);
+	}
 	
 	FOnMontageEnded MontageEndedDelegate;
 	MontageEndedDelegate.BindUObject(this, &UDodgeComponent::OnDodgeMontageEnded);
-	
 	AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, ActiveDodgeMontage);
 }
 
@@ -93,6 +112,16 @@ void UDodgeComponent::BeginPlay()
 	OwnerCharacter = Cast<ACharacter>(GetOwner());
 	AnimationMesh = OwnerCharacter->GetMesh();
 	StateComponent = OwnerCharacter->FindComponentByClass<UTinoStateComponent>();
+}
+
+FName UDodgeComponent::SelectStrafeDodgeSection(const FVector& DodgeDirection)
+{
+	const FVector LocalDirection = OwnerCharacter->GetActorTransform().InverseTransformVectorNoScale(DodgeDirection);
+	if (FMath::Abs(LocalDirection.X) >= FMath::Abs(LocalDirection.Y))
+	{
+		return LocalDirection.X >= 0.f ? DodgeSections::Forward : DodgeSections::Backward;
+	}
+	return LocalDirection.Y >= 0.f ? DodgeSections::Right : DodgeSections::Left;
 }
 
 // 정상 종료와 강제적으로 발생한 외부 종료에 공통으로 사용
