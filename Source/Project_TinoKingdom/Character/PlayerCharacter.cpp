@@ -418,10 +418,15 @@ void APlayerCharacter::Dodge()
 		return;
 	}
 
-	FVector DodgeDirection = GetLastMovementInputVector().GetSafeNormal2D();
+	FVector DodgeDirection = GetPendingMovementInputVector();
+	if (DodgeDirection.IsNearlyZero())
+	{
+		DodgeDirection = GetLastMovementInputVector();
+	}
+	const bool bUseStrafeDodge = ShouldUseStrafeMovement();
 
 	StopRunning();
-	DodgeComponent->StartDodge(DodgeDirection);
+	DodgeComponent->StartDodge(DodgeDirection, bUseStrafeDodge);
 }
 
 void APlayerCharacter::StartAiming()
