@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Types/CookingTypes.h"
 #include "CookingComponent.generated.h"
+
+struct FInventoryItemStack;
 
 UCLASS(ClassGroup=(Tino), meta=(BlueprintSpawnableComponent))
 class PROJECT_TINOKINGDOM_API UCookingComponent : public UActorComponent

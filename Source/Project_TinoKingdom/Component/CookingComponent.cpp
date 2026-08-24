@@ -1,4 +1,9 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+
 #include "CookingComponent.h"
+#include "Project_TinoKingdom/Component/InventoryComponent.h"
 
 UCookingComponent::UCookingComponent()
 {
