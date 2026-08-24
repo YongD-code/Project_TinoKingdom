@@ -10,6 +10,7 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameplayEffect.h"
 #include "InputActionValue.h"
 #include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
@@ -105,12 +106,31 @@ void APlayerCharacter::BeginPlay()
 
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	const UTinoAttributeSet* RegisteredAttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
-	
-	ensureMsgf(RegisteredAttributeSet != nullptr,
-		TEXT("TinoAttributeSet이 ASC에 등록되지 않았습니다."));
 
-	UE_LOG(LogTemp, Log, TEXT("GAS 초기화 완료: Health %.1f / %.1f"), 
-		AttributeSet->GetHealth(),AttributeSet->GetMaxHealth());
+	const bool bAttributeSetRegistered = ensureMsgf(
+		RegisteredAttributeSet == AttributeSet,
+		TEXT("TinoAttributeSet이 ASC에 올바르게 등록되지 않았습니다.")
+	);
+	
+	if (bAttributeSetRegistered && InitializeDefaultAttributes())
+	{
+		UE_LOG(
+			LogTemp,
+			Log,
+			TEXT(
+				"GAS 초기화 완료: "
+				"Health %.1f / %.1f, "
+				"Stamina %.1f / %.1f, "
+				"Attack %.1f, Defense %.1f"
+			),
+			AttributeSet->GetHealth(),
+			AttributeSet->GetMaxHealth(),
+			AttributeSet->GetStamina(),
+			AttributeSet->GetMaxStamina(),
+			AttributeSet->GetAttackPower(),
+			AttributeSet->GetDefense()
+		);
+	}
 	
 	DefaultCameraArmLength = CameraBoom->TargetArmLength;
 	DefaultCameraSocketOffset = CameraBoom->SocketOffset;
@@ -629,6 +649,50 @@ void APlayerCharacter::StopSlowMotion()
 
 	bEquipmentWheelSlowMotionActive = false;
 	SavedGlobalTimeDilation = 1.f;
+}
+
+bool APlayerCharacter::InitializeDefaultAttributes()
+{
+	if (!ensureMsgf(
+		AbilitySystemComponent != nullptr,
+		TEXT("AbilitySystemComponent가 없습니다.")
+	))
+	{
+		return false;
+	}
+	if (!ensureMsgf(
+		AttributeSet != nullptr,
+		TEXT("TinoAttributeSet이 없습니다.")
+	))
+	{
+		return false;
+	}
+	if (!ensureMsgf(
+		DefaultAttributesEffect != nullptr,
+		TEXT("DefaultAttributesEffect가 지정되지 않았습니다.")
+	))
+	{
+		return false;
+	}
+
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	const FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		DefaultAttributesEffect, 1.f, EffectContext);
+	
+	if (!ensureMsgf(
+		EffectSpecHandle.IsValid(),
+		TEXT("기본 능력치 Gameplay Effect Spec 생성에 실패했습니다.")
+	))
+	{
+		return false;
+	}
+	
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
+	
+	return true;
 }
 
 void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)

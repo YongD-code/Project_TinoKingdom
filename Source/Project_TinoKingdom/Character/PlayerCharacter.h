@@ -9,6 +9,7 @@
 #include "AbilitySystemInterface.h"
 #include "PlayerCharacter.generated.h"
 
+class UGameplayEffect;
 class UTinoAttributeSet;
 class UAbilitySystemComponent;
 class UTargetingComponent;
@@ -96,6 +97,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
 	TObjectPtr<UTinoAttributeSet> AttributeSet;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -273,6 +277,8 @@ private:
 	float DefaultCameraLagMaxDistance = 40.f;
 
 private:
+	bool InitializeDefaultAttributes();
+	
 	UFUNCTION()
 	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
 
