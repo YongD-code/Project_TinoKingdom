@@ -3,6 +3,8 @@
 
 #include "TinoAttributeSet.h"
 
+#include "GameplayEffectExtension.h"
+
 UTinoAttributeSet::UTinoAttributeSet()
 {
 	
@@ -31,6 +33,26 @@ void UTinoAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute,
 	{
 		SetStamina(NewValue);
 	}
+}
+
+void UTinoAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)
+{
+	Super::PostGameplayEffectExecute(Data);
+	
+	if (Data.EvaluatedData.Attribute != GetIncomingDamageAttribute())
+	{
+		return;
+	}
+	
+	const float Damage = FMath::Max(GetIncomingDamage(), 0.f);
+	SetIncomingDamage(0.f);
+	if (Damage <= 0.f || GetHealth() <= 0.f)
+	{
+		return;
+	}
+	
+	const float FinalDamage = FMath::Max(Damage - GetDefense(), 1.f);
+	SetHealth(GetHealth() - FinalDamage);
 }
 
 void UTinoAttributeSet::ClampAttributeValue(const FGameplayAttribute& Attribute, float& NewValue) const

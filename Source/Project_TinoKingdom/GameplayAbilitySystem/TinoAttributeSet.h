@@ -7,6 +7,8 @@
 #include "AbilitySystemComponent.h"
 #include "TinoAttributeSet.generated.h"
 
+struct FGameplayEffectModCallbackData;
+
 UCLASS()
 class PROJECT_TINOKINGDOM_API UTinoAttributeSet : public UAttributeSet
 {
@@ -21,6 +23,8 @@ public:
 	
 	virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
 	
+	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
+	
 	ATTRIBUTE_ACCESSORS_BASIC(UTinoAttributeSet, Health)
 	ATTRIBUTE_ACCESSORS_BASIC(UTinoAttributeSet, MaxHealth)
 	
@@ -29,6 +33,8 @@ public:
 	
 	ATTRIBUTE_ACCESSORS_BASIC(UTinoAttributeSet, AttackPower)
 	ATTRIBUTE_ACCESSORS_BASIC(UTinoAttributeSet, Defense)
+	
+	ATTRIBUTE_ACCESSORS_BASIC(UTinoAttributeSet, IncomingDamage)
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Health")
@@ -48,6 +54,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
 	FGameplayAttributeData Defense;
+	
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Attributes|Meta")
+	FGameplayAttributeData IncomingDamage;
 	
 private:
 	void ClampAttributeValue(const FGameplayAttribute& Attribute, float& NewValue) const;
