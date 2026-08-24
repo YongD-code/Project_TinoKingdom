@@ -15,6 +15,12 @@ class PROJECT_TINOKINGDOM_API UTinoAttributeSet : public UAttributeSet
 public:
 	UTinoAttributeSet();
 	
+	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
+	
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+	
+	virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
+	
 	ATTRIBUTE_ACCESSORS_BASIC(UTinoAttributeSet, Health)
 	ATTRIBUTE_ACCESSORS_BASIC(UTinoAttributeSet, MaxHealth)
 	
@@ -42,4 +48,7 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes|Combat")
 	FGameplayAttributeData Defense;
+	
+private:
+	void ClampAttributeValue(const FGameplayAttribute& Attribute, float& NewValue) const;
 };
