@@ -13,7 +13,17 @@ UInventoryComponent::UInventoryComponent()
 	// ...
 }
 
-void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count, UTexture2D* Icon)
+void UInventoryComponent::AddItem(
+	FName ItemId,
+	FText DisplayName,
+	int32 Count,
+	UTexture2D* Icon,
+	EInventoryItemType ItemType,
+	ECookingTag CookingTag,
+	EFoodEffectType FoodEffectType,
+	float CookingPower,
+	const FCookingResultData& FoodResultData
+)
 {
 	if (ItemId.IsNone() || Count <= 0)
 	{
@@ -31,6 +41,12 @@ void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count, 
 				ItemStack.Icon = Icon;
 			}
 			
+			ItemStack.ItemType = ItemType;
+			ItemStack.CookingTag = CookingTag;
+			ItemStack.FoodEffectType = FoodEffectType;
+			ItemStack.CookingPower = CookingPower;
+			ItemStack.FoodResultData = FoodResultData;
+			
 			OnItemAdded.Broadcast(ItemStack, Count);
 			return;
 		}
@@ -41,6 +57,11 @@ void UInventoryComponent::AddItem(FName ItemId, FText DisplayName, int32 Count, 
 	NewStack.DisplayName = DisplayName;
 	NewStack.Count = Count;
 	NewStack.Icon = Icon;
+	NewStack.ItemType = ItemType;
+	NewStack.CookingTag = CookingTag;
+	NewStack.FoodEffectType = FoodEffectType;
+	NewStack.CookingPower = CookingPower;
+	NewStack.FoodResultData = FoodResultData;
 	
 	Items.Add(NewStack);
 	OnItemAdded.Broadcast(NewStack, Count);
