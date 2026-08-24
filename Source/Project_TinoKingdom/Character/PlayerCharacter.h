@@ -6,8 +6,11 @@
 #include "GameFramework/Character.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Camera/CameraComponent.h"
+#include "AbilitySystemInterface.h"
 #include "PlayerCharacter.generated.h"
 
+class UTinoAttributeSet;
+class UAbilitySystemComponent;
 class UTargetingComponent;
 class UDodgeComponent;
 class UReactionComponent;
@@ -22,16 +25,23 @@ class UEquipmentLoadoutData;
 class UInventoryComponent;
 class ATinoNPCCharacter;
 class UTinoStateComponent;
+class UTinoAbilitySystemComponent;
 struct FInputActionValue;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter
+class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	APlayerCharacter();
 
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+	UTinoAbilitySystemComponent* GetTinoAbilitySystemComponent() const { return AbilitySystemComponent; }
+	
+	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 		class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -81,6 +91,12 @@ public:
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAttributeSet> AttributeSet;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
 

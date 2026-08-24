@@ -26,6 +26,8 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 
@@ -67,6 +69,8 @@ APlayerCharacter::APlayerCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	// 스탯 컴포넌트를 기본 서브오브젝트로 생성한다.
+	AbilitySystemComponent = CreateDefaultSubobject<UTinoAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AttributeSet = CreateDefaultSubobject<UTinoAttributeSet>(TEXT("AttributeSet"));
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
@@ -89,11 +93,25 @@ APlayerCharacter::APlayerCharacter()
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("TinoCapsule"));
 }
 
+UAbilitySystemComponent* APlayerCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
 // Called when the game starts or when spawned
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	const UTinoAttributeSet* RegisteredAttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+	
+	ensureMsgf(RegisteredAttributeSet != nullptr,
+		TEXT("TinoAttributeSet이 ASC에 등록되지 않았습니다."));
+
+	UE_LOG(LogTemp, Log, TEXT("GAS 초기화 완료: Health %.1f / %.1f"), 
+		AttributeSet->GetHealth(),AttributeSet->GetMaxHealth());
+	
 	DefaultCameraArmLength = CameraBoom->TargetArmLength;
 	DefaultCameraSocketOffset = CameraBoom->SocketOffset;
 	DefaultCameraTargetOffset = CameraBoom->TargetOffset;
