@@ -20,10 +20,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	FCookingResultData MakeCookingResult(const TArray<FInventoryItemStack>& Ingredients) const;
 
+	UFUNCTION(BlueprintCallable, Category="Cooking")
+	bool AddCookingIngredient(const FInventoryItemStack& Ingredient);
+
+	UFUNCTION(BlueprintCallable, Category="Cooking")
+	void RemoveCookingIngredientAt(int32 Index);
+
+	UFUNCTION(BlueprintCallable, Category="Cooking")
+	void ClearCookingIngredients();
+
+	UFUNCTION(BlueprintPure, Category="Cooking")
+	const TArray<FInventoryItemStack>& GetSelectedIngredients() const;
+	
+	
 protected:
 	virtual void BeginPlay() override;
 
 private:
+	UPROPERTY(BlueprintReadOnly, Category="Cooking", meta=(AllowPrivateAccess="true"))
+	TArray<FInventoryItemStack> SelectedIngredients;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Cooking", meta=(AllowPrivateAccess="true"))
+	int32 MaxIngredientCount = 4;
+	
 	ECookingTag FindMainTag(const TMap<ECookingTag, float>& TagRatios) const;
 	ECookingTag FindSubTag(const TMap<ECookingTag, float>& TagRatios, ECookingTag MainTag) const;
 
@@ -53,3 +72,4 @@ private:
 	FText GetTagDisplayName(ECookingTag Tag) const;
 	FText GetResultTypeDisplayName(ECookingResultType ResultType) const;
 };
+

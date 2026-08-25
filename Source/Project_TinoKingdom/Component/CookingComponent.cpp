@@ -355,3 +355,41 @@ FText UCookingComponent::GetResultTypeDisplayName(ECookingResultType ResultType)
 	}
 }
 
+bool UCookingComponent::AddCookingIngredient(const FInventoryItemStack& Ingredient)
+{
+	if (SelectedIngredients.Num() >= MaxIngredientCount)
+	{
+		return false;
+	}
+
+	if (Ingredient.Count <= 0)
+	{
+		return false;
+	}
+
+	if (Ingredient.ItemType != EInventoryItemType::Material)
+	{
+		return false;
+	}
+
+	SelectedIngredients.Add(Ingredient);
+	return true;
+}
+
+void UCookingComponent::RemoveCookingIngredientAt(int32 Index)
+{
+	if (SelectedIngredients.IsValidIndex(Index))
+	{
+		SelectedIngredients.RemoveAt(Index);
+	}
+}
+
+void UCookingComponent::ClearCookingIngredients()
+{
+	SelectedIngredients.Empty();
+}
+
+const TArray<FInventoryItemStack>& UCookingComponent::GetSelectedIngredients() const
+{
+	return SelectedIngredients;
+}
