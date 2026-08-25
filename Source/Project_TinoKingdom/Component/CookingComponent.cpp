@@ -68,19 +68,12 @@ FCookingResultData UCookingComponent::MakeCookingResult(const TArray<FInventoryI
 	const ECookingTag SubTag = FindSubTag(TagRatios, MainTag);
 
 	Result.ResultType = GetResultTypeByMainTag(MainTag);
-	Result.Quality = CalculateQuality(Ingredients, TagRatios);
+	Result.Quality = ECookingQuality::Normal;
 
 	Result.HealAmount = TagRatios.FindRef(ECookingTag::Fish) * 40.0f;
 	Result.StaminaAmount = TagRatios.FindRef(ECookingTag::Slime) * 40.0f;
 	Result.DefenseBuffAmount = TagRatios.FindRef(ECookingTag::Mushroom) * 10.0f;
 	Result.AttackBuffAmount = TagRatios.FindRef(ECookingTag::Meat) * 10.0f;
-
-	const float QualityMultiplier = GetQualityMultiplier(Result.Quality);
-
-	Result.HealAmount *= QualityMultiplier;
-	Result.StaminaAmount *= QualityMultiplier;
-	Result.DefenseBuffAmount *= QualityMultiplier;
-	Result.AttackBuffAmount *= QualityMultiplier;
 
 	Result.ResultName = MakeResultName(MainTag, SubTag, Result.ResultType, Result.Quality);
 	Result.ResultItemId = MakeResultItemId(MainTag, SubTag, Result.ResultType, Result.Quality);
@@ -204,49 +197,6 @@ ECookingQuality UCookingComponent::GetQualityByMinigameScore(float MinigameScore
 	}
 
 	if (ClampedScore < 90.0f)
-	{
-		return ECookingQuality::Good;
-	}
-
-	return ECookingQuality::Special;
-}
-
-ECookingQuality UCookingComponent::CalculateQuality(
-	const TArray<FInventoryItemStack>& Ingredients,
-	const TMap<ECookingTag, float>& TagRatios
-) const
-{
-	float Score = 50.0f;
-
-	const float MainRatio = TagRatios.FindRef(FindMainTag(TagRatios));
-	Score += MainRatio * 30.0f;
-
-	if (TagRatios.Contains(ECookingTag::Herb))
-	{
-		Score += 10.0f;
-	}
-
-	if (TagRatios.Contains(ECookingTag::Wood))
-	{
-		Score -= 35.0f;
-	}
-
-	if (Ingredients.Num() >= 3)
-	{
-		Score += 10.0f;
-	}
-
-	if (Score < 40.0f)
-	{
-		return ECookingQuality::Failed;
-	}
-
-	if (Score < 70.0f)
-	{
-		return ECookingQuality::Normal;
-	}
-
-	if (Score < 90.0f)
 	{
 		return ECookingQuality::Good;
 	}
@@ -394,7 +344,10 @@ bool UCookingComponent::AddCookingIngredient(const FInventoryItemStack& Ingredie
 		return false;
 	}
 
-	SelectedIngredients.Add(Ingredient);
+	FInventoryItemStack IngredientToAdd = Ingredient;
+	IngredientToAdd.Count = 1;
+
+	SelectedIngredients.Add(IngredientToAdd);
 	return true;
 }
 
@@ -414,4 +367,42 @@ void UCookingComponent::ClearCookingIngredients()
 const TArray<FInventoryItemStack>& UCookingComponent::GetSelectedIngredients() const
 {
 	return SelectedIngredients;
+}
+
+FCookingResultData UCookingComponent::FinishCooking(float MinigameScore)
+{
+	FCookingResultData Result = MakeCookingResult(SelectedIngredients);
+
+	if (Result.ResultType == ECookingResultType::Failed)
+	{
+		return Result;
+	}
+
+	Result.Quality = GetQualityByMinigameScore(MinigameScore);
+
+	const float QualityMultiplier = GetQualityMultiplier(Result.Quality);
+
+	Result.HealAmount *= QualityMultiplier;
+	Result.StaminaAmount *= QualityMultiplier;
+	Result.AttackBuffAmount *= QualityMultiplier;
+	Result.DefenseBuffAmount *= QualityMultiplier;
+
+	const ECookingTag MainTag = Result.IconData.MainTag;
+	const ECookingTag SubTag = Result.IconData.SubTag;
+
+	Result.ResultName = MakeResultName(
+		MainTag,
+		SubTag,
+		Result.ResultType,
+		Result.Quality
+	);
+
+	Result.ResultItemId = MakeResultItemId(
+		MainTag,
+		SubTag,
+		Result.ResultType,
+		Result.Quality
+	);
+
+	return Result;
 }

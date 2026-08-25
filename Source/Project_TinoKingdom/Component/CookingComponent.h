@@ -5,9 +5,8 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Project_TinoKingdom/Types/CookingTypes.h"
+#include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "CookingComponent.generated.h"
-
-struct FInventoryItemStack;
 
 UCLASS(ClassGroup=(Tino), meta=(BlueprintSpawnableComponent))
 class PROJECT_TINOKINGDOM_API UCookingComponent : public UActorComponent
@@ -35,6 +34,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	ECookingQuality GetQualityByMinigameScore(float MinigameScore) const;
 	
+	UFUNCTION(BlueprintCallable, Category = "Cooking")
+	FCookingResultData FinishCooking(float MinigameScore);
 	
 protected:
 	virtual void BeginPlay() override;
@@ -51,11 +52,6 @@ private:
 
 	ECookingResultType GetResultTypeByMainTag(ECookingTag MainTag) const;
 	FLinearColor GetBaseTintByMainTag(ECookingTag MainTag) const;
-
-	ECookingQuality CalculateQuality(
-		const TArray<FInventoryItemStack>& Ingredients,
-		const TMap<ECookingTag, float>& TagRatios
-	) const;
 
 	FText MakeResultName(
 		ECookingTag MainTag,
