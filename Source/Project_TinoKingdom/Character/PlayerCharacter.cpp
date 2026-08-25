@@ -22,6 +22,7 @@
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/Component/DodgeComponent.h"
+#include "Project_TinoKingdom/Component/DialogueComponent.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
@@ -63,6 +64,7 @@ APlayerCharacter::APlayerCharacter()
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
 	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
 	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
+	DialogueComponent = CreateDefaultSubobject<UDialogueComponent>(TEXT("DialogueComponent"));
 	
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
@@ -181,6 +183,50 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(ToggleDebugAction, ETriggerEvent::Started, this, &APlayerCharacter::ToggleDebugFly);
 
 	EnhancedInputComponent->BindAction(DodgeAction, ETriggerEvent::Started, this, &APlayerCharacter::Dodge);
+
+	// 대화 시작은 기본 컨텍스트에, 진행과 취소는 대화 컨텍스트에 매핑되어 있다.
+	EnhancedInputComponent->BindAction(DialInteractAction, ETriggerEvent::Started, this, &APlayerCharacter::Interact);
+	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueAdvancePressed);
+	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Completed, this, &APlayerCharacter::DialogueAdvanceReleased);
+	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Canceled, this, &APlayerCharacter::DialogueAdvanceReleased);
+	EnhancedInputComponent->BindAction(DialCancelAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueCancel);
+}
+
+void APlayerCharacter::Interact()
+{
+	if (!IsValid(DialogueComponent) || DialogueComponent->IsInDialogue())
+	{
+		return;
+	}
+
+	if (ATinoNPCCharacter* NearbyNPC = FindNearbyNPC())
+	{
+		DialogueComponent->StartDialogue(NearbyNPC);
+	}
+}
+
+void APlayerCharacter::DialogueAdvancePressed()
+{
+	if (IsValid(DialogueComponent))
+	{
+		DialogueComponent->OnAdvancePressed();
+	}
+}
+
+void APlayerCharacter::DialogueAdvanceReleased()
+{
+	if (IsValid(DialogueComponent))
+	{
+		DialogueComponent->OnAdvanceReleased();
+	}
+}
+
+void APlayerCharacter::DialogueCancel()
+{
+	if (IsValid(DialogueComponent))
+	{
+		DialogueComponent->CancelDialogue();
+	}
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -306,14 +352,6 @@ ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
 
 void APlayerCharacter::Attack()
 {
-	if (ATinoNPCCharacter* NearbyNPC = FindNearbyNPC())
-	{
-		if (APlayerController* PC = Cast<APlayerController>(GetController()))
-		{
-			NearbyNPC->StartDialogue(PC);
-		}
-		return;
-	}
 	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Attack))
 	{
 		return;

@@ -7,6 +7,7 @@
 #include "TinoNPCCharacter.generated.h"
 
 class UCameraComponent;
+class UDialogueData;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoNPCCharacter : public ACharacter
@@ -16,50 +17,29 @@ class PROJECT_TINOKINGDOM_API ATinoNPCCharacter : public ACharacter
 public:
 	ATinoNPCCharacter();
 
+	// 이 NPC가 사용할 대사 묶음. 대화 진행은 플레이어의 DialogueComponent가 담당한다.
+	UFUNCTION(BlueprintPure, Category = "Dialogue")
+	UDialogueData* GetDialogueData() const { return DialogueData; }
+
+	// 대화 전용 카메라를 NPC 정면 구도로 배치한다.
+	void FocusDialogueCamera();
+
 protected:
-	// 게임시작 또는 호출되었을때 실행
-	virtual void BeginPlay() override;
-	
-	UPROPERTY()
-	APlayerController* DialoguePlayerController;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueData> DialogueData;
 
-	UPROPERTY()
-	AActor* PreviousViewTarget;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UCameraComponent> DialogueCamera;
 
-	UPROPERTY()
-	int32 CurrentDialogueIndex = 0;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Dialogue")
-	UCameraComponent* DialogueCamera;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dialogue|Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue|Camera")
 	float DialogueCameraDistance = 180.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dialogue|Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue|Camera")
 	float DialogueCameraHeight = 100.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dialogue|Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue|Camera")
 	float DialogueCameraSideOffset = 35.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Dialogue|Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue|Camera")
 	float DialogueTargetHeight = 145.0f;
-
-	UPROPERTY()
-	TArray<FText> CurrentDialogueLines;
-
-public:	
-	// 매프레임 실행
-	virtual void Tick(float DeltaTime) override;
-	
-	UFUNCTION(BlueprintCallable)
-	void AdvanceDialogue();
-	
-	UFUNCTION(BlueprintCallable)
-	virtual void StartDialogue(APlayerController* PlayerController);
-	
-	UFUNCTION(BlueprintCallable)
-	virtual void EndDialogue();
-	
-	virtual TArray<FText> GetDialogueLines() const;
-	
 };

@@ -25,9 +25,16 @@ void UTinoStateComponent::AddStateTag(const FGameplayTag& StateTag)
 void UTinoStateComponent::RemoveStateTag(const FGameplayTag& StateTag)
 {
 	int32* Count = StateTagCounts.Find(StateTag);
+
+	// 추가된 적 없는 태그를 제거하려 하면 널 역참조가 되므로 조용히 넘어간다.
+	if (Count == nullptr)
+	{
+		return;
+	}
+
 	--(*Count);
-	
-	if (*Count == 0)
+
+	if (*Count <= 0)
 	{
 		StateTagCounts.Remove(StateTag);
 		ActiveStateTags.RemoveTag(StateTag);
@@ -50,10 +57,16 @@ bool UTinoStateComponent::CanPerformAction(ETinoAction Action) const
 	{
 		return false;
 	}
+	// 대화 중에는 모든 게임플레이 행동을 막는다.
+	if (HasStateTag(TinoGameplayTags::State_InDialogue))
+	{
+		return false;
+	}
+
 	const bool bAttacking = HasStateTag(TinoGameplayTags::State_Action_Attacking);
 	const bool bDodging = HasStateTag(TinoGameplayTags::State_Action_Dodging);
 	const bool bReacting = HasStateTag(TinoGameplayTags::State_Action_HitReacting);
-	
+
 	switch (Action)
 	{
 	case ETinoAction::Attack:

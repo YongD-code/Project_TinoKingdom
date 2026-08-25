@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "PlayerCharacter.generated.h"
 
+class UDialogueComponent;
 class UDodgeComponent;
 class UReactionComponent;
 class UCameraComponent;
@@ -49,6 +50,10 @@ protected:
 	void StopRunning();
 
 	ATinoNPCCharacter* FindNearbyNPC() const;
+	void Interact();
+	void DialogueAdvancePressed();
+	void DialogueAdvanceReleased();
+	void DialogueCancel();
 	void Attack();
 	void StartJump();
 	void MoveDebugFlyUp();
@@ -100,6 +105,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ToggleInventoryAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
+	TObjectPtr<UInputAction> DialInteractAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
+	TObjectPtr<UInputAction> DialAdvanceAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
+	TObjectPtr<UInputAction> DialCancelAction;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
 	TObjectPtr<UInputAction> ToggleDebugAction;
 	
@@ -135,6 +149,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dodge")
 	TObjectPtr<UDodgeComponent> DodgeComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueComponent> DialogueComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();
