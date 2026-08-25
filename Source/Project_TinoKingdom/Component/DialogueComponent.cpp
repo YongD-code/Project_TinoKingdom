@@ -198,6 +198,12 @@ void UDialogueComponent::BroadcastCurrentLine()
 		*Line.Text.ToString());
 
 	OnDialogueLineChanged.Broadcast(SpeakerName, Line.Text);
+
+	// NPC 대사일 때만 말하는 동작을 재생한다.
+	if (Line.Speaker == EDialogueSpeaker::NPC && IsValid(CurrentNPC))
+	{
+		CurrentNPC->PlayTalkAnimation();
+	}
 }
 
 void UDialogueComponent::AdvanceToNextLine()
@@ -256,6 +262,12 @@ bool UDialogueComponent::TryPlayCinematicForCurrentLine()
 		return false;
 	}
 
+	// 시네마틱이 직접 연기를 담당하므로 대화용 몸짓은 정리한다.
+	if (IsValid(CurrentNPC))
+	{
+		CurrentNPC->StopTalkAnimation();
+	}
+
 	CinematicPlayer = Player;
 	CinematicActor = OutActor;
 
@@ -312,6 +324,11 @@ void UDialogueComponent::CancelDialogue()
 void UDialogueComponent::EndDialogue()
 {
 	ClearCinematicPlayer();
+
+	if (IsValid(CurrentNPC))
+	{
+		CurrentNPC->StopTalkAnimation();
+	}
 
 	bSkipHoldActive = false;
 	SkipHoldElapsed = 0.f;
