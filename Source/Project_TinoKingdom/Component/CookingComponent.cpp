@@ -189,6 +189,28 @@ FLinearColor UCookingComponent::GetBaseTintByMainTag(ECookingTag MainTag) const
 	}
 }
 
+ECookingQuality UCookingComponent::GetQualityByMinigameScore(float MinigameScore) const
+{
+	const float ClampedScore = FMath::Clamp(MinigameScore, 0.0f, 100.0f);
+
+	if (ClampedScore < 40.0f)
+	{
+		return ECookingQuality::Failed;
+	}
+
+	if (ClampedScore < 70.0f)
+	{
+		return ECookingQuality::Normal;
+	}
+
+	if (ClampedScore < 90.0f)
+	{
+		return ECookingQuality::Good;
+	}
+
+	return ECookingQuality::Special;
+}
+
 ECookingQuality UCookingComponent::CalculateQuality(
 	const TArray<FInventoryItemStack>& Ingredients,
 	const TMap<ECookingTag, float>& TagRatios

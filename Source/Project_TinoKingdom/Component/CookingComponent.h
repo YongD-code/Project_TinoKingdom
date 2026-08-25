@@ -32,6 +32,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Cooking")
 	const TArray<FInventoryItemStack>& GetSelectedIngredients() const;
 	
+	UFUNCTION(BlueprintPure, Category = "Cooking")
+	ECookingQuality GetQualityByMinigameScore(float MinigameScore) const;
+	
 	
 protected:
 	virtual void BeginPlay() override;
