@@ -695,6 +695,41 @@ bool APlayerCharacter::InitializeDefaultAttributes()
 	return true;
 }
 
+float APlayerCharacter::ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	if (DamageAmount <= 0.f)
+	{
+		return 0.f;
+	}
+	if (!ensureMsgf(DamageEffect != nullptr, TEXT("DamageEffect가 지정되지 않았습니다.")))
+	{
+		return 0.f;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	AActor* InstigatorActor = DamageCauser;
+	if (EventInstigator != nullptr && EventInstigator->GetPawn() != nullptr)
+	{
+		InstigatorActor = EventInstigator->GetPawn();
+	}
+	EffectContext.AddInstigator(InstigatorActor, DamageCauser);
+	EffectContext.AddSourceObject(DamageCauser);
+
+	FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		DamageEffect, 1.f, EffectContext);
+	if (!ensureMsgf(
+		EffectSpecHandle.IsValid(),TEXT("피해 Gameplay Effect Spec 생성에 실패했습니다.")))
+	{
+		return 0.f;
+	}
+	EffectSpecHandle.Data->SetSetByCallerMagnitude(TinoGameplayTags::Data_Damage, DamageAmount);
+	
+	const float PreviousHealth = AttributeSet->GetHealth();
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	return FMath::Max(PreviousHealth - AttributeSet->GetHealth(), 0.f);
+}
+
 void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
 {
 	// 공격 도중 장비가 변경되면 공격 데이터와 로드아웃 외형 & 콤보 공격 몽타주가 섞이지 않도록
@@ -751,18 +786,28 @@ float APlayerCharacter::TakeDamage(
 	AActor* DamageCauser
 )
 {
+	if (DamageAmount <= 0.f || bDeathHandled)
+	{
+		return 0.f;
+	}
 	if (CharacterStateComponent->HasStateTag(TinoGameplayTags::State_Invincible))
 	{
 		return 0.f;
 	}
-	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	if (StatComponent != nullptr)
+	const float DamageToApply = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	if (DamageToApply <= 0.f)
 	{
-		StatComponent->ApplyDamage(DamageAmount);
+		return 0.f;
 	}
 
-	if (StatComponent->IsDead())
+	const float AppliedDamage = ApplyDamageGameplayEffect(DamageToApply, EventInstigator, DamageCauser);
+	if (AppliedDamage <= 0.f)
+	{
+		return 0.f;
+	}
+	
+	if (AttributeSet->GetHealth() <= 0.f)
 	{
 		HandleDeath(DamageCauser);
 	}

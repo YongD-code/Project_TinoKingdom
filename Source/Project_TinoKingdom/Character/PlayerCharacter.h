@@ -101,6 +101,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Ability System")
 	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DamageEffect;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -278,6 +281,8 @@ private:
 
 private:
 	bool InitializeDefaultAttributes();
+	
+	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
 	
 	UFUNCTION()
 	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
