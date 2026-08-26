@@ -217,7 +217,6 @@ void UTinoPlayerWidget::UnbindFromProgressionComponent()
 	
 	TargetExperiencePercent = 0.f;
 	FinalExperiencePercent = 0.f;
-	FullHoldElapsedTime = 0.f;
 	
 	BoundProgressionComponent.Reset();
 }
@@ -344,7 +343,6 @@ void UTinoPlayerWidget::RefreshProgressionUI()
 	
 	ExperienceBarState = EExperienceBarState::Idle;
 	
-	FullHoldElapsedTime = 0.f;
 	bHasFinalExperiencePercent = false;
 	
 	SetDisplayedLevel(ProgressionComponent->GetCurrentLevel());
@@ -398,13 +396,8 @@ void UTinoPlayerWidget::UpdateExperienceBar(float DeltaTime)
 	
 	if (ExperienceBarState == EExperienceBarState::HoldingAtFull)
 	{
-		FullHoldElapsedTime += DeltaTime;
-		if (FullHoldElapsedTime < LevelUpFullHoldDuration)
-		{
-			return;
-		}
-		
-		FullHoldElapsedTime = 0.f;
+		// FillingToLevelUp에서 100%를 설정한 다음 Tick에 이 상태를 처리한다.
+		// 따라서 별도 타이머 없이도 100%가 최소 한 프레임 렌더링된다.
 		// 레벨업 후 실제 경험치는 0이지만 화면에는 1% 표시
 		ExperienceProgressBar->SetPercent(0.01f);
 		
@@ -483,7 +476,6 @@ void UTinoPlayerWidget::UpdateExperienceBar(float DeltaTime)
 		return;
 	}
 
-	FullHoldElapsedTime = 0.f;
 	ExperienceBarState = EExperienceBarState::HoldingAtFull;
 }
 

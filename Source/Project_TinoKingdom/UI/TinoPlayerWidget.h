@@ -105,15 +105,11 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience", meta = (ClampMin = "0.0"))
 	float ExperienceInterpSpeed = 2.f;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience", meta = (ClampMin = "0.0"))
-	float LevelUpFullHoldDuration = 0.f;
-	
 	float TargetHealthPercent = 1.f;
 	float TargetStaminaPercent = 1.f;
 	float TargetExperiencePercent = 0.f;
 	
 	float FinalExperiencePercent = 0.f;
-	float FullHoldElapsedTime = 0.f;
 	
 	TArray<int32> PendingLevelUpLevels;
 	
