@@ -376,6 +376,12 @@ float UTinoPlayerWidget::CalculateExperiencePercent(int32 Experience, int32 Requ
 		return 0.f;
 	}
 	
+	// 실제 경험치는 0이지만 어색함을 줄이기 위해 화면에는 1%로 표시한다.
+	if (Experience <= 0)
+	{
+		return 0.01f;
+	}
+	
 	return FMath::Clamp(static_cast<float>(Experience) / static_cast<float>(RequiredExperience), 0.f, 1.f);
 }
 
@@ -399,7 +405,8 @@ void UTinoPlayerWidget::UpdateExperienceBar(float DeltaTime)
 		}
 		
 		FullHoldElapsedTime = 0.f;
-		ExperienceProgressBar->SetPercent(0.f);
+		// 레벨업 후 실제 경험치는 0이지만 화면에는 1% 표시
+		ExperienceProgressBar->SetPercent(0.01f);
 		
 		if (!PendingLevelUpLevels.IsEmpty())
 		{
@@ -413,7 +420,7 @@ void UTinoPlayerWidget::UpdateExperienceBar(float DeltaTime)
 		}
 		else
 		{
-			TargetExperiencePercent = 0.f;
+			TargetExperiencePercent = 0.01f;
 			ExperienceBarState = EExperienceBarState::Idle;
 		}
 		
