@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Camera/CameraComponent.h"
 #include "AbilitySystemInterface.h"
 #include "PlayerCharacter.generated.h"
@@ -19,7 +18,6 @@ class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
 class USkeletalMeshComponent;
-class UStatComponent;
 class UTinoCombatComponent;
 class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
@@ -85,9 +83,6 @@ protected:
 	APlayerController* DialoguePlayerController;
 
 public:
-	UFUNCTION(BlueprintPure, Category = "Stat")
-	UStatComponent* GetStatComponent() const { return StatComponent; }
-
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
@@ -196,10 +191,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float RunSpeed = 400.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
-	TObjectPtr<UStatComponent> StatComponent;
-
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UTinoCombatComponent> CombatComponent;
 
@@ -243,7 +235,7 @@ protected:
 	float TimeDilation = 0.2f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
-	float RunningStamina = 15.0f;
+	float RunningStamina = 5.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RecoverStaminaWhileRest = 20.0f;

@@ -40,12 +40,18 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> HPProgressBar;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UProgressBar> StaminaProgressBar;
+	
 private:
 	bool BindToAbilitySystem();
 	void UnbindFromAbilitySystem();
 	
 	void HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData);
+	void HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData);
+	
 	void RefreshHealthBar();
+	void RefreshStaminaBar();
 	
 	void UpdateLockOnMarkerPosition();
 	
@@ -61,4 +67,7 @@ private:
 	
 	FDelegateHandle HealthChangedDelegateHandle;
 	FDelegateHandle MaxHealthChangedDelegateHandle;
+	
+	FDelegateHandle StaminaChangedDelegateHandle;
+	FDelegateHandle MaxStaminaChangedDelegateHandle;
 };

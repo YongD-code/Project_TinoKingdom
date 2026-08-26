@@ -15,7 +15,6 @@
 #include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
-#include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
@@ -72,7 +71,6 @@ APlayerCharacter::APlayerCharacter()
 	// 스탯 컴포넌트를 기본 서브오브젝트로 생성한다.
 	AbilitySystemComponent = CreateDefaultSubobject<UTinoAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AttributeSet = CreateDefaultSubobject<UTinoAttributeSet>(TEXT("AttributeSet"));
-	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
@@ -191,32 +189,47 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		UpdateCameraTransition(DeltaTime);
 	}
-	// 달리는 동안 스태미나를 소비하고, 휴식 중에는 지연 후 회복한다.
-	if (StatComponent == nullptr)
+	
+	if (bDeathHandled || AttributeSet == nullptr)
 	{
 		return;
 	}
 
 	if (bRunning)
 	{
-		const bool bConsumedStamina = StatComponent->ConsumeStamina(RunningStamina * DeltaTime);
-		StaminaDelayTime = StaminaDelay;
-		if (!bConsumedStamina)
+		const float CurrentStamina = AttributeSet->GetStamina();
+		const float StaminaCost = RunningStamina * DeltaTime;
+		const float NewStamina = FMath::Max(CurrentStamina - StaminaCost, 0.0f);
+		
+		if (!FMath::IsNearlyEqual(CurrentStamina, NewStamina))
+		{
+			AttributeSet->SetStamina(NewStamina);
+		}
+		if (NewStamina <= 0.f)
 		{
 			StopRunning();
 		}
 		return;
 	}
 
-	if (StaminaDelayTime >= 0.0f)
+	if (StaminaDelayTime > 0.0f)
 	{
-		StaminaDelayTime -= DeltaTime;
+		StaminaDelayTime = FMath::Max(StaminaDelayTime - DeltaTime, 0.f);
 		return;
 	}
 
-	StatComponent->RecoverStamina(RecoverStaminaWhileRest * DeltaTime);
-
-
+	const float CurrentStamina = AttributeSet->GetStamina();
+	const float MaxStamina = AttributeSet->GetMaxStamina();
+	if (CurrentStamina >= MaxStamina)
+	{
+		return;
+	}
+	
+	const float NewStamina = FMath::Min(CurrentStamina + RecoverStaminaWhileRest * DeltaTime, MaxStamina);
+	if (NewStamina > CurrentStamina)
+	{
+		AttributeSet->SetStamina(NewStamina);
+	}
 }
 
 // Called to bind functionality to input
@@ -312,7 +325,7 @@ void APlayerCharacter::StartRunning()
 	}
 
 	// 스태미나가 없으면 달리기를 시작하지 않는다.
-	if (StatComponent == nullptr || StatComponent->GetCurrentStamina() <= 0.0f)
+	if (AttributeSet->GetStamina() <= 0.0f)
 	{
 		return;
 	}
@@ -323,6 +336,10 @@ void APlayerCharacter::StartRunning()
 
 void APlayerCharacter::StopRunning()
 {
+	if (bRunning)
+	{
+		StaminaDelayTime = StaminaDelay;
+	}
 	bRunning = false;
 	UpdateMovementSpeed();
 }

@@ -77,6 +77,7 @@ bool UTinoPlayerWidget::BindToAbilitySystem()
 	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
 	
 	BoundAbilitySystemComponent = AbilitySystemComponent;
+	
 	HealthChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		UTinoAttributeSet::GetHealthAttribute()).AddUObject(
 			this, &UTinoPlayerWidget::HandleHealthAttributeChanged);
@@ -84,7 +85,16 @@ bool UTinoPlayerWidget::BindToAbilitySystem()
 		UTinoAttributeSet::GetMaxHealthAttribute()).AddUObject(
 			this, &UTinoPlayerWidget::HandleHealthAttributeChanged);
 	
+	StaminaChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		UTinoAttributeSet::GetStaminaAttribute()).AddUObject(
+			this, &UTinoPlayerWidget::HandleStaminaAttributeChanged);
+	MaxStaminaChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		UTinoAttributeSet::GetMaxStaminaAttribute()).AddUObject(
+			this, &UTinoPlayerWidget::HandleStaminaAttributeChanged);
+	
 	RefreshHealthBar();
+	RefreshStaminaBar();
+	
 	return true;
 }
 
@@ -105,16 +115,38 @@ void UTinoPlayerWidget::UnbindFromAbilitySystem()
 				UTinoAttributeSet::GetMaxHealthAttribute()).Remove(
 					MaxHealthChangedDelegateHandle);
 		}
+		
+		if (StaminaChangedDelegateHandle.IsValid())
+		{
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				UTinoAttributeSet::GetStaminaAttribute()).Remove(
+					StaminaChangedDelegateHandle);
+		}
+		if (MaxStaminaChangedDelegateHandle.IsValid())
+		{
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				UTinoAttributeSet::GetMaxStaminaAttribute()).Remove(
+					MaxStaminaChangedDelegateHandle);
+		}
 	}
 	
 	HealthChangedDelegateHandle.Reset();
 	MaxHealthChangedDelegateHandle.Reset();
+	
+	StaminaChangedDelegateHandle.Reset();
+	MaxStaminaChangedDelegateHandle.Reset();
+	
 	BoundAbilitySystemComponent.Reset();
 }
 
 void UTinoPlayerWidget::HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData)
 {
 	RefreshHealthBar();
+}
+
+void UTinoPlayerWidget::HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData)
+{
+	RefreshStaminaBar();
 }
 
 void UTinoPlayerWidget::RefreshHealthBar()
@@ -136,6 +168,27 @@ void UTinoPlayerWidget::RefreshHealthBar()
 	const float HealthPercent = MaxHealth > 0.f ? FMath::Clamp(CurrentHealth / MaxHealth, 0.f, 1.f) : 0.f;
 
 	HPProgressBar->SetPercent(HealthPercent);
+}
+
+void UTinoPlayerWidget::RefreshStaminaBar()
+{
+	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
+	if (AbilitySystemComponent == nullptr || HPProgressBar == nullptr)
+	{
+		return;
+	}
+	
+	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+	if (AttributeSet == nullptr)
+	{
+		return;
+	}
+	
+	const float CurrentStamina = AttributeSet->GetStamina();
+	const float MaxStamina = AttributeSet->GetMaxStamina();
+	const float StaminaPercent = MaxStamina > 0.f ? FMath::Clamp(CurrentStamina / MaxStamina, 0.f, 1.f) : 0.f;
+	
+	StaminaProgressBar->SetPercent(StaminaPercent);
 }
 
 void UTinoPlayerWidget::UpdateLockOnMarkerPosition()
