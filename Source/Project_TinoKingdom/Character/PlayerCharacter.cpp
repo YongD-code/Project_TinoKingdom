@@ -422,7 +422,21 @@ void APlayerCharacter::StartJump()
 	{
 		return;
 	}
+	if (!CanJump())
+	{
+		return;
+	}
+	
+	const float StaminaBeforeJump = AttributeSet->GetStamina();
+	if (StaminaBeforeJump < JumpStamina)
+	{
+		return;
+	}
 	Jump();
+	
+	const float NewStamina = FMath::Max(StaminaBeforeJump - JumpStamina, 0.f);
+	AttributeSet->SetStamina(NewStamina);
+	StaminaDelayTime = StaminaDelay;
 }
 
 void APlayerCharacter::MoveDebugFlyUp()

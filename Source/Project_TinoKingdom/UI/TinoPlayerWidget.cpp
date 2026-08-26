@@ -55,6 +55,20 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	
+	if (bHPBarInitialized)
+	{
+		const float DisplayPercent = HPProgressBar->GetPercent();
+		const float NewPercent = FMath::FInterpTo(
+			DisplayPercent, TargetHealthPercent, InDeltaTime, HealthInterpSpeed);
+		HPProgressBar->SetPercent(NewPercent);
+	}
+	if (bStaminaBarInitialized)
+	{
+		const float DisplayPercent = StaminaProgressBar->GetPercent();
+		const float NewPercent = FMath::FInterpTo(
+			DisplayPercent, TargetStaminaPercent, InDeltaTime, StaminaInterpSpeed);
+		StaminaProgressBar->SetPercent(NewPercent);
+	}
 	if (!LockOnTarget.IsValid())
 	{
 		LockOnMarker->SetVisibility(ESlateVisibility::Collapsed);
@@ -136,6 +150,8 @@ void UTinoPlayerWidget::UnbindFromAbilitySystem()
 	StaminaChangedDelegateHandle.Reset();
 	MaxStaminaChangedDelegateHandle.Reset();
 	
+	bHPBarInitialized = false;
+	bStaminaBarInitialized = false;
 	BoundAbilitySystemComponent.Reset();
 }
 
@@ -167,13 +183,18 @@ void UTinoPlayerWidget::RefreshHealthBar()
 	const float MaxHealth = AttributeSet->GetMaxHealth();
 	const float HealthPercent = MaxHealth > 0.f ? FMath::Clamp(CurrentHealth / MaxHealth, 0.f, 1.f) : 0.f;
 
-	HPProgressBar->SetPercent(HealthPercent);
+	TargetHealthPercent = HealthPercent;
+	if (!bHPBarInitialized)
+	{
+		HPProgressBar->SetPercent(TargetHealthPercent);
+		bHPBarInitialized = true;
+	}
 }
 
 void UTinoPlayerWidget::RefreshStaminaBar()
 {
 	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
-	if (AbilitySystemComponent == nullptr || HPProgressBar == nullptr)
+	if (AbilitySystemComponent == nullptr || StaminaProgressBar == nullptr)
 	{
 		return;
 	}
@@ -188,7 +209,12 @@ void UTinoPlayerWidget::RefreshStaminaBar()
 	const float MaxStamina = AttributeSet->GetMaxStamina();
 	const float StaminaPercent = MaxStamina > 0.f ? FMath::Clamp(CurrentStamina / MaxStamina, 0.f, 1.f) : 0.f;
 	
-	StaminaProgressBar->SetPercent(StaminaPercent);
+	TargetStaminaPercent = StaminaPercent;
+	if (!bStaminaBarInitialized)
+	{
+		StaminaProgressBar->SetPercent(TargetStaminaPercent);
+		bStaminaBarInitialized = true;
+	}
 }
 
 void UTinoPlayerWidget::UpdateLockOnMarkerPosition()

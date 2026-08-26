@@ -65,6 +65,18 @@ private:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UAbilitySystemComponent> BoundAbilitySystemComponent;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Health", meta = (ClampMin = "0.0"))
+	float HealthInterpSpeed = 8.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Stamina", meta = (ClampMin = "0.0"))
+	float StaminaInterpSpeed = 8.f;
+	
+	float TargetHealthPercent = 1.f;
+	float TargetStaminaPercent = 1.f;
+	
+	bool bHPBarInitialized = false;
+	bool bStaminaBarInitialized = false;
+	
 	FDelegateHandle HealthChangedDelegateHandle;
 	FDelegateHandle MaxHealthChangedDelegateHandle;
 	
