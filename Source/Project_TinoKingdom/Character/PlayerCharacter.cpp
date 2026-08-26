@@ -473,6 +473,12 @@ void APlayerCharacter::Dodge()
 		return;
 	}
 
+	const float StaminaBeforeDodge = AttributeSet->GetStamina();
+	if (StaminaBeforeDodge < DodgeStamina)
+	{
+		return;
+	}
+	
 	FVector DodgeDirection = GetPendingMovementInputVector();
 	if (DodgeDirection.IsNearlyZero())
 	{
@@ -480,8 +486,16 @@ void APlayerCharacter::Dodge()
 	}
 	const bool bUseStrafeDodge = ShouldUseStrafeMovement();
 
+	if (!DodgeComponent->StartDodge(DodgeDirection, bUseStrafeDodge))
+	{
+		return;
+	}
+	
 	StopRunning();
-	DodgeComponent->StartDodge(DodgeDirection, bUseStrafeDodge);
+	
+	const float NewStamina = FMath::Max(StaminaBeforeDodge - DodgeStamina, 0.f);
+	AttributeSet->SetStamina(NewStamina);
+	StaminaDelayTime = StaminaDelay;
 }
 
 void APlayerCharacter::StartAiming()
