@@ -74,13 +74,9 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 			DisplayPercent, TargetStaminaPercent, InDeltaTime, StaminaInterpSpeed);
 		StaminaProgressBar->SetPercent(NewPercent);
 	}
-	if (bExperienceBarInitialized)
-	{
-		const float DisplayPercent = ExperienceProgressBar->GetPercent();
-		const float NewPercent = FMath::FInterpTo(
-			DisplayPercent, TargetExperiencePercent, InDeltaTime, ExperienceInterpSpeed);
-		ExperienceProgressBar->SetPercent(NewPercent);
-	}
+
+	UpdateExperienceBar(InDeltaTime);
+	
 	if (!LockOnTarget.IsValid())
 	{
 		LockOnMarker->SetVisibility(ESlateVisibility::Collapsed);
@@ -213,8 +209,15 @@ void UTinoPlayerWidget::UnbindFromProgressionComponent()
 	LevelChangedDelegateHandle.Reset();
 	ExperienceChangedDelegateHandle.Reset();
 	
+	PendingLevelUpLevels.Reset();
+	ExperienceBarState = EExperienceBarState::Idle;
+	
 	bExperienceBarInitialized = false;
+	bHasFinalExperiencePercent = false;
+	
 	TargetExperiencePercent = 0.f;
+	FinalExperiencePercent = 0.f;
+	FullHoldElapsedTime = 0.f;
 	
 	BoundProgressionComponent.Reset();
 }
@@ -231,30 +234,54 @@ void UTinoPlayerWidget::HandleStaminaAttributeChanged(const FOnAttributeChangeDa
 
 void UTinoPlayerWidget::HandleLevelChanged(int32 NewLevel)
 {
-	LevelTextBlock->SetText(FText::AsNumber(NewLevel));
+	if (!bExperienceBarInitialized)
+	{
+		SetDisplayedLevel(NewLevel);
+		return;
+	}
+	
+	PendingLevelUpLevels.Add(NewLevel);
+	
+	if (ExperienceBarState == EExperienceBarState::Idle || 
+		ExperienceBarState == EExperienceBarState::MovingToFinalPercent)
+	{
+		TargetExperiencePercent = 1.f;
+		ExperienceBarState = EExperienceBarState::FillingToLevelUp;
+	}
 }
 
 void UTinoPlayerWidget::HandleExperienceChanged(int32 NewExperience, int32 RequiredExperience)
 {
-	const UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get();
+	FinalExperiencePercent = CalculateExperiencePercent(NewExperience, RequiredExperience);
 	
-	float ExperiencePercent = 0.f;
-	if (ProgressionComponent != nullptr && ProgressionComponent->IsMaxLevel())
-	{
-		ExperiencePercent = 1.f;
-	}
-	else if (RequiredExperience > 0.f)
-	{
-		ExperiencePercent = FMath::Clamp(
-			static_cast<float>(NewExperience) / static_cast<float>(RequiredExperience), 0.f, 1.f);
-	}
-
-	TargetExperiencePercent = ExperiencePercent;
+	bHasFinalExperiencePercent = true;
+	
 	if (!bExperienceBarInitialized)
 	{
+		TargetExperiencePercent = FinalExperiencePercent;
 		ExperienceProgressBar->SetPercent(TargetExperiencePercent);
+
 		bExperienceBarInitialized = true;
+		bHasFinalExperiencePercent = false;
+		return;
 	}
+	
+	if (ExperienceBarState == EExperienceBarState::FillingToLevelUp ||
+		ExperienceBarState == EExperienceBarState::HoldingAtFull)
+	{
+		return;
+	}
+	
+	if (!PendingLevelUpLevels.IsEmpty())
+	{
+		TargetExperiencePercent = 1.f;
+		ExperienceBarState = EExperienceBarState::FillingToLevelUp;
+		
+		return;
+	}
+	
+	TargetExperiencePercent = FinalExperiencePercent;
+	ExperienceBarState = EExperienceBarState::MovingToFinalPercent;
 }
 
 void UTinoPlayerWidget::RefreshHealthBar()
@@ -313,9 +340,144 @@ void UTinoPlayerWidget::RefreshProgressionUI()
 {
 	const UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get();
 	
-	HandleLevelChanged(ProgressionComponent->GetCurrentLevel());
-	HandleExperienceChanged(ProgressionComponent->GetCurrentExperience(), 
+	PendingLevelUpLevels.Reset();
+	
+	ExperienceBarState = EExperienceBarState::Idle;
+	
+	FullHoldElapsedTime = 0.f;
+	bHasFinalExperiencePercent = false;
+	
+	SetDisplayedLevel(ProgressionComponent->GetCurrentLevel());
+	FinalExperiencePercent = CalculateExperiencePercent(
+		ProgressionComponent->GetCurrentExperience(),
 		ProgressionComponent->GetRequiredExperienceForNextLevel());
+	
+	TargetExperiencePercent = FinalExperiencePercent;
+	ExperienceProgressBar->SetPercent(TargetExperiencePercent);
+	
+	bExperienceBarInitialized = true;
+}
+
+void UTinoPlayerWidget::SetDisplayedLevel(int32 NewLevel)
+{
+	LevelTextBlock->SetText(FText::AsNumber(NewLevel));
+}
+
+float UTinoPlayerWidget::CalculateExperiencePercent(int32 Experience, int32 RequiredExperience)
+{
+	const UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get();
+	if (ProgressionComponent->IsMaxLevel())
+	{
+		return 1.f;
+	}
+	
+	if (RequiredExperience <= 0)
+	{
+		return 0.f;
+	}
+	
+	return FMath::Clamp(static_cast<float>(Experience) / static_cast<float>(RequiredExperience), 0.f, 1.f);
+}
+
+void UTinoPlayerWidget::UpdateExperienceBar(float DeltaTime)
+{
+	if (!bExperienceBarInitialized)
+	{
+		return;
+	}
+	if (ExperienceBarState == EExperienceBarState::Idle)
+	{
+		return;
+	}
+	
+	if (ExperienceBarState == EExperienceBarState::HoldingAtFull)
+	{
+		FullHoldElapsedTime += DeltaTime;
+		if (FullHoldElapsedTime < LevelUpFullHoldDuration)
+		{
+			return;
+		}
+		
+		FullHoldElapsedTime = 0.f;
+		ExperienceProgressBar->SetPercent(0.f);
+		
+		if (!PendingLevelUpLevels.IsEmpty())
+		{
+			TargetExperiencePercent = 1.f;
+			ExperienceBarState = EExperienceBarState::FillingToLevelUp;
+		}
+		else if (bHasFinalExperiencePercent)
+		{
+			TargetExperiencePercent = FinalExperiencePercent;
+			ExperienceBarState = EExperienceBarState::MovingToFinalPercent;
+		}
+		else
+		{
+			TargetExperiencePercent = 0.f;
+			ExperienceBarState = EExperienceBarState::Idle;
+		}
+		
+		return;
+	}
+	
+	const float DisplayPercent = ExperienceProgressBar->GetPercent();
+	const float NewPercent = FMath::FInterpTo(
+		DisplayPercent, TargetExperiencePercent, DeltaTime, ExperienceInterpSpeed);
+	
+	constexpr float CompletionTolerance = 0.001f;
+	if (!FMath::IsNearlyEqual(NewPercent, TargetExperiencePercent, CompletionTolerance))
+	{
+		ExperienceProgressBar->SetPercent(NewPercent);
+		return;
+	}
+	
+	ExperienceProgressBar->SetPercent(TargetExperiencePercent);
+	
+	if (ExperienceBarState == EExperienceBarState::MovingToFinalPercent)
+	{
+		ExperienceBarState = EExperienceBarState::Idle;
+		bHasFinalExperiencePercent = false;
+		return;
+	}
+	
+	if (ExperienceBarState != EExperienceBarState::FillingToLevelUp)
+	{
+		return;
+	}
+	if (PendingLevelUpLevels.IsEmpty())
+	{
+		if (bHasFinalExperiencePercent)
+		{
+			TargetExperiencePercent = FinalExperiencePercent;
+			ExperienceBarState = EExperienceBarState::MovingToFinalPercent;
+		}
+		else
+		{
+			ExperienceBarState = EExperienceBarState::Idle;
+		}
+		return;
+	}
+	
+	const int32 NewLevel = PendingLevelUpLevels[0];
+	PendingLevelUpLevels.RemoveAt(0);
+
+	SetDisplayedLevel(NewLevel);
+
+	if (NewLevel >= UPlayerProgressionComponent::MaxLevel)
+	{
+		PendingLevelUpLevels.Reset();
+
+		FinalExperiencePercent = 1.f;
+		TargetExperiencePercent = 1.f;
+
+		bHasFinalExperiencePercent = false;
+		ExperienceBarState = EExperienceBarState::Idle;
+
+		return;
+	}
+
+	FullHoldElapsedTime = 0.f;
+	ExperienceBarState = EExperienceBarState::HoldingAtFull;
 }
 
 void UTinoPlayerWidget::UpdateLockOnMarkerPosition()

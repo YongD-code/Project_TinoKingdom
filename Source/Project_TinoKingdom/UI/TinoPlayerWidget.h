@@ -6,6 +6,14 @@
 #include "Blueprint/UserWidget.h"
 #include "TinoPlayerWidget.generated.h"
 
+enum class EExperienceBarState : uint8
+{
+	Idle,
+	FillingToLevelUp,
+	HoldingAtFull,
+	MovingToFinalPercent
+};
+
 class AActor;
 class UAbilitySystemComponent;
 class UCanvasPanelSlot;
@@ -68,6 +76,11 @@ private:
 	void RefreshStaminaBar();
 	void RefreshProgressionUI();
 	
+	void SetDisplayedLevel(int32 NewLevel);
+	
+	float CalculateExperiencePercent(int32 Experience, int32 RequiredExperience);
+	
+	void UpdateExperienceBar(float DeltaTime);
 	void UpdateLockOnMarkerPosition();
 	
 private:
@@ -92,13 +105,24 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience", meta = (ClampMin = "0.0"))
 	float ExperienceInterpSpeed = 2.f;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience", meta = (ClampMin = "0.0"))
+	float LevelUpFullHoldDuration = 0.15;
+	
 	float TargetHealthPercent = 1.f;
 	float TargetStaminaPercent = 1.f;
 	float TargetExperiencePercent = 0.f;
 	
+	float FinalExperiencePercent = 0.f;
+	float FullHoldElapsedTime = 0.f;
+	
+	TArray<int32> PendingLevelUpLevels;
+	
+	EExperienceBarState ExperienceBarState = EExperienceBarState::Idle;
+	
 	bool bHPBarInitialized = false;
 	bool bStaminaBarInitialized = false;
 	bool bExperienceBarInitialized = false;
+	bool bHasFinalExperiencePercent = false;
 	
 	FDelegateHandle HealthChangedDelegateHandle;
 	FDelegateHandle MaxHealthChangedDelegateHandle;
