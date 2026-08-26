@@ -11,6 +11,7 @@
 class UGameplayEffect;
 class UTinoAttributeSet;
 class UAbilitySystemComponent;
+class UPlayerProgressionComponent;
 class UTargetingComponent;
 class UDodgeComponent;
 class UReactionComponent;
@@ -36,9 +37,8 @@ public:
 	APlayerCharacter();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
 	UTinoAbilitySystemComponent* GetTinoAbilitySystemComponent() const { return AbilitySystemComponent; }
-	
+	UPlayerProgressionComponent* GetProgressionComponent() const { return ProgressionComponent; }
 	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
 	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -89,6 +89,9 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
 	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
+	TObjectPtr<UPlayerProgressionComponent> ProgressionComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
 	TObjectPtr<UTinoAttributeSet> AttributeSet;

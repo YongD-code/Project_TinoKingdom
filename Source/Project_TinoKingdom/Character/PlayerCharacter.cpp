@@ -26,6 +26,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
+#include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
@@ -71,6 +72,7 @@ APlayerCharacter::APlayerCharacter()
 	// 스탯 컴포넌트를 기본 서브오브젝트로 생성한다.
 	AbilitySystemComponent = CreateDefaultSubobject<UTinoAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AttributeSet = CreateDefaultSubobject<UTinoAttributeSet>(TEXT("AttributeSet"));
+	ProgressionComponent = CreateDefaultSubobject<UPlayerProgressionComponent>(TEXT("ProgressionComponent"));
 	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
