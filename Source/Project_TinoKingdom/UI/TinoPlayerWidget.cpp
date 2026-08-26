@@ -9,7 +9,10 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
+#include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
+#include "Project_TinoKingdom/Character/PlayerCharacter.h"
+#include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 
@@ -43,11 +46,13 @@ void UTinoPlayerWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	BindToAbilitySystem();
+	BindToProgressionComponent();
 }
 
 void UTinoPlayerWidget::NativeDestruct()
 {
 	UnbindFromAbilitySystem();
+	UnbindFromProgressionComponent();
 	Super::NativeDestruct();
 }
 
@@ -68,6 +73,13 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 		const float NewPercent = FMath::FInterpTo(
 			DisplayPercent, TargetStaminaPercent, InDeltaTime, StaminaInterpSpeed);
 		StaminaProgressBar->SetPercent(NewPercent);
+	}
+	if (bExperienceBarInitialized)
+	{
+		const float DisplayPercent = ExperienceProgressBar->GetPercent();
+		const float NewPercent = FMath::FInterpTo(
+			DisplayPercent, TargetExperiencePercent, InDeltaTime, ExperienceInterpSpeed);
+		ExperienceProgressBar->SetPercent(NewPercent);
 	}
 	if (!LockOnTarget.IsValid())
 	{
@@ -155,6 +167,58 @@ void UTinoPlayerWidget::UnbindFromAbilitySystem()
 	BoundAbilitySystemComponent.Reset();
 }
 
+bool UTinoPlayerWidget::BindToProgressionComponent()
+{
+	UnbindFromProgressionComponent();
+	
+	if (!ensureMsgf(LevelTextBlock != nullptr, TEXT("PlayerUI에 LevelTextBlock이 없거나 이름이 일치하지 않습니다.")
+	))
+	{
+		return false;
+	}
+
+	if (!ensureMsgf(ExperienceProgressBar != nullptr, TEXT("PlayerUI에 ExperienceProgressBar가 없거나 이름이 일치하지 않습니다.")))
+	{
+		return false;
+	}
+	
+	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn());
+	UPlayerProgressionComponent* ProgressionComponent = PlayerCharacter->GetProgressionComponent();
+	BoundProgressionComponent = ProgressionComponent;
+	
+	LevelChangedDelegateHandle = ProgressionComponent->OnLevelChanged.AddUObject(this, 
+		&UTinoPlayerWidget::HandleLevelChanged);
+	ExperienceChangedDelegateHandle = ProgressionComponent->OnExperienceChanged.AddUObject(this,
+		&UTinoPlayerWidget::HandleExperienceChanged);
+	
+	RefreshProgressionUI();
+	return true;
+}
+
+void UTinoPlayerWidget::UnbindFromProgressionComponent()
+{
+	UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get();
+	if (ProgressionComponent != nullptr)
+	{
+		if (LevelChangedDelegateHandle.IsValid())
+		{
+			ProgressionComponent->OnLevelChanged.Remove(LevelChangedDelegateHandle);
+		}
+		if (ExperienceChangedDelegateHandle.IsValid())
+		{
+			ProgressionComponent->OnExperienceChanged.Remove(ExperienceChangedDelegateHandle);
+		}
+	}
+	
+	LevelChangedDelegateHandle.Reset();
+	ExperienceChangedDelegateHandle.Reset();
+	
+	bExperienceBarInitialized = false;
+	TargetExperiencePercent = 0.f;
+	
+	BoundProgressionComponent.Reset();
+}
+
 void UTinoPlayerWidget::HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData)
 {
 	RefreshHealthBar();
@@ -163,6 +227,34 @@ void UTinoPlayerWidget::HandleHealthAttributeChanged(const FOnAttributeChangeDat
 void UTinoPlayerWidget::HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData)
 {
 	RefreshStaminaBar();
+}
+
+void UTinoPlayerWidget::HandleLevelChanged(int32 NewLevel)
+{
+	LevelTextBlock->SetText(FText::AsNumber(NewLevel));
+}
+
+void UTinoPlayerWidget::HandleExperienceChanged(int32 NewExperience, int32 RequiredExperience)
+{
+	const UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get();
+	
+	float ExperiencePercent = 0.f;
+	if (ProgressionComponent != nullptr && ProgressionComponent->IsMaxLevel())
+	{
+		ExperiencePercent = 1.f;
+	}
+	else if (RequiredExperience > 0.f)
+	{
+		ExperiencePercent = FMath::Clamp(
+			static_cast<float>(NewExperience) / static_cast<float>(RequiredExperience), 0.f, 1.f);
+	}
+
+	TargetExperiencePercent = ExperiencePercent;
+	if (!bExperienceBarInitialized)
+	{
+		ExperienceProgressBar->SetPercent(TargetExperiencePercent);
+		bExperienceBarInitialized = true;
+	}
 }
 
 void UTinoPlayerWidget::RefreshHealthBar()
@@ -215,6 +307,15 @@ void UTinoPlayerWidget::RefreshStaminaBar()
 		StaminaProgressBar->SetPercent(TargetStaminaPercent);
 		bStaminaBarInitialized = true;
 	}
+}
+
+void UTinoPlayerWidget::RefreshProgressionUI()
+{
+	const UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get();
+	
+	HandleLevelChanged(ProgressionComponent->GetCurrentLevel());
+	HandleExperienceChanged(ProgressionComponent->GetCurrentExperience(), 
+		ProgressionComponent->GetRequiredExperienceForNextLevel());
 }
 
 void UTinoPlayerWidget::UpdateLockOnMarkerPosition()

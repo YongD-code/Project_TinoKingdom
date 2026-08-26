@@ -6,11 +6,13 @@
 #include "Blueprint/UserWidget.h"
 #include "TinoPlayerWidget.generated.h"
 
-class UImage;
-class UCanvasPanelSlot;
 class AActor;
-class UProgressBar;
 class UAbilitySystemComponent;
+class UCanvasPanelSlot;
+class UImage;
+class UProgressBar;
+class UPlayerProgressionComponent;
+class UTextBlock;
 
 struct FOnAttributeChangeData;
 
@@ -43,15 +45,28 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> StaminaProgressBar;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> LevelTextBlock;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UProgressBar> ExperienceProgressBar;
+	
 private:
 	bool BindToAbilitySystem();
 	void UnbindFromAbilitySystem();
 	
+	bool BindToProgressionComponent();
+	void UnbindFromProgressionComponent();
+	
 	void HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	void HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	
+	void HandleLevelChanged(int32 NewLevel);
+	void HandleExperienceChanged(int32 NewExperience, int32 RequiredExperience);
+	
 	void RefreshHealthBar();
 	void RefreshStaminaBar();
+	void RefreshProgressionUI();
 	
 	void UpdateLockOnMarkerPosition();
 	
@@ -65,21 +80,32 @@ private:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UAbilitySystemComponent> BoundAbilitySystemComponent;
 	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UPlayerProgressionComponent> BoundProgressionComponent;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Health", meta = (ClampMin = "0.0"))
 	float HealthInterpSpeed = 8.f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Stamina", meta = (ClampMin = "0.0"))
 	float StaminaInterpSpeed = 8.f;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience", meta = (ClampMin = "0.0"))
+	float ExperienceInterpSpeed = 2.f;
+	
 	float TargetHealthPercent = 1.f;
 	float TargetStaminaPercent = 1.f;
+	float TargetExperiencePercent = 0.f;
 	
 	bool bHPBarInitialized = false;
 	bool bStaminaBarInitialized = false;
+	bool bExperienceBarInitialized = false;
 	
 	FDelegateHandle HealthChangedDelegateHandle;
 	FDelegateHandle MaxHealthChangedDelegateHandle;
 	
 	FDelegateHandle StaminaChangedDelegateHandle;
 	FDelegateHandle MaxStaminaChangedDelegateHandle;
+	
+	FDelegateHandle LevelChangedDelegateHandle;
+	FDelegateHandle ExperienceChangedDelegateHandle;
 };
