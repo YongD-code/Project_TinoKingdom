@@ -24,11 +24,11 @@ UDodgeComponent::UDodgeComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UDodgeComponent::StartDodge(const FVector& DodgeDirection, bool bUseStrafeDodge)
+bool UDodgeComponent::StartDodge(const FVector& DodgeDirection, bool bUseStrafeDodge)
 {
 	if (ActiveDodgeMontage != nullptr)
 	{
-		return;
+		return false;
 	}
 	
 	FVector NormalizedDirection = DodgeDirection.GetSafeNormal2D();
@@ -47,7 +47,7 @@ void UDodgeComponent::StartDodge(const FVector& DodgeDirection, bool bUseStrafeD
 	if (AnimInstance->Montage_Play(ActiveDodgeMontage) <= 0.f)
 	{
 		FinishDodge();
-		return;
+		return false;
 	}
 	
 	if (bUseStrafeDodge)
@@ -59,6 +59,8 @@ void UDodgeComponent::StartDodge(const FVector& DodgeDirection, bool bUseStrafeD
 	FOnMontageEnded MontageEndedDelegate;
 	MontageEndedDelegate.BindUObject(this, &UDodgeComponent::OnDodgeMontageEnded);
 	AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, ActiveDodgeMontage);
+	
+	return true;
 }
 
 void UDodgeComponent::CancelDodge()

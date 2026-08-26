@@ -10,11 +10,11 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameplayEffect.h"
 #include "InputActionValue.h"
 #include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
-#include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
@@ -26,6 +26,8 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 
@@ -67,7 +69,8 @@ APlayerCharacter::APlayerCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	// 스탯 컴포넌트를 기본 서브오브젝트로 생성한다.
-	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
+	AbilitySystemComponent = CreateDefaultSubobject<UTinoAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AttributeSet = CreateDefaultSubobject<UTinoAttributeSet>(TEXT("AttributeSet"));
 	CombatComponent = CreateDefaultSubobject<UTinoCombatComponent>(TEXT("CombatComponent"));
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
@@ -89,11 +92,44 @@ APlayerCharacter::APlayerCharacter()
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("TinoCapsule"));
 }
 
+UAbilitySystemComponent* APlayerCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
 // Called when the game starts or when spawned
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	const UTinoAttributeSet* RegisteredAttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+
+	const bool bAttributeSetRegistered = ensureMsgf(
+		RegisteredAttributeSet == AttributeSet,
+		TEXT("TinoAttributeSet이 ASC에 올바르게 등록되지 않았습니다.")
+	);
+	
+	if (bAttributeSetRegistered && InitializeDefaultAttributes())
+	{
+		UE_LOG(
+			LogTemp,
+			Log,
+			TEXT(
+				"GAS 초기화 완료: "
+				"Health %.1f / %.1f, "
+				"Stamina %.1f / %.1f, "
+				"Attack %.1f, Defense %.1f"
+			),
+			AttributeSet->GetHealth(),
+			AttributeSet->GetMaxHealth(),
+			AttributeSet->GetStamina(),
+			AttributeSet->GetMaxStamina(),
+			AttributeSet->GetAttackPower(),
+			AttributeSet->GetDefense()
+		);
+	}
+	
 	DefaultCameraArmLength = CameraBoom->TargetArmLength;
 	DefaultCameraSocketOffset = CameraBoom->SocketOffset;
 	DefaultCameraTargetOffset = CameraBoom->TargetOffset;
@@ -153,32 +189,47 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		UpdateCameraTransition(DeltaTime);
 	}
-	// 달리는 동안 스태미나를 소비하고, 휴식 중에는 지연 후 회복한다.
-	if (StatComponent == nullptr)
+	
+	if (bDeathHandled || AttributeSet == nullptr)
 	{
 		return;
 	}
 
 	if (bRunning)
 	{
-		const bool bConsumedStamina = StatComponent->ConsumeStamina(RunningStamina * DeltaTime);
-		StaminaDelayTime = StaminaDelay;
-		if (!bConsumedStamina)
+		const float CurrentStamina = AttributeSet->GetStamina();
+		const float StaminaCost = RunningStamina * DeltaTime;
+		const float NewStamina = FMath::Max(CurrentStamina - StaminaCost, 0.0f);
+		
+		if (!FMath::IsNearlyEqual(CurrentStamina, NewStamina))
+		{
+			AttributeSet->SetStamina(NewStamina);
+		}
+		if (NewStamina <= 0.f)
 		{
 			StopRunning();
 		}
 		return;
 	}
 
-	if (StaminaDelayTime >= 0.0f)
+	if (StaminaDelayTime > 0.0f)
 	{
-		StaminaDelayTime -= DeltaTime;
+		StaminaDelayTime = FMath::Max(StaminaDelayTime - DeltaTime, 0.f);
 		return;
 	}
 
-	StatComponent->RecoverStamina(RecoverStaminaWhileRest * DeltaTime);
-
-
+	const float CurrentStamina = AttributeSet->GetStamina();
+	const float MaxStamina = AttributeSet->GetMaxStamina();
+	if (CurrentStamina >= MaxStamina)
+	{
+		return;
+	}
+	
+	const float NewStamina = FMath::Min(CurrentStamina + RecoverStaminaWhileRest * DeltaTime, MaxStamina);
+	if (NewStamina > CurrentStamina)
+	{
+		AttributeSet->SetStamina(NewStamina);
+	}
 }
 
 // Called to bind functionality to input
@@ -274,7 +325,7 @@ void APlayerCharacter::StartRunning()
 	}
 
 	// 스태미나가 없으면 달리기를 시작하지 않는다.
-	if (StatComponent == nullptr || StatComponent->GetCurrentStamina() <= 0.0f)
+	if (AttributeSet->GetStamina() <= 0.0f)
 	{
 		return;
 	}
@@ -285,6 +336,10 @@ void APlayerCharacter::StartRunning()
 
 void APlayerCharacter::StopRunning()
 {
+	if (bRunning)
+	{
+		StaminaDelayTime = StaminaDelay;
+	}
 	bRunning = false;
 	UpdateMovementSpeed();
 }
@@ -367,7 +422,21 @@ void APlayerCharacter::StartJump()
 	{
 		return;
 	}
+	if (!CanJump())
+	{
+		return;
+	}
+	
+	const float StaminaBeforeJump = AttributeSet->GetStamina();
+	if (StaminaBeforeJump < JumpStamina)
+	{
+		return;
+	}
 	Jump();
+	
+	const float NewStamina = FMath::Max(StaminaBeforeJump - JumpStamina, 0.f);
+	AttributeSet->SetStamina(NewStamina);
+	StaminaDelayTime = StaminaDelay;
 }
 
 void APlayerCharacter::MoveDebugFlyUp()
@@ -418,6 +487,12 @@ void APlayerCharacter::Dodge()
 		return;
 	}
 
+	const float StaminaBeforeDodge = AttributeSet->GetStamina();
+	if (StaminaBeforeDodge < DodgeStamina)
+	{
+		return;
+	}
+	
 	FVector DodgeDirection = GetPendingMovementInputVector();
 	if (DodgeDirection.IsNearlyZero())
 	{
@@ -425,8 +500,16 @@ void APlayerCharacter::Dodge()
 	}
 	const bool bUseStrafeDodge = ShouldUseStrafeMovement();
 
+	if (!DodgeComponent->StartDodge(DodgeDirection, bUseStrafeDodge))
+	{
+		return;
+	}
+	
 	StopRunning();
-	DodgeComponent->StartDodge(DodgeDirection, bUseStrafeDodge);
+	
+	const float NewStamina = FMath::Max(StaminaBeforeDodge - DodgeStamina, 0.f);
+	AttributeSet->SetStamina(NewStamina);
+	StaminaDelayTime = StaminaDelay;
 }
 
 void APlayerCharacter::StartAiming()
@@ -613,6 +696,85 @@ void APlayerCharacter::StopSlowMotion()
 	SavedGlobalTimeDilation = 1.f;
 }
 
+bool APlayerCharacter::InitializeDefaultAttributes()
+{
+	if (!ensureMsgf(
+		AbilitySystemComponent != nullptr,
+		TEXT("AbilitySystemComponent가 없습니다.")
+	))
+	{
+		return false;
+	}
+	if (!ensureMsgf(
+		AttributeSet != nullptr,
+		TEXT("TinoAttributeSet이 없습니다.")
+	))
+	{
+		return false;
+	}
+	if (!ensureMsgf(
+		DefaultAttributesEffect != nullptr,
+		TEXT("DefaultAttributesEffect가 지정되지 않았습니다.")
+	))
+	{
+		return false;
+	}
+
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	const FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		DefaultAttributesEffect, 1.f, EffectContext);
+	
+	if (!ensureMsgf(
+		EffectSpecHandle.IsValid(),
+		TEXT("기본 능력치 Gameplay Effect Spec 생성에 실패했습니다.")
+	))
+	{
+		return false;
+	}
+	
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
+	
+	return true;
+}
+
+float APlayerCharacter::ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	if (DamageAmount <= 0.f)
+	{
+		return 0.f;
+	}
+	if (!ensureMsgf(DamageEffect != nullptr, TEXT("DamageEffect가 지정되지 않았습니다.")))
+	{
+		return 0.f;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	AActor* InstigatorActor = DamageCauser;
+	if (EventInstigator != nullptr && EventInstigator->GetPawn() != nullptr)
+	{
+		InstigatorActor = EventInstigator->GetPawn();
+	}
+	EffectContext.AddInstigator(InstigatorActor, DamageCauser);
+	EffectContext.AddSourceObject(DamageCauser);
+
+	FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		DamageEffect, 1.f, EffectContext);
+	if (!ensureMsgf(
+		EffectSpecHandle.IsValid(),TEXT("피해 Gameplay Effect Spec 생성에 실패했습니다.")))
+	{
+		return 0.f;
+	}
+	EffectSpecHandle.Data->SetSetByCallerMagnitude(TinoGameplayTags::Data_Damage, DamageAmount);
+	
+	const float PreviousHealth = AttributeSet->GetHealth();
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	return FMath::Max(PreviousHealth - AttributeSet->GetHealth(), 0.f);
+}
+
 void APlayerCharacter::HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout)
 {
 	// 공격 도중 장비가 변경되면 공격 데이터와 로드아웃 외형 & 콤보 공격 몽타주가 섞이지 않도록
@@ -669,18 +831,28 @@ float APlayerCharacter::TakeDamage(
 	AActor* DamageCauser
 )
 {
+	if (DamageAmount <= 0.f || bDeathHandled)
+	{
+		return 0.f;
+	}
 	if (CharacterStateComponent->HasStateTag(TinoGameplayTags::State_Invincible))
 	{
 		return 0.f;
 	}
-	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	if (StatComponent != nullptr)
+	const float DamageToApply = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	if (DamageToApply <= 0.f)
 	{
-		StatComponent->ApplyDamage(DamageAmount);
+		return 0.f;
 	}
 
-	if (StatComponent->IsDead())
+	const float AppliedDamage = ApplyDamageGameplayEffect(DamageToApply, EventInstigator, DamageCauser);
+	if (AppliedDamage <= 0.f)
+	{
+		return 0.f;
+	}
+	
+	if (AttributeSet->GetHealth() <= 0.f)
 	{
 		HandleDeath(DamageCauser);
 	}

@@ -7,6 +7,8 @@
 #include "GameplayTagContainer.h"
 #include "TinoStateComponent.generated.h"
 
+class UAbilitySystemComponent;
+
 
 UENUM(BlueprintType)
 enum class ETinoAction : uint8
@@ -32,9 +34,10 @@ public:
 	
 	bool CanPerformAction(ETinoAction Action) const;
 
-public:	
-	UPROPERTY(VisibleAnywhere, Category = "State")
-	FGameplayTagContainer ActiveStateTags;
-	
-	TMap<FGameplayTag, int32> StateTagCounts;
+protected:
+	virtual void BeginPlay() override;
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 };

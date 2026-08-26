@@ -4,10 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Camera/CameraComponent.h"
+#include "AbilitySystemInterface.h"
 #include "PlayerCharacter.generated.h"
 
+class UGameplayEffect;
+class UTinoAttributeSet;
+class UAbilitySystemComponent;
 class UTargetingComponent;
 class UDodgeComponent;
 class UReactionComponent;
@@ -15,23 +18,29 @@ class UCameraComponent;
 class USpringArmComponent;
 class UInputAction;
 class USkeletalMeshComponent;
-class UStatComponent;
 class UTinoCombatComponent;
 class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
 class UInventoryComponent;
 class ATinoNPCCharacter;
 class UTinoStateComponent;
+class UTinoAbilitySystemComponent;
 struct FInputActionValue;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter
+class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	APlayerCharacter();
 
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+	UTinoAbilitySystemComponent* GetTinoAbilitySystemComponent() const { return AbilitySystemComponent; }
+	
+	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 		class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -74,13 +83,22 @@ protected:
 	APlayerController* DialoguePlayerController;
 
 public:
-	UFUNCTION(BlueprintPure, Category = "Stat")
-	UStatComponent* GetStatComponent() const { return StatComponent; }
-
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAttributeSet> AttributeSet;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DamageEffect;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -173,10 +191,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float RunSpeed = 400.f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
-	TObjectPtr<UStatComponent> StatComponent;
-
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
 	TObjectPtr<UTinoCombatComponent> CombatComponent;
 
@@ -220,8 +235,14 @@ protected:
 	float TimeDilation = 0.2f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
-	float RunningStamina = 15.0f;
-
+	float RunningStamina = 5.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
+	float DodgeStamina = 10.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
+	float JumpStamina = 5.f;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina", meta = (ClampMin = "0.0"))
 	float RecoverStaminaWhileRest = 20.0f;
 
@@ -257,6 +278,10 @@ private:
 	float DefaultCameraLagMaxDistance = 40.f;
 
 private:
+	bool InitializeDefaultAttributes();
+	
+	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
+	
 	UFUNCTION()
 	void HandleEquipmentChanged(UEquipmentLoadoutData* NewLoadout);
 

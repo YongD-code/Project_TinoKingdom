@@ -18,7 +18,7 @@ class PROJECT_TINOKINGDOM_API UDodgeComponent : public UActorComponent
 public:	
 	UDodgeComponent();
 	
-	void StartDodge(const FVector& DodgeDirection, bool bUseStrafeDodge);
+	bool StartDodge(const FVector& DodgeDirection, bool bUseStrafeDodge);
 	void CancelDodge();
 	
 	void BeginInvincibilityWindow();
