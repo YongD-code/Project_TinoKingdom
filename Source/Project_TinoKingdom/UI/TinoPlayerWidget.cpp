@@ -3,9 +3,14 @@
 
 #include "TinoPlayerWidget.h"
 
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
+#include "Components/ProgressBar.h"
+#include "GameFramework/Pawn.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 
 void UTinoPlayerWidget::SetCrosshairVisible(bool bVisible)
@@ -34,6 +39,18 @@ void UTinoPlayerWidget::NativeOnInitialized()
 	SetLockOnMarkerTarget(nullptr);
 }
 
+void UTinoPlayerWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	BindToAbilitySystem();
+}
+
+void UTinoPlayerWidget::NativeDestruct()
+{
+	UnbindFromAbilitySystem();
+	Super::NativeDestruct();
+}
+
 void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
@@ -44,6 +61,81 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 		return;
 	}
 	UpdateLockOnMarkerPosition();
+}
+
+bool UTinoPlayerWidget::BindToAbilitySystem()
+{
+	UnbindFromAbilitySystem();
+	if (!ensureMsgf(HPProgressBar != nullptr, TEXT("PlayerUI의 HPProgressBar와 이름 불일치")))
+	{
+		return false;
+	}
+	
+	APawn* PlayerPawn = GetOwningPlayerPawn();
+	IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(PlayerPawn);
+	UAbilitySystemComponent* AbilitySystemComponent = AbilitySystemInterface->GetAbilitySystemComponent();
+	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+	
+	BoundAbilitySystemComponent = AbilitySystemComponent;
+	HealthChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		UTinoAttributeSet::GetHealthAttribute()).AddUObject(
+			this, &UTinoPlayerWidget::HandleHealthAttributeChanged);
+	MaxHealthChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		UTinoAttributeSet::GetMaxHealthAttribute()).AddUObject(
+			this, &UTinoPlayerWidget::HandleHealthAttributeChanged);
+	
+	RefreshHealthBar();
+	return true;
+}
+
+void UTinoPlayerWidget::UnbindFromAbilitySystem()
+{
+	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
+	if (AbilitySystemComponent != nullptr)
+	{
+		if (HealthChangedDelegateHandle.IsValid())
+		{
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				UTinoAttributeSet::GetHealthAttribute()).Remove(
+					HealthChangedDelegateHandle);
+		}
+		if (MaxHealthChangedDelegateHandle.IsValid())
+		{
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				UTinoAttributeSet::GetMaxHealthAttribute()).Remove(
+					MaxHealthChangedDelegateHandle);
+		}
+	}
+	
+	HealthChangedDelegateHandle.Reset();
+	MaxHealthChangedDelegateHandle.Reset();
+	BoundAbilitySystemComponent.Reset();
+}
+
+void UTinoPlayerWidget::HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData)
+{
+	RefreshHealthBar();
+}
+
+void UTinoPlayerWidget::RefreshHealthBar()
+{
+	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
+	if (AbilitySystemComponent == nullptr || HPProgressBar == nullptr)
+	{
+		return;
+	}
+	
+	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+	if (AttributeSet == nullptr)
+	{
+		return;
+	}
+	
+	const float CurrentHealth = AttributeSet->GetHealth();
+	const float MaxHealth = AttributeSet->GetMaxHealth();
+	const float HealthPercent = MaxHealth > 0.f ? FMath::Clamp(CurrentHealth / MaxHealth, 0.f, 1.f) : 0.f;
+
+	HPProgressBar->SetPercent(HealthPercent);
 }
 
 void UTinoPlayerWidget::UpdateLockOnMarkerPosition()

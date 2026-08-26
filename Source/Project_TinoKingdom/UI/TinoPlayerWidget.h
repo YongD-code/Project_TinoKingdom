@@ -9,6 +9,10 @@
 class UImage;
 class UCanvasPanelSlot;
 class AActor;
+class UProgressBar;
+class UAbilitySystemComponent;
+
+struct FOnAttributeChangeData;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API UTinoPlayerWidget : public UUserWidget
@@ -21,21 +25,40 @@ public:
 	
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	
+protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> Crosshair;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> LockOnMarker;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UProgressBar> HPProgressBar;
+	
 private:
+	bool BindToAbilitySystem();
+	void UnbindFromAbilitySystem();
+	
+	void HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData);
+	void RefreshHealthBar();
+	
 	void UpdateLockOnMarkerPosition();
 	
+private:
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanelSlot> LockOnMarkerSlot;
 	
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> LockOnTarget;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UAbilitySystemComponent> BoundAbilitySystemComponent;
+	
+	FDelegateHandle HealthChangedDelegateHandle;
+	FDelegateHandle MaxHealthChangedDelegateHandle;
 };
