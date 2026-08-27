@@ -177,7 +177,7 @@ protected:
 	TObjectPtr<UInputAction> DodgeAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> ToggleInventoryAction;
+	TObjectPtr<UInputAction> ToggleCharacterMenuAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
 	TObjectPtr<UInputAction> ToggleDebugAction;
@@ -226,9 +226,6 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void CancelEquipmentWheel();
-
-	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
-	void ToggleInventory();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
 	void StartSlowMotion();
