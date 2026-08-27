@@ -7,7 +7,6 @@
 #include "TinoPlayerController.generated.h"
 
 class UInputMappingContext;
-class UUserWidget;
 class UTinoPlayerWidget;
 
 UCLASS()

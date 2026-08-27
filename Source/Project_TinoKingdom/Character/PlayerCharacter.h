@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Camera/CameraComponent.h"
 #include "AbilitySystemInterface.h"
 #include "PlayerCharacter.generated.h"
 

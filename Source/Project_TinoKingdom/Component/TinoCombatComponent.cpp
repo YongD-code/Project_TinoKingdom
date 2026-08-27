@@ -1,5 +1,7 @@
 #include "TinoCombatComponent.h"
 
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "CollisionQueryParams.h"
@@ -16,6 +18,7 @@
 #include "Project_TinoKingdom/TinoRuntimeDebugDraw.h"
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
@@ -295,6 +298,7 @@ void UTinoCombatComponent::PerformAttackTrace()
 	}
 
 	const FComboAttackSectionData& AttackSection = ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
+	const float FinalDamage = CalculateAttackDamage(AttackSection.Damage);
 	
 	// MaxHitTargets가 0이면 대상 수 제한이 없다.
 	if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
@@ -369,7 +373,7 @@ void UTinoCombatComponent::PerformAttackTrace()
 		{
 			HitDirection = Forward;
 		}
-		UGameplayStatics::ApplyPointDamage(HitActor, AttackSection.Damage, HitDirection, HitResult, 
+		UGameplayStatics::ApplyPointDamage(HitActor, FinalDamage, HitDirection, HitResult, 
 			OwnerCharacter->GetController(), OwnerCharacter, UDamageType::StaticClass());
 		
 		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
@@ -426,4 +430,22 @@ void UTinoCombatComponent::GetAttackTracePoints(EAttackSource AttackSource, FVec
 			return;
 		}
 	}
+}
+
+float UTinoCombatComponent::CalculateAttackDamage(float ComboDamage) const
+{
+	const float SafeComboDamage = FMath::Max(ComboDamage, 1.f);
+	const IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(OwnerCharacter);
+	if (AbilitySystemInterface == nullptr)
+	{
+		return SafeComboDamage;
+	}
+	
+	const UAbilitySystemComponent* AbilitySystemComponent = AbilitySystemInterface->GetAbilitySystemComponent();
+	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+	
+	const float AttackPower = FMath::Max(AttributeSet->GetAttackPower());
+	
+	return AttackPower + SafeComboDamage;
+		
 }
