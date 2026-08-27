@@ -30,6 +30,8 @@ public:
 	
 	void AddExperience(int32 Amount);
 	
+	bool TrySpendStatPoint();
+	
 public:
 	FOnPlayerLevelChanged OnLevelChanged;
 	FOnPlayerExperienceChanged OnExperienceChanged;

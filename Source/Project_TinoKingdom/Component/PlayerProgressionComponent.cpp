@@ -73,3 +73,16 @@ void UPlayerProgressionComponent::AddExperience(int32 Amount)
 	
 	OnExperienceChanged.Broadcast(CurrentExperience, GetRequiredExperienceForNextLevel());
 }
+
+bool UPlayerProgressionComponent::TrySpendStatPoint()
+{
+	if (UnspentStatPoints <= 0)
+	{
+		return false;
+	}
+	
+	--UnspentStatPoints;
+	OnStatPointsChanged.Broadcast(UnspentStatPoints);
+	
+	return true;
+}
