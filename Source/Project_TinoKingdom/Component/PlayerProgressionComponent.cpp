@@ -3,7 +3,12 @@
 
 #include "PlayerProgressionComponent.h"
 
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "Curves/CurveFloat.h"
+#include "GameplayEffect.h"
+#include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
+
 
 // Sets default values for this component's properties
 UPlayerProgressionComponent::UPlayerProgressionComponent()
@@ -72,6 +77,69 @@ void UPlayerProgressionComponent::AddExperience(int32 Amount)
 	}
 	
 	OnExperienceChanged.Broadcast(CurrentExperience, GetRequiredExperienceForNextLevel());
+}
+
+bool UPlayerProgressionComponent::TryUpgradeStat(EPlayerStatType StatType)
+{
+	if (UnspentStatPoints <= 0)
+	{
+		return false;
+	}
+	if (!ensureMsgf(StatUpgradeEffect != nullptr, TEXT("StatUpgradeEffect가 지정되지 않았습니다.")))
+	{
+		return false;
+	}
+	
+	IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(GetOwner());
+	UAbilitySystemComponent* AbilitySystemComponent = AbilitySystemInterface->GetAbilitySystemComponent();
+	
+	float UpgradeAmount = 0.f;
+	switch (StatType)
+	{
+	case EPlayerStatType::MaxHealth:
+		UpgradeAmount = MaxHealthIncreasePerPoint;
+		break;
+	case EPlayerStatType::MaxStamina:
+		UpgradeAmount = MaxStaminaIncreasePerPoint;
+		break;
+	case EPlayerStatType::AttackPower:
+		UpgradeAmount = AttackPowerIncreasePerPoint;
+		break;
+	case EPlayerStatType::Defense:
+		UpgradeAmount = DefenseIncreasePerPoint;
+		break;
+	default:
+		return false;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(GetOwner());
+	
+	FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		StatUpgradeEffect, 1.f, EffectContext);
+	if (!ensureMsgf(EffectSpecHandle.IsValid(), TEXT("스탯 강화 GameplayEffect Spec 생성 실패")))
+	{
+		return false;
+	}
+	
+	FGameplayEffectSpec* EffectSpec = EffectSpecHandle.Data.Get();
+	EffectSpec->SetSetByCallerMagnitude(TinoGameplayTags::Data_StatUpgrade_MaxHealth,
+		StatType == EPlayerStatType::MaxHealth ? UpgradeAmount : 0.f);
+	EffectSpec->SetSetByCallerMagnitude(TinoGameplayTags::Data_StatUpgrade_MaxStamina,
+		StatType == EPlayerStatType::MaxStamina ? UpgradeAmount : 0.f);
+	EffectSpec->SetSetByCallerMagnitude(TinoGameplayTags::Data_StatUpgrade_AttackPower,
+		StatType == EPlayerStatType::AttackPower ? UpgradeAmount : 0.f);
+	EffectSpec->SetSetByCallerMagnitude(TinoGameplayTags::Data_StatUpgrade_Defense,
+		StatType == EPlayerStatType::Defense ? UpgradeAmount : 0.f);
+	
+	const FActiveGameplayEffectHandle AppliedEffectHandle = 
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpec);
+	if (!AppliedEffectHandle.WasSuccessfullyApplied())
+	{
+		return false;
+	}
+
+	return TrySpendStatPoint();
 }
 
 bool UPlayerProgressionComponent::TrySpendStatPoint()

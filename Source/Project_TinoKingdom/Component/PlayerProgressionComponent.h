@@ -6,11 +6,20 @@
 #include "Components/ActorComponent.h"
 #include "PlayerProgressionComponent.generated.h"
 
+class UCurveFloat;
+class UGameplayEffect;
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnPlayerLevelChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnPlayerExperienceChanged, int32, int32);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnPlayerStatPointsChanged, int32);
 
-class UCurveFloat;
+enum class EPlayerStatType : uint8
+{
+	MaxHealth,
+	MaxStamina,
+	AttackPower,
+	Defense
+};
 
 UCLASS( ClassGroup=(Tino), meta=(BlueprintSpawnableComponent) )
 class PROJECT_TINOKINGDOM_API UPlayerProgressionComponent : public UActorComponent
@@ -30,7 +39,7 @@ public:
 	
 	void AddExperience(int32 Amount);
 	
-	bool TrySpendStatPoint();
+	bool TryUpgradeStat(EPlayerStatType StatType);
 	
 public:
 	FOnPlayerLevelChanged OnLevelChanged;
@@ -38,6 +47,9 @@ public:
 	FOnPlayerStatPointsChanged OnStatPointsChanged;
 	
 	static constexpr int32 MaxLevel = 100;
+	
+private:
+	bool TrySpendStatPoint();
 	
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Progression|Experience")
@@ -51,4 +63,19 @@ private:
 	
 	UPROPERTY(VisibleInstanceOnly, Category = "Progression")
 	int32 UnspentStatPoints = 0;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Progression|Stat Upgrade")
+	TSubclassOf<UGameplayEffect> StatUpgradeEffect;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Progression|Stat Upgrade")
+	float MaxHealthIncreasePerPoint = 10.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Progression|Stat Upgrade")
+	float MaxStaminaIncreasePerPoint = 10.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Progression|Stat Upgrade")
+	float AttackPowerIncreasePerPoint = 2.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Progression|Stat Upgrade")
+	float DefenseIncreasePerPoint = 2.f;
 };
