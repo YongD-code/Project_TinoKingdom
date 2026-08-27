@@ -3,6 +3,8 @@
 
 #include "InventoryComponent.h"
 
+#include "Project_TinoKingdom/Component/StatComponent.h"
+
 // Sets default values for this component's properties
 UInventoryComponent::UInventoryComponent()
 {
@@ -81,6 +83,92 @@ int32 UInventoryComponent::GetItemCount(FName ItemId) const
 	}
 
 	return 0;
+}
+
+bool UInventoryComponent::HasItem(FName ItemId, int32 Count) const
+{
+	if (ItemId.IsNone() || Count <= 0)
+	{
+		return false;
+	}
+
+	return GetItemCount(ItemId) >= Count;
+}
+
+bool UInventoryComponent::RemoveItem(FName ItemId, int32 Count)
+{
+	if (ItemId.IsNone() || Count <= 0)
+	{
+		return false;
+	}
+
+	for (int32 Index = 0; Index < Items.Num(); ++Index)
+	{
+		FInventoryItemStack& ItemStack = Items[Index];
+		if (ItemStack.ItemId != ItemId)
+		{
+			continue;
+		}
+
+		if (ItemStack.Count < Count)
+		{
+			return false;
+		}
+
+		ItemStack.Count -= Count;
+		if (ItemStack.Count <= 0)
+		{
+			Items.RemoveAt(Index);
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool UInventoryComponent::UseFoodItem(FName ItemId, UStatComponent* TargetStatComponent)
+{
+	if (TargetStatComponent == nullptr || ItemId.IsNone())
+	{
+		return false;
+	}
+
+	for (int32 Index = 0; Index < Items.Num(); ++Index)
+	{
+		FInventoryItemStack& ItemStack = Items[Index];
+		if (ItemStack.ItemId != ItemId)
+		{
+			continue;
+		}
+
+		if (ItemStack.ItemType != EInventoryItemType::Food || ItemStack.Count <= 0)
+		{
+			return false;
+		}
+
+		const FCookingResultData& FoodData = ItemStack.FoodResultData;
+
+		if (FoodData.HealAmount > 0.0f)
+		{
+			TargetStatComponent->Heal(FoodData.HealAmount);
+		}
+
+		if (FoodData.StaminaAmount > 0.0f)
+		{
+			TargetStatComponent->RecoverStamina(FoodData.StaminaAmount);
+		}
+
+		ItemStack.Count -= 1;
+		if (ItemStack.Count <= 0)
+		{
+			Items.RemoveAt(Index);
+		}
+
+		return true;
+	}
+
+	return false;
 }
 // Called when the game starts
 void UInventoryComponent::BeginPlay()

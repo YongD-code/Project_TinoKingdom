@@ -36,6 +36,13 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	FCookingResultData FinishCooking(float MinigameScore);
+
+	UFUNCTION(BlueprintCallable, Category = "Cooking")
+	bool FinishCookingToInventory(
+		UInventoryComponent* InventoryComponent,
+		float MinigameScore,
+		FCookingResultData& OutResult
+	);
 	
 protected:
 	virtual void BeginPlay() override;

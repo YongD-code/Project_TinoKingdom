@@ -9,6 +9,7 @@
 
 
 class UTexture2D;
+class UStatComponent;
 
 UENUM(BlueprintType)
 enum class EInventoryItemType : uint8
@@ -85,6 +86,15 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	int32 GetItemCount(FName ItemId) const;
+
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	bool HasItem(FName ItemId, int32 Count = 1) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool RemoveItem(FName ItemId, int32 Count = 1);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Food")
+	bool UseFoodItem(FName ItemId, UStatComponent* TargetStatComponent);
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	const TArray<FInventoryItemStack>& GetItems() const { return Items; }

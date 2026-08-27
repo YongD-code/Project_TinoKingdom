@@ -406,3 +406,46 @@ FCookingResultData UCookingComponent::FinishCooking(float MinigameScore)
 
 	return Result;
 }
+
+bool UCookingComponent::FinishCookingToInventory(
+	UInventoryComponent* InventoryComponent,
+	float MinigameScore,
+	FCookingResultData& OutResult
+)
+{
+	if (InventoryComponent == nullptr || SelectedIngredients.Num() == 0)
+	{
+		OutResult = MakeCookingResult(SelectedIngredients);
+		return false;
+	}
+
+	for (const FInventoryItemStack& Ingredient : SelectedIngredients)
+	{
+		if (!InventoryComponent->HasItem(Ingredient.ItemId, 1))
+		{
+			return false;
+		}
+	}
+
+	OutResult = FinishCooking(MinigameScore);
+
+	for (const FInventoryItemStack& Ingredient : SelectedIngredients)
+	{
+		InventoryComponent->RemoveItem(Ingredient.ItemId, 1);
+	}
+
+	InventoryComponent->AddItem(
+		OutResult.ResultItemId,
+		OutResult.ResultName,
+		1,
+		nullptr,
+		EInventoryItemType::Food,
+		ECookingTag::None,
+		EFoodEffectType::None,
+		1.0f,
+		OutResult
+	);
+
+	ClearCookingIngredients();
+	return true;
+}
