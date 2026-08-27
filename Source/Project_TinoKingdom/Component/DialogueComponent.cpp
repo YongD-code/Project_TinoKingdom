@@ -10,6 +10,7 @@
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
 #include "Project_TinoKingdom/Character/TinoNPCCharacter.h"
+#include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/DataAsset/DialogueData.h"
@@ -73,7 +74,10 @@ bool UDialogueComponent::StartDialogue(ATinoNPCCharacter* InNPC)
 		return false;
 	}
 
-	UDialogueData* DialogueData = InNPC->GetDialogueData();
+	// 퀘스트 진행 상태에 따라 다른 대사를 고른다.
+	QuestComponent = GetOwner() ? GetOwner()->FindComponentByClass<UQuestComponent>() : nullptr;
+
+	UDialogueData* DialogueData = InNPC->SelectDialogueData(QuestComponent);
 
 	if (!IsValid(DialogueData) || DialogueData->Lines.Num() == 0)
 	{
@@ -330,6 +334,11 @@ void UDialogueComponent::EndDialogue()
 		CurrentNPC->StopTalkAnimation();
 	}
 
+	// 퀘스트 처리는 대화 정리가 끝난 뒤로 미룬다.
+	// 여기서 바로 방송하면 아직 NPC 카메라를 보고 자막이 떠 있는 상태에서
+	// 퀘스트 UI가 겹쳐 나온다.
+	ATinoNPCCharacter* NPCToResolve = CurrentNPC;
+
 	bSkipHoldActive = false;
 	SkipHoldElapsed = 0.f;
 	SetComponentTickEnabled(false);
@@ -356,6 +365,37 @@ void UDialogueComponent::EndDialogue()
 	CurrentLineIndex = INDEX_NONE;
 
 	OnDialogueEnded.Broadcast();
+
+	// 자막이 사라지고 카메라가 돌아온 뒤에 퀘스트 UI가 뜨도록 마지막에 처리한다.
+	ResolveQuest(NPCToResolve);
+}
+
+void UDialogueComponent::ResolveQuest(ATinoNPCCharacter* NPC)
+{
+	if (!IsValid(NPC) || !IsValid(QuestComponent))
+	{
+		return;
+	}
+
+	UQuestData* Quest = NPC->GetQuestToGrant();
+
+	if (!IsValid(Quest))
+	{
+		return;
+	}
+
+	switch (QuestComponent->GetQuestState(Quest))
+	{
+	case EQuestState::NotStarted:
+		QuestComponent->AcceptQuest(Quest);
+		break;
+	case EQuestState::ReadyToComplete:
+		QuestComponent->CompleteQuest(Quest);
+		break;
+	default:
+		// 진행 중이거나 이미 끝난 퀘스트는 대화만 하고 상태를 바꾸지 않는다.
+		break;
+	}
 }
 
 void UDialogueComponent::ApplyDialogueInputContext(bool bEnable)

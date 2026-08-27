@@ -9,6 +9,8 @@
 class UAnimMontage;
 class UCameraComponent;
 class UDialogueData;
+class UQuestComponent;
+class UQuestData;
 class USkeletalMeshComponent;
 
 UCLASS()
@@ -22,6 +24,12 @@ public:
 	// 이 NPC가 사용할 대사 묶음. 대화 진행은 플레이어의 DialogueComponent가 담당한다.
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	UDialogueData* GetDialogueData() const { return DialogueData; }
+
+	// 퀘스트 진행 상태에 맞는 대사를 고른다. 해당 상태의 대사가 없으면 기본 대사를 쓴다.
+	UDialogueData* SelectDialogueData(const UQuestComponent* PlayerQuest) const;
+
+	UFUNCTION(BlueprintPure, Category = "Quest")
+	UQuestData* GetQuestToGrant() const { return QuestToGrant; }
 
 	// 대화 전용 카메라를 NPC 정면 구도로 배치한다.
 	void FocusDialogueCamera();
@@ -46,8 +54,25 @@ private:
 	static void StopMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage, float BlendOutTime);
 
 protected:
+	// 퀘스트를 받기 전에 할 대사.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> DialogueData;
+
+	// 퀘스트를 받았지만 아직 목표를 못 채웠을 때의 대사.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueData> InProgressDialogueData;
+
+	// 목표를 다 채워 보고하러 왔을 때의 대사. 예) 정말 고맙네!
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueData> ReadyToCompleteDialogueData;
+
+	// 퀘스트를 끝낸 뒤 다시 말을 걸었을 때의 대사.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueData> CompletedDialogueData;
+
+	// 이 NPC가 건네줄 퀘스트. 대화가 끝나는 시점에 수령된다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest")
+	TObjectPtr<UQuestData> QuestToGrant;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UCameraComponent> DialogueCamera;

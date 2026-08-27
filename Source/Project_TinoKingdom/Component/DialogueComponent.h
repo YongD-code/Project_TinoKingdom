@@ -13,6 +13,7 @@ class ATinoNPCCharacter;
 class UDialogueData;
 class UInputMappingContext;
 class ULevelSequencePlayer;
+class UQuestComponent;
 class UTinoStateComponent;
 
 // UI가 C++을 직접 참조하지 않고 대화 상태에 반응할 수 있도록 델리게이트로 알린다.
@@ -84,6 +85,9 @@ private:
 	// 대화를 종료하고 입력·카메라·상태를 대화 시작 전으로 되돌린다.
 	void EndDialogue();
 
+	// 대화가 끝난 NPC의 퀘스트를 수령하거나 완료 처리한다.
+	void ResolveQuest(ATinoNPCCharacter* NPC);
+
 	// 대화 전용 매핑 컨텍스트를 얹거나 걷어낸다.
 	void ApplyDialogueInputContext(bool bEnable);
 
@@ -120,6 +124,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTinoStateComponent> StateComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UQuestComponent> QuestComponent;
 
 	// 재생 중인 시퀀스와 그 시퀀스를 소유한 액터.
 	UPROPERTY(Transient)

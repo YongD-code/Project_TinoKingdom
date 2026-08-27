@@ -10,6 +10,7 @@
 
 class UDialogueComponent;
 class UDodgeComponent;
+class UQuestComponent;
 class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
@@ -152,6 +153,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueComponent> DialogueComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Quest")
+	TObjectPtr<UQuestComponent> QuestComponent;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();

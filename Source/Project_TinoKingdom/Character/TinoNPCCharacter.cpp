@@ -7,6 +7,9 @@
 #include "Animation/AnimMontage.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Project_TinoKingdom/Component/QuestComponent.h"
+#include "Project_TinoKingdom/DataAsset/DialogueData.h"
+#include "Project_TinoKingdom/DataAsset/QuestData.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoNPC, Log, All);
 
@@ -91,6 +94,41 @@ void ATinoNPCCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	CacheAnimationMeshes();
+}
+
+UDialogueData* ATinoNPCCharacter::SelectDialogueData(const UQuestComponent* PlayerQuest) const
+{
+	// 퀘스트를 안 주는 NPC이거나 플레이어에게 퀘스트 컴포넌트가 없으면 기본 대사만 쓴다.
+	if (!IsValid(QuestToGrant) || PlayerQuest == nullptr)
+	{
+		return DialogueData;
+	}
+
+	UDialogueData* Selected = nullptr;
+
+	switch (PlayerQuest->GetQuestState(QuestToGrant))
+	{
+	case EQuestState::InProgress:
+		Selected = InProgressDialogueData;
+		break;
+	case EQuestState::ReadyToComplete:
+		Selected = ReadyToCompleteDialogueData;
+		break;
+	case EQuestState::Completed:
+		Selected = CompletedDialogueData;
+		break;
+	default:
+		Selected = DialogueData;
+		break;
+	}
+
+	// 해당 상태의 대사를 지정하지 않았으면 기본 대사로 대체한다.
+	if (IsValid(Selected))
+	{
+		return Selected;
+	}
+
+	return DialogueData.Get();
 }
 
 void ATinoNPCCharacter::CacheAnimationMeshes()
