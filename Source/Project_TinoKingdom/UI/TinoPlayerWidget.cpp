@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
+#include "Components/Button.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
@@ -40,6 +41,11 @@ void UTinoPlayerWidget::NativeOnInitialized()
 	
 	SetCrosshairVisible(false);
 	SetLockOnMarkerTarget(nullptr);
+	
+	MaxHealthUpgradeButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleMaxHealthUpgradeClicked);
+	MaxStaminaUpgradeButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleMaxStaminaUpgradeClicked);
+	AttackPowerUpgradeButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleAttackPowerUpgradeClicked);
+	DefenseUpgradeButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleDefenseUpgradeClicked);
 }
 
 void UTinoPlayerWidget::NativeConstruct()
@@ -85,6 +91,26 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 	UpdateLockOnMarkerPosition();
 }
 
+void UTinoPlayerWidget::HandleMaxHealthUpgradeClicked()
+{
+	TryUpgradeStat(EPlayerStatType::MaxHealth);
+}
+
+void UTinoPlayerWidget::HandleMaxStaminaUpgradeClicked()
+{
+	TryUpgradeStat(EPlayerStatType::MaxStamina);
+}
+
+void UTinoPlayerWidget::HandleAttackPowerUpgradeClicked()
+{
+	TryUpgradeStat(EPlayerStatType::AttackPower);
+}
+
+void UTinoPlayerWidget::HandleDefenseUpgradeClicked()
+{
+	TryUpgradeStat(EPlayerStatType::Defense);
+}
+
 bool UTinoPlayerWidget::BindToAbilitySystem()
 {
 	UnbindFromAbilitySystem();
@@ -114,8 +140,17 @@ bool UTinoPlayerWidget::BindToAbilitySystem()
 		UTinoAttributeSet::GetMaxStaminaAttribute()).AddUObject(
 			this, &UTinoPlayerWidget::HandleStaminaAttributeChanged);
 	
+	AttackPowerChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+	UTinoAttributeSet::GetAttackPowerAttribute()).AddUObject(
+		this, &UTinoPlayerWidget::HandleStatAttributeChanged);
+
+	DefenseChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		UTinoAttributeSet::GetDefenseAttribute()).AddUObject(
+			this, &UTinoPlayerWidget::HandleStatAttributeChanged);
+	
 	RefreshHealthBar();
 	RefreshStaminaBar();
+	RefreshStatValue();
 	
 	return true;
 }
@@ -150,6 +185,19 @@ void UTinoPlayerWidget::UnbindFromAbilitySystem()
 				UTinoAttributeSet::GetMaxStaminaAttribute()).Remove(
 					MaxStaminaChangedDelegateHandle);
 		}
+		
+		if (AttackPowerChangedDelegateHandle.IsValid())
+		{
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				UTinoAttributeSet::GetAttackPowerAttribute()).Remove(
+					AttackPowerChangedDelegateHandle);
+		}
+		if (DefenseChangedDelegateHandle.IsValid())
+		{
+			AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+				UTinoAttributeSet::GetDefenseAttribute()).Remove(
+					DefenseChangedDelegateHandle);
+		}
 	}
 	
 	HealthChangedDelegateHandle.Reset();
@@ -157,6 +205,9 @@ void UTinoPlayerWidget::UnbindFromAbilitySystem()
 	
 	StaminaChangedDelegateHandle.Reset();
 	MaxStaminaChangedDelegateHandle.Reset();
+	
+	AttackPowerChangedDelegateHandle.Reset();
+	DefenseChangedDelegateHandle.Reset();
 	
 	bHPBarInitialized = false;
 	bStaminaBarInitialized = false;
@@ -187,6 +238,9 @@ bool UTinoPlayerWidget::BindToProgressionComponent()
 	ExperienceChangedDelegateHandle = ProgressionComponent->OnExperienceChanged.AddUObject(this,
 		&UTinoPlayerWidget::HandleExperienceChanged);
 	
+	StatPointsChangedDelegateHandle = ProgressionComponent->OnStatPointsChanged.AddUObject(this,
+		&UTinoPlayerWidget::HandleStatPointsChanged);
+	
 	RefreshProgressionUI();
 	return true;
 }
@@ -204,10 +258,15 @@ void UTinoPlayerWidget::UnbindFromProgressionComponent()
 		{
 			ProgressionComponent->OnExperienceChanged.Remove(ExperienceChangedDelegateHandle);
 		}
+		if (StatPointsChangedDelegateHandle.IsValid())
+		{
+			ProgressionComponent->OnStatPointsChanged.Remove(StatPointsChangedDelegateHandle);
+		}
 	}
 	
 	LevelChangedDelegateHandle.Reset();
 	ExperienceChangedDelegateHandle.Reset();
+	StatPointsChangedDelegateHandle.Reset();
 	
 	PendingLevelUpLevels.Reset();
 	ExperienceBarState = EExperienceBarState::Idle;
@@ -224,11 +283,18 @@ void UTinoPlayerWidget::UnbindFromProgressionComponent()
 void UTinoPlayerWidget::HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData)
 {
 	RefreshHealthBar();
+	RefreshStatValue();
 }
 
 void UTinoPlayerWidget::HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData)
 {
 	RefreshStaminaBar();
+	RefreshStatValue();
+}
+
+void UTinoPlayerWidget::HandleStatAttributeChanged(const FOnAttributeChangeData& ChangeData)
+{
+	RefreshStatValue();
 }
 
 void UTinoPlayerWidget::HandleLevelChanged(int32 NewLevel)
@@ -281,6 +347,18 @@ void UTinoPlayerWidget::HandleExperienceChanged(int32 NewExperience, int32 Requi
 	
 	TargetExperiencePercent = FinalExperiencePercent;
 	ExperienceBarState = EExperienceBarState::MovingToFinalPercent;
+}
+
+void UTinoPlayerWidget::HandleStatPointsChanged(int32 NewStatPoints)
+{
+	StatPointsTextBlock->SetText(FText::AsNumber(NewStatPoints));
+	
+	const bool bCanUpgrade = NewStatPoints > 0;
+	
+	MaxHealthUpgradeButton->SetIsEnabled(bCanUpgrade);
+	MaxStaminaUpgradeButton->SetIsEnabled(bCanUpgrade);
+	AttackPowerUpgradeButton->SetIsEnabled(bCanUpgrade);
+	DefenseUpgradeButton->SetIsEnabled(bCanUpgrade);
 }
 
 void UTinoPlayerWidget::RefreshHealthBar()
@@ -354,6 +432,25 @@ void UTinoPlayerWidget::RefreshProgressionUI()
 	ExperienceProgressBar->SetPercent(TargetExperiencePercent);
 	
 	bExperienceBarInitialized = true;
+	
+	HandleStatPointsChanged(ProgressionComponent->GetUnspentStatPoints());
+}
+
+void UTinoPlayerWidget::RefreshStatValue()
+{
+	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
+	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+	
+	MaxHealthValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetMaxHealth())));
+	MaxStaminaValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetMaxStamina())));
+	AttackPowerValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetAttackPower())));
+	DefenseValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetDefense())));
+}
+
+void UTinoPlayerWidget::TryUpgradeStat(EPlayerStatType StatType)
+{
+	UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get();
+	ProgressionComponent->TryUpgradeStat(StatType);
 }
 
 void UTinoPlayerWidget::SetDisplayedLevel(int32 NewLevel)

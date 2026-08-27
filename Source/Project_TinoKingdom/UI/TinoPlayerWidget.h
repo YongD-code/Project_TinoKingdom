@@ -14,8 +14,11 @@ enum class EExperienceBarState : uint8
 	MovingToFinalPercent
 };
 
+enum class EPlayerStatType : uint8;
+
 class AActor;
 class UAbilitySystemComponent;
+class UButton;
 class UCanvasPanelSlot;
 class UImage;
 class UProgressBar;
@@ -59,6 +62,46 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> ExperienceProgressBar;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> StatPointsTextBlock;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> MaxHealthValueTextBlock;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> MaxStaminaValueTextBlock;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> AttackPowerValueTextBlock;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> DefenseValueTextBlock;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> MaxHealthUpgradeButton;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> MaxStaminaUpgradeButton;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> AttackPowerUpgradeButton;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> DefenseUpgradeButton;
+	
+private:
+	UFUNCTION()
+	void HandleMaxHealthUpgradeClicked();
+
+	UFUNCTION()
+	void HandleMaxStaminaUpgradeClicked();
+
+	UFUNCTION()
+	void HandleAttackPowerUpgradeClicked();
+
+	UFUNCTION()
+	void HandleDefenseUpgradeClicked();
+	
 private:
 	bool BindToAbilitySystem();
 	void UnbindFromAbilitySystem();
@@ -68,13 +111,18 @@ private:
 	
 	void HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	void HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData);
+	void HandleStatAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	
 	void HandleLevelChanged(int32 NewLevel);
 	void HandleExperienceChanged(int32 NewExperience, int32 RequiredExperience);
+	void HandleStatPointsChanged(int32 NewStatPoints);
 	
 	void RefreshHealthBar();
 	void RefreshStaminaBar();
 	void RefreshProgressionUI();
+	void RefreshStatValue();
+	
+	void TryUpgradeStat(EPlayerStatType StatType);
 	
 	void SetDisplayedLevel(int32 NewLevel);
 	
@@ -128,4 +176,9 @@ private:
 	
 	FDelegateHandle LevelChangedDelegateHandle;
 	FDelegateHandle ExperienceChangedDelegateHandle;
+	
+	FDelegateHandle AttackPowerChangedDelegateHandle;
+	FDelegateHandle DefenseChangedDelegateHandle;
+
+	FDelegateHandle StatPointsChangedDelegateHandle;
 };
