@@ -7,10 +7,6 @@
 #include "Blueprint/UserWidget.h"
 #include "TinoPlayerController.generated.h"
 
-/**
- * 
- */
-
 class UInputMappingContext;
 class UUserWidget;
 class UTinoPlayerWidget;
@@ -27,6 +23,8 @@ public:
 	void SetCrosshairVisible(bool bVisible);
 	void SetLockOnMarkerTarget(AActor* NewTarget);
 	
+	void ToggleCharacterMenu();
+	
 protected:
 	virtual void BeginPlay() override;
 	
@@ -39,4 +37,7 @@ protected:
 	
 	UPROPERTY()
 	TObjectPtr<UTinoPlayerWidget> PlayerUIWidget;
+	
+private:
+	bool bCharacterMenuOpen = false;
 };

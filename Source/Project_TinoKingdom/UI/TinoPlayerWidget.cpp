@@ -33,6 +33,17 @@ void UTinoPlayerWidget::SetLockOnMarkerTarget(AActor* NewTarget)
 	UpdateLockOnMarkerPosition();
 }
 
+void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
+{
+	if (!ensureMsgf(InventoryPanel != nullptr && StatusPanel != nullptr, TEXT("InventoryPanel or StatusPanel 이름 불일치")))
+	{
+		return;
+	}
+	const ESlateVisibility MenuVisibility = bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+	InventoryPanel->SetVisibility(MenuVisibility);
+	StatusPanel->SetVisibility(MenuVisibility);
+}
+
 void UTinoPlayerWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -41,6 +52,7 @@ void UTinoPlayerWidget::NativeOnInitialized()
 	
 	SetCrosshairVisible(false);
 	SetLockOnMarkerTarget(nullptr);
+	SetCharacterMenuVisible(false);
 	
 	MaxHealthUpgradeButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleMaxHealthUpgradeClicked);
 	MaxStaminaUpgradeButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleMaxStaminaUpgradeClicked);
@@ -131,14 +143,14 @@ bool UTinoPlayerWidget::BindToAbilitySystem()
 			this, &UTinoPlayerWidget::HandleHealthAttributeChanged);
 	MaxHealthChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		UTinoAttributeSet::GetMaxHealthAttribute()).AddUObject(
-			this, &UTinoPlayerWidget::HandleHealthAttributeChanged);
+			this, &UTinoPlayerWidget::HandleMaxHealthAttributeChanged);
 	
 	StaminaChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		UTinoAttributeSet::GetStaminaAttribute()).AddUObject(
 			this, &UTinoPlayerWidget::HandleStaminaAttributeChanged);
 	MaxStaminaChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		UTinoAttributeSet::GetMaxStaminaAttribute()).AddUObject(
-			this, &UTinoPlayerWidget::HandleStaminaAttributeChanged);
+			this, &UTinoPlayerWidget::HandleMaxStaminaAttributeChanged);
 	
 	AttackPowerChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 	UTinoAttributeSet::GetAttackPowerAttribute()).AddUObject(
@@ -280,16 +292,26 @@ void UTinoPlayerWidget::UnbindFromProgressionComponent()
 	BoundProgressionComponent.Reset();
 }
 
+void UTinoPlayerWidget::HandleMaxHealthAttributeChanged(const FOnAttributeChangeData& ChangeData)
+{
+	RefreshHealthBar();
+	RefreshStatValue();
+}
+
 void UTinoPlayerWidget::HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData)
 {
 	RefreshHealthBar();
+}
+
+void UTinoPlayerWidget::HandleMaxStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData)
+{
+	RefreshStaminaBar();
 	RefreshStatValue();
 }
 
 void UTinoPlayerWidget::HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData)
 {
 	RefreshStaminaBar();
-	RefreshStatValue();
 }
 
 void UTinoPlayerWidget::HandleStatAttributeChanged(const FOnAttributeChangeData& ChangeData)

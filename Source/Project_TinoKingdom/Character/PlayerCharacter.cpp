@@ -253,7 +253,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Attack);
 
-	EnhancedInputComponent->BindAction(ToggleInventoryAction,ETriggerEvent::Started,this,&APlayerCharacter::ToggleInventory);
+	EnhancedInputComponent->BindAction(ToggleInventoryAction,ETriggerEvent::Started,this,&APlayerCharacter::ToggleCharacterMenu);
 
 	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRunning);
 	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRunning);
@@ -313,6 +313,12 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 	AddControllerYawInput(LookInput.X);
 	AddControllerPitchInput(LookInput.Y);
+}
+
+void APlayerCharacter::ToggleCharacterMenu()
+{
+	ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController());
+	PlayerController->ToggleCharacterMenu();
 }
 
 void APlayerCharacter::StartRunning()

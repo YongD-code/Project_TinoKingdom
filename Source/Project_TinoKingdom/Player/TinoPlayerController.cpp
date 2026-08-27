@@ -22,6 +22,29 @@ void ATinoPlayerController::SetLockOnMarkerTarget(AActor* NewTarget)
 	PlayerUIWidget->SetLockOnMarkerTarget(NewTarget);
 }
 
+void ATinoPlayerController::ToggleCharacterMenu()
+{
+	bCharacterMenuOpen = !bCharacterMenuOpen;
+	PlayerUIWidget->SetCharacterMenuVisible(bCharacterMenuOpen);
+	
+	if (bCharacterMenuOpen)
+	{
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+		SetPause(true);
+		
+		return;
+	}
+	
+	SetPause(false);
+	bShowMouseCursor = false;
+	SetInputMode(FInputModeGameOnly());
+}
+
 void ATinoPlayerController::BeginPlay()
 {
 	Super::BeginPlay();

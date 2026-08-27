@@ -24,6 +24,7 @@ class UImage;
 class UProgressBar;
 class UPlayerProgressionComponent;
 class UTextBlock;
+class UWidget;
 
 struct FOnAttributeChangeData;
 
@@ -35,6 +36,8 @@ class PROJECT_TINOKINGDOM_API UTinoPlayerWidget : public UUserWidget
 public:
 	void SetCrosshairVisible(bool bVisible);
 	void SetLockOnMarkerTarget(AActor* NewTarget);
+	
+	void SetCharacterMenuVisible(bool bVisible);
 	
 protected:
 	virtual void NativeOnInitialized() override;
@@ -89,6 +92,12 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> DefenseUpgradeButton;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> InventoryPanel;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> StatusPanel;
+	
 private:
 	UFUNCTION()
 	void HandleMaxHealthUpgradeClicked();
@@ -109,8 +118,12 @@ private:
 	bool BindToProgressionComponent();
 	void UnbindFromProgressionComponent();
 	
+	void HandleMaxHealthAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	void HandleHealthAttributeChanged(const FOnAttributeChangeData& ChangeData);
+	
+	void HandleMaxStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	void HandleStaminaAttributeChanged(const FOnAttributeChangeData& ChangeData);
+	
 	void HandleStatAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	
 	void HandleLevelChanged(int32 NewLevel);

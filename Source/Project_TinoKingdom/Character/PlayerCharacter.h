@@ -54,6 +54,8 @@ protected:
 protected:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
+	
+	void ToggleCharacterMenu();
 
 	void StartRunning();
 	void StopRunning();
