@@ -37,4 +37,28 @@ namespace TinoGameplayTags
 		"Data.Damage",
 		"SetByCaller를 통해 전달되는 피해량"
 	);
+	
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(
+	Data_StatUpgrade_MaxHealth,
+	"Data.StatUpgrade.MaxHealth",
+	"SetByCaller를 통해 전달되는 최대 체력 증가량"
+	);
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(
+		Data_StatUpgrade_MaxStamina,
+		"Data.StatUpgrade.MaxStamina",
+		"SetByCaller를 통해 전달되는 최대 기력 증가량"
+	);
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(
+		Data_StatUpgrade_AttackPower,
+		"Data.StatUpgrade.AttackPower",
+		"SetByCaller를 통해 전달되는 공격력 증가량"
+	);
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(
+		Data_StatUpgrade_Defense,
+		"Data.StatUpgrade.Defense",
+		"SetByCaller를 통해 전달되는 방어력 증가량"
+	);
 }
