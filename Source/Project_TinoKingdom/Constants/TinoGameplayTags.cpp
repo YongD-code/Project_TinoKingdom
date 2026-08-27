@@ -37,4 +37,10 @@ namespace TinoGameplayTags
 		"State.InDialogue",
 		"캐릭터가 NPC와 대화 중"
 	);
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(
+		Data_Damage,
+		"Data.Damage",
+		"SetByCaller를 통해 전달되는 피해량"
+	);
 }

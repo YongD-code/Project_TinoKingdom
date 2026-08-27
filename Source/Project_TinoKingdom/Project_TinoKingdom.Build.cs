@@ -17,6 +17,8 @@ public class Project_TinoKingdom : ModuleRules
 			"AIModule",
 			"NavigationSystem",
 			"GameplayTags",
+			"GameplayAbilities",
+			"GameplayTasks",
 			"LevelSequence",
 			"MovieScene"
 		});

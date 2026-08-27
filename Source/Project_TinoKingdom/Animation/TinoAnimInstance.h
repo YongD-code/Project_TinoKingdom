@@ -42,6 +42,12 @@ private:
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (AllowPrivateAccess = "true"))
 	float GroundSpeed = 0.f;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (AllowPrivateAccess = "true"))
+	float MovementDirection = 0.f;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (AllowPrivateAccess = "true"))
+	uint8 bIsStrafing : 1;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (AllowPrivateAccess = "true"))
 	uint8 bIsIdle : 1;

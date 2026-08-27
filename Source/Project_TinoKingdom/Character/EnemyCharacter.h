@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
+#include "Project_TinoKingdom/Interface/TargetableInterface.h"
 #include "EnemyCharacter.generated.h"
 
 class UBehaviorTree;	
@@ -16,7 +17,7 @@ class APlayerCharacter;
 class UTexture2D;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter
+class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter, public ITargetableInterface
 {
 	GENERATED_BODY()
 
@@ -58,7 +59,8 @@ public:
 	
 	const TArray<TObjectPtr<ATargetPoint>>& GetPatrolPoints() const {return PatrolPoints;}
 	
-	
+	virtual bool CanBeTargeted_Implementation() const override;
+	virtual FVector GetLockOnLocation_Implementation() const override;
 
 protected:
 	
@@ -72,6 +74,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
 	TObjectPtr<UStatComponent> StatComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Targeting")
+	TObjectPtr<USceneComponent> LockOnAnchor;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI")
 	TObjectPtr<UBehaviorTree> BehaviorTree;

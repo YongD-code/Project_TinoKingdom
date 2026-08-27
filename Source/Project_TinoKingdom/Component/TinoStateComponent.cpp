@@ -3,56 +3,74 @@
 
 #include "TinoStateComponent.h"
 
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 
-
-void UTinoStateComponent::AddStateTag(const FGameplayTag& StateTag)
+void UTinoStateComponent::BeginPlay()
 {
-	if (!StateTag.IsValid())
+	Super::BeginPlay();
+
+	const IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(GetOwner());
+	if (!ensureMsgf(
+		AbilitySystemInterface != nullptr,
+		TEXT("TinoStateComponent의 소유자가 IAbilitySystemInterface를 구현하지 않았습니다.")
+	))
 	{
 		return;
 	}
-	
-	int32& Count = StateTagCounts.FindOrAdd(StateTag);
-	++Count;
-	
-	if (Count == 1)
+
+	AbilitySystemComponent = AbilitySystemInterface->GetAbilitySystemComponent();
+	ensureMsgf(
+		AbilitySystemComponent != nullptr,
+		TEXT("TinoStateComponent가 AbilitySystemComponent를 찾지 못했습니다.")
+	);
+}
+
+void UTinoStateComponent::AddStateTag(const FGameplayTag& StateTag)
+{
+	if (AbilitySystemComponent == nullptr || !StateTag.IsValid())
 	{
-		ActiveStateTags.AddTag(StateTag);
+		return;
 	}
+
+	AbilitySystemComponent->AddLooseGameplayTag(StateTag);
 }
 
 void UTinoStateComponent::RemoveStateTag(const FGameplayTag& StateTag)
 {
-	int32* Count = StateTagCounts.Find(StateTag);
-
-	// 추가된 적 없는 태그를 제거하려 하면 널 역참조가 되므로 조용히 넘어간다.
-	if (Count == nullptr)
+	if (
+		AbilitySystemComponent == nullptr
+		|| !StateTag.IsValid()
+		|| AbilitySystemComponent->GetTagCount(StateTag) <= 0
+	)
 	{
 		return;
 	}
 
-	--(*Count);
-
-	if (*Count <= 0)
-	{
-		StateTagCounts.Remove(StateTag);
-		ActiveStateTags.RemoveTag(StateTag);
-	}
+	AbilitySystemComponent->RemoveLooseGameplayTag(StateTag);
 }
 
 bool UTinoStateComponent::HasStateTag(const FGameplayTag& StateTag) const
 {
-	return ActiveStateTags.HasTag(StateTag);
+	return AbilitySystemComponent != nullptr
+		&& StateTag.IsValid()
+		&& AbilitySystemComponent->HasMatchingGameplayTag(StateTag);
 }
 
 bool UTinoStateComponent::HasAnyStateTags(const FGameplayTagContainer& StateTags) const
 {
-	return ActiveStateTags.HasAny(StateTags);
+	return AbilitySystemComponent != nullptr
+		&& AbilitySystemComponent->HasAnyMatchingGameplayTags(StateTags);
 }
 
 bool UTinoStateComponent::CanPerformAction(ETinoAction Action) const
 {
+	if (AbilitySystemComponent == nullptr)
+	{
+		return false;
+	}
+
 	if (HasStateTag(TinoGameplayTags::State_Dead))
 	{
 		return false;
