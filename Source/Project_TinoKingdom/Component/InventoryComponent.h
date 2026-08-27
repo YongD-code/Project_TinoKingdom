@@ -4,10 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Project_TinoKingdom/Types/CookingTypes.h"
 #include "InventoryComponent.generated.h"
 
 
 class UTexture2D;
+class UStatComponent;
+
+UENUM(BlueprintType)
+enum class EInventoryItemType : uint8
+{
+	Etc UMETA(DisplayName = "Etc"),
+	Material UMETA(DisplayName = "Material"),
+	Food UMETA(DisplayName = "Food"),
+	Equipment UMETA(DisplayName = "Equipment")
+};
 
 
 USTRUCT(BlueprintType)
@@ -26,6 +37,21 @@ struct FInventoryItemStack
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TObjectPtr<UTexture2D> Icon = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory")
+	EInventoryItemType ItemType = EInventoryItemType::Etc;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking")
+	ECookingTag CookingTag = ECookingTag::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking")
+	EFoodEffectType FoodEffectType = EFoodEffectType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking", meta = (ClampMin = "0.0"))
+	float CookingPower = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking")
+	FCookingResultData FoodResultData;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
@@ -46,10 +72,29 @@ public:
 	UInventoryComponent();
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void AddItem(FName ItemId, FText DisplayName, int32 Count, UTexture2D* Icon);
+	void AddItem(
+		FName ItemId,
+		FText DisplayName,
+		int32 Count,
+		UTexture2D* Icon,
+		EInventoryItemType ItemType = EInventoryItemType::Etc,
+		ECookingTag CookingTag = ECookingTag::None,
+		EFoodEffectType FoodEffectType = EFoodEffectType::None,
+		float CookingPower = 1.0f,
+		const FCookingResultData& FoodResultData = FCookingResultData()
+	);
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	int32 GetItemCount(FName ItemId) const;
+
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	bool HasItem(FName ItemId, int32 Count = 1) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool RemoveItem(FName ItemId, int32 Count = 1);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Food")
+	bool UseFoodItem(FName ItemId, UStatComponent* TargetStatComponent);
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	const TArray<FInventoryItemStack>& GetItems() const { return Items; }
