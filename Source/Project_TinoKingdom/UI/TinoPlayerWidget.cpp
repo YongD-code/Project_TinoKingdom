@@ -10,6 +10,7 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
@@ -386,7 +387,7 @@ void UTinoPlayerWidget::HandleStatPointsChanged(int32 NewStatPoints)
 void UTinoPlayerWidget::RefreshHealthBar()
 {
 	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
-	if (AbilitySystemComponent == nullptr || HPProgressBar == nullptr)
+	if (AbilitySystemComponent == nullptr || HPProgressBar == nullptr || HealthBarSizeBox == nullptr)
 	{
 		return;
 	}
@@ -399,6 +400,8 @@ void UTinoPlayerWidget::RefreshHealthBar()
 	
 	const float CurrentHealth = AttributeSet->GetHealth();
 	const float MaxHealth = AttributeSet->GetMaxHealth();
+	
+	HealthBarSizeBox->SetWidthOverride(CalculateBarWidth(MaxHealth, BaseMaxHealth, HealthBarWidthPerStatUnit));
 	const float HealthPercent = MaxHealth > 0.f ? FMath::Clamp(CurrentHealth / MaxHealth, 0.f, 1.f) : 0.f;
 
 	TargetHealthPercent = HealthPercent;
@@ -412,7 +415,7 @@ void UTinoPlayerWidget::RefreshHealthBar()
 void UTinoPlayerWidget::RefreshStaminaBar()
 {
 	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
-	if (AbilitySystemComponent == nullptr || StaminaProgressBar == nullptr)
+	if (AbilitySystemComponent == nullptr || StaminaProgressBar == nullptr || StaminaBarSizeBox == nullptr)
 	{
 		return;
 	}
@@ -425,6 +428,8 @@ void UTinoPlayerWidget::RefreshStaminaBar()
 	
 	const float CurrentStamina = AttributeSet->GetStamina();
 	const float MaxStamina = AttributeSet->GetMaxStamina();
+	
+	StaminaBarSizeBox->SetWidthOverride(CalculateBarWidth(MaxStamina, BaseMaxStamina, StaminaBarWidthPerStatUnit));
 	const float StaminaPercent = MaxStamina > 0.f ? FMath::Clamp(CurrentStamina / MaxStamina, 0.f, 1.f) : 0.f;
 	
 	TargetStaminaPercent = StaminaPercent;
@@ -478,6 +483,18 @@ void UTinoPlayerWidget::TryUpgradeStat(EPlayerStatType StatType)
 void UTinoPlayerWidget::SetDisplayedLevel(int32 NewLevel)
 {
 	LevelTextBlock->SetText(FText::AsNumber(NewLevel));
+	
+	ExperienceBarSizeBox->SetWidthOverride(
+		CalculateBarWidth(static_cast<float>(NewLevel), 1.f, ExperienceBarWidthPerLevel));
+}
+
+float UTinoPlayerWidget::CalculateBarWidth(float CurrentValue, float BaseValue, float WidthPerUnit) const
+{
+	const float SafeMaxBarWidth = FMath::Max(MaxBarWidth, BaseBarWidth);
+	const float GrowthValue = FMath::Max(CurrentValue - BaseValue, 0.f);
+	const float GrowthWidth = GrowthValue * FMath::Max(WidthPerUnit, 0.f);
+	
+	return FMath::Clamp(BaseBarWidth + GrowthWidth, BaseBarWidth, SafeMaxBarWidth);
 }
 
 float UTinoPlayerWidget::CalculateExperiencePercent(int32 Experience, int32 RequiredExperience)

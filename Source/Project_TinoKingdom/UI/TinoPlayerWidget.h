@@ -23,6 +23,7 @@ class UCanvasPanelSlot;
 class UImage;
 class UProgressBar;
 class UPlayerProgressionComponent;
+class USizeBox;
 class UTextBlock;
 class UWidget;
 
@@ -98,6 +99,15 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> StatusPanel;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<USizeBox> HealthBarSizeBox;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<USizeBox> StaminaBarSizeBox;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<USizeBox> ExperienceBarSizeBox;
+	
 private:
 	UFUNCTION()
 	void HandleMaxHealthUpgradeClicked();
@@ -139,6 +149,7 @@ private:
 	
 	void SetDisplayedLevel(int32 NewLevel);
 	
+	float CalculateBarWidth(float CurrentValue, float BaseValue, float WidthPerUnit) const;
 	float CalculateExperiencePercent(int32 Experience, int32 RequiredExperience);
 	
 	void UpdateExperienceBar(float DeltaTime);
@@ -165,6 +176,27 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience", meta = (ClampMin = "0.0"))
 	float ExperienceInterpSpeed = 2.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size", meta = (ClampMin = "1.0"))
+	float BaseBarWidth = 393.9082f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size", meta = (ClampMin = "1.0"))
+	float MaxBarWidth = 800.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size|Health", meta = (ClampMin = "1.0"))
+	float BaseMaxHealth = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size|Health", meta = (ClampMin = "0.0"))
+	float HealthBarWidthPerStatUnit = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size|Stamina", meta = (ClampMin = "1.0"))
+	float BaseMaxStamina = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size|Stamina", meta = (ClampMin = "0.0"))
+	float StaminaBarWidthPerStatUnit = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size|Experience", meta = (ClampMin = "0.0"))
+	float ExperienceBarWidthPerLevel = 2.f;
 	
 	float TargetHealthPercent = 1.f;
 	float TargetStaminaPercent = 1.f;

@@ -444,7 +444,7 @@ float UTinoCombatComponent::CalculateAttackDamage(float ComboDamage) const
 	const UAbilitySystemComponent* AbilitySystemComponent = AbilitySystemInterface->GetAbilitySystemComponent();
 	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
 	
-	const float AttackPower = FMath::Max(AttributeSet->GetAttackPower());
+	const float AttackPower = FMath::Max(AttributeSet->GetAttackPower(), 1.f);
 	
 	return AttackPower + SafeComboDamage;
 		

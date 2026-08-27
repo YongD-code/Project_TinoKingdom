@@ -58,6 +58,13 @@
 			]
 		},
 		{
+			"Name": "UMGToolSet",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
 			"Name": "PCGToolset",
 			"Enabled": true,
 			"TargetAllowList": [
