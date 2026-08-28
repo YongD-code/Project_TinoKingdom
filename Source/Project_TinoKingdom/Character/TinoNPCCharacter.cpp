@@ -138,20 +138,20 @@ void ATinoNPCCharacter::CacheAnimationMeshes()
 	TArray<USkeletalMeshComponent*> SkeletalMeshes;
 	GetComponents<USkeletalMeshComponent>(SkeletalMeshes);
 
-	for (USkeletalMeshComponent* Mesh : SkeletalMeshes)
+	for (USkeletalMeshComponent* CurrentMesh : SkeletalMeshes)
 	{
-		if (!IsValid(Mesh))
+		if (!IsValid(CurrentMesh))
 		{
 			continue;
 		}
 
-		if (Mesh->GetFName() == BodyMeshComponentName)
+		if (CurrentMesh->GetFName() == BodyMeshComponentName)
 		{
-			BodyMesh = Mesh;
+			BodyMesh = CurrentMesh;
 		}
-		else if (Mesh->GetFName() == FaceMeshComponentName)
+		else if (CurrentMesh->GetFName() == FaceMeshComponentName)
 		{
-			FaceMesh = Mesh;
+			FaceMesh = CurrentMesh;
 		}
 	}
 
