@@ -9,6 +9,7 @@ namespace TinoGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Action_HitReacting);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dead);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Invincible);
-	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InDialogue);
+
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Damage);
 }

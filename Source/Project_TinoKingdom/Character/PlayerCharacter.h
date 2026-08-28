@@ -8,11 +8,13 @@
 #include "AbilitySystemInterface.h"
 #include "PlayerCharacter.generated.h"
 
+class UDialogueComponent;
 class UGameplayEffect;
 class UTinoAttributeSet;
 class UAbilitySystemComponent;
 class UTargetingComponent;
 class UDodgeComponent;
+class UQuestComponent;
 class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
@@ -59,6 +61,10 @@ protected:
 	void StopRunning();
 
 	ATinoNPCCharacter* FindNearbyNPC() const;
+	void Interact();
+	void DialogueAdvancePressed();
+	void DialogueAdvanceReleased();
+	void DialogueCancel();
 	void Attack();
 	void StartJump();
 	void MoveDebugFlyUp();
@@ -174,6 +180,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ToggleInventoryAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
+	TObjectPtr<UInputAction> DialInteractAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
+	TObjectPtr<UInputAction> DialAdvanceAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
+	TObjectPtr<UInputAction> DialCancelAction;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
 	TObjectPtr<UInputAction> ToggleDebugAction;
 
@@ -182,6 +197,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> TargetingAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
+	float InteractionRadius = 300.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction|Debug")
+	bool bDrawInteractionDebug = false;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Speed", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 140.f;
@@ -212,6 +233,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Targeting")
 	TObjectPtr<UTargetingComponent> TargetingComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueComponent> DialogueComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Quest")
+	TObjectPtr<UQuestComponent> QuestComponent;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void OpenEquipmentWheel();

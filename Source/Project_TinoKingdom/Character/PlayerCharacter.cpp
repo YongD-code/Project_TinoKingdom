@@ -22,6 +22,8 @@
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/Component/DodgeComponent.h"
+#include "Project_TinoKingdom/Component/DialogueComponent.h"
+#include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
@@ -78,6 +80,8 @@ APlayerCharacter::APlayerCharacter()
 	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
 	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
 	TargetingComponent = CreateDefaultSubobject<UTargetingComponent>(TEXT("TargetingComponent"));
+	DialogueComponent = CreateDefaultSubobject<UDialogueComponent>(TEXT("DialogueComponent"));
+	QuestComponent = CreateDefaultSubobject<UQuestComponent>(TEXT("QuestComponent"));
 
 	// 플레이어 이동의 가속, 감속 및 마찰 값을 설정한다.
 	MovementComponent->MaxAcceleration = 500.f;
@@ -270,6 +274,50 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Canceled, this, &APlayerCharacter::StopAiming);
 
 	EnhancedInputComponent->BindAction(TargetingAction, ETriggerEvent::Started, this, &APlayerCharacter::RequestTargeting);
+
+	// 대화 시작은 기본 컨텍스트에, 진행과 취소는 대화 컨텍스트에 매핑되어 있다.
+	EnhancedInputComponent->BindAction(DialInteractAction, ETriggerEvent::Started, this, &APlayerCharacter::Interact);
+	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueAdvancePressed);
+	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Completed, this, &APlayerCharacter::DialogueAdvanceReleased);
+	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Canceled, this, &APlayerCharacter::DialogueAdvanceReleased);
+	EnhancedInputComponent->BindAction(DialCancelAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueCancel);
+}
+
+void APlayerCharacter::Interact()
+{
+	if (!IsValid(DialogueComponent) || DialogueComponent->IsInDialogue())
+	{
+		return;
+	}
+
+	if (ATinoNPCCharacter* NearbyNPC = FindNearbyNPC())
+	{
+		DialogueComponent->StartDialogue(NearbyNPC);
+	}
+}
+
+void APlayerCharacter::DialogueAdvancePressed()
+{
+	if (IsValid(DialogueComponent))
+	{
+		DialogueComponent->OnAdvancePressed();
+	}
+}
+
+void APlayerCharacter::DialogueAdvanceReleased()
+{
+	if (IsValid(DialogueComponent))
+	{
+		DialogueComponent->OnAdvanceReleased();
+	}
+}
+
+void APlayerCharacter::DialogueCancel()
+{
+	if (IsValid(DialogueComponent))
+	{
+		DialogueComponent->CancelDialogue();
+	}
 }
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
@@ -353,7 +401,6 @@ ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
 	}
 
 	const FVector Center = GetActorLocation();
-	const float Radius = 300.0f;
 
 	TArray<FOverlapResult> Overlaps;
 
@@ -365,44 +412,48 @@ ATinoNPCCharacter* APlayerCharacter::FindNearbyNPC() const
 		Center,
 		FQuat::Identity,
 		FCollisionObjectQueryParams(ECC_Pawn),
-		FCollisionShape::MakeSphere(Radius),
+		FCollisionShape::MakeSphere(InteractionRadius),
 		Params
 	);
 
-	DrawDebugSphere(World, Center, Radius, 24, FColor::Green, false, 1.0f);
+	if (bDrawInteractionDebug)
+	{
+		DrawDebugSphere(World, Center, InteractionRadius, 24, FColor::Green, false, 1.0f);
+	}
 
 	if (!bHit)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Nearby NPC 없음"));
 		return nullptr;
 	}
 
-	for(const FOverlapResult& Result : Overlaps)
+	// OverlapMulti는 결과를 거리순으로 정렬해 주지 않으므로 가장 가까운 NPC를 직접 고른다.
+	// 제곱 거리로 비교해 매 비교마다 제곱근을 계산하지 않는다.
+	ATinoNPCCharacter* ClosestNPC = nullptr;
+	float ClosestDistanceSquared = TNumericLimits<float>::Max();
+
+	for (const FOverlapResult& Result : Overlaps)
 	{
 		ATinoNPCCharacter* NPC = Cast<ATinoNPCCharacter>(Result.GetActor());
 
-		if (NPC)
+		if (NPC == nullptr)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Neary NPC 찾음: %s"), *NPC->GetName());
-			return NPC;
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(Center, NPC->GetActorLocation());
+
+		if (DistanceSquared < ClosestDistanceSquared)
+		{
+			ClosestDistanceSquared = DistanceSquared;
+			ClosestNPC = NPC;
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Overlap은 됐지만 ATinoNPCCharacter가 없음"));
-	return nullptr;
-
+	return ClosestNPC;
 }
 
 void APlayerCharacter::Attack()
 {
-	if (ATinoNPCCharacter* NearbyNPC = FindNearbyNPC())
-	{
-		if (APlayerController* PC = Cast<APlayerController>(GetController()))
-		{
-			NearbyNPC->StartDialogue(PC);
-		}
-		return;
-	}
 	if (!CharacterStateComponent->CanPerformAction(ETinoAction::Attack))
 	{
 		return;
