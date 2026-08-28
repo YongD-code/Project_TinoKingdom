@@ -4,15 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "Blueprint/UserWidget.h"
 #include "TinoPlayerController.generated.h"
 
-/**
- * 
- */
-
 class UInputMappingContext;
-class UUserWidget;
 class UTinoPlayerWidget;
 
 UCLASS()
@@ -21,11 +15,10 @@ class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
-	UFUNCTION(BlueprintPure, Category = "UI")
-	UTinoPlayerWidget* GetPlayerUIWidget() const { return PlayerUIWidget; }
-	
 	void SetCrosshairVisible(bool bVisible);
 	void SetLockOnMarkerTarget(AActor* NewTarget);
+	
+	void ToggleCharacterMenu();
 	
 protected:
 	virtual void BeginPlay() override;
@@ -39,4 +32,7 @@ protected:
 	
 	UPROPERTY()
 	TObjectPtr<UTinoPlayerWidget> PlayerUIWidget;
+	
+private:
+	bool bCharacterMenuOpen = false;
 };

@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Camera/CameraComponent.h"
 #include "AbilitySystemInterface.h"
 #include "PlayerCharacter.generated.h"
 
@@ -12,6 +11,7 @@ class UDialogueComponent;
 class UGameplayEffect;
 class UTinoAttributeSet;
 class UAbilitySystemComponent;
+class UPlayerProgressionComponent;
 class UTargetingComponent;
 class UDodgeComponent;
 class UQuestComponent;
@@ -38,9 +38,8 @@ public:
 	APlayerCharacter();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
 	UTinoAbilitySystemComponent* GetTinoAbilitySystemComponent() const { return AbilitySystemComponent; }
-	
+	UPlayerProgressionComponent* GetProgressionComponent() const { return ProgressionComponent; }
 	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
 	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
@@ -56,6 +55,8 @@ protected:
 protected:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
+	
+	void ToggleCharacterMenu();
 
 	void StartRunning();
 	void StopRunning();
@@ -95,6 +96,9 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
 	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
+	TObjectPtr<UPlayerProgressionComponent> ProgressionComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
 	TObjectPtr<UTinoAttributeSet> AttributeSet;
@@ -178,7 +182,7 @@ protected:
 	TObjectPtr<UInputAction> DodgeAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> ToggleInventoryAction;
+	TObjectPtr<UInputAction> ToggleCharacterMenuAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
 	TObjectPtr<UInputAction> DialInteractAction;
@@ -248,9 +252,6 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void CancelEquipmentWheel();
-
-	UFUNCTION(BlueprintImplementableEvent, Category = "Inventory")
-	void ToggleInventory();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
 	void StartSlowMotion();

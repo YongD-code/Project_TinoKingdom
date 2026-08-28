@@ -10,12 +10,14 @@
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/DamageType.h"
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/AI/EnemyAIController.h"
 #include "Project_TinoKingdom/Constants/TinoCollision.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
+#include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 
 
 AEnemyCharacter::AEnemyCharacter()
@@ -184,9 +186,13 @@ void AEnemyCharacter::HandleDead()
 	bHitReacting = false;
 	CombatTarget = nullptr;
 	
-	if (!DropItemId.IsNone() && DropItemCount > 0)
+	if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(LastDamageCauser))
 	{
-		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(LastDamageCauser))
+		if (UPlayerProgressionComponent* ProgressionComponent = PlayerCharacter->GetProgressionComponent())
+		{
+			ProgressionComponent->AddExperience(DropExperience);
+		}
+		if (!DropItemId.IsNone() && DropItemCount > 0)
 		{
 			if (UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 			{

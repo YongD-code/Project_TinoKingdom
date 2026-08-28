@@ -12,4 +12,9 @@ namespace TinoGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_InDialogue);
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Damage);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_StatUpgrade_MaxHealth);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_StatUpgrade_MaxStamina);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_StatUpgrade_AttackPower);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_StatUpgrade_Defense);
 }

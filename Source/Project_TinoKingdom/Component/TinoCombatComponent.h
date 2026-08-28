@@ -88,6 +88,7 @@ private:
 	
 	void GetAttackTracePoints(EAttackSource AttackSource, FVector& OutBaseLocation, FVector& OutTipLocation) const;
 
+	float CalculateAttackDamage(float ComboDamage) const;
 private:
 	// 장착 공격 데이터가 없을 때 사용할 캐릭터의 기본 공격 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
