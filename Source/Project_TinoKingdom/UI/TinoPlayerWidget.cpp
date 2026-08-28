@@ -468,10 +468,21 @@ void UTinoPlayerWidget::RefreshStatValue()
 	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
 	const UTinoAttributeSet* AttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
 	
-	MaxHealthValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetMaxHealth())));
-	MaxStaminaValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetMaxStamina())));
-	AttackPowerValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetAttackPower())));
-	DefenseValueTextBlock->SetText(FText::AsNumber(FMath::RoundToInt(AttributeSet->GetDefense())));
+	MaxHealthValueTextBlock->SetText(
+	FText::Format(NSLOCTEXT("TinoPlayerWidget", "HealthValueFormat", "Health {0}"),
+		FText::AsNumber(FMath::RoundToInt(AttributeSet->GetMaxHealth()))));
+
+	MaxStaminaValueTextBlock->SetText(
+		FText::Format(NSLOCTEXT("TinoPlayerWidget", "StaminaValueFormat", "Stamina {0}"),
+			FText::AsNumber(FMath::RoundToInt(AttributeSet->GetMaxStamina()))));
+
+	AttackPowerValueTextBlock->SetText(
+		FText::Format(NSLOCTEXT("TinoPlayerWidget", "AttackValueFormat", "Attack {0}"),
+			FText::AsNumber(FMath::RoundToInt(AttributeSet->GetAttackPower()))));
+
+	DefenseValueTextBlock->SetText(
+		FText::Format(NSLOCTEXT("TinoPlayerWidget", "DefenseValueFormat", "Defense {0}"),
+			FText::AsNumber(FMath::RoundToInt(AttributeSet->GetDefense()))));
 }
 
 void UTinoPlayerWidget::TryUpgradeStat(EPlayerStatType StatType)
