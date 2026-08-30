@@ -6,6 +6,9 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "Blueprint/UserWidget.h"
+#include "Project_TinoKingdom/Component/CookingComponent.h"
+#include "Project_TinoKingdom/Component/InventoryComponent.h"
+#include "Project_TinoKingdom/UI/CookingWidget.h"
 #include "Project_TinoKingdom/UI/TinoPlayerWidget.h"
 
 
@@ -19,11 +22,24 @@ void ATinoPlayerController::SetCrosshairVisible(bool bVisible)
 
 void ATinoPlayerController::SetLockOnMarkerTarget(AActor* NewTarget)
 {
-	PlayerUIWidget->SetLockOnMarkerTarget(NewTarget);
+	if (PlayerUIWidget != nullptr)
+	{
+		PlayerUIWidget->SetLockOnMarkerTarget(NewTarget);
+	}
 }
 
 void ATinoPlayerController::ToggleCharacterMenu()
 {
+	if (bCookingMenuOpen)
+	{
+		ToggleCookingMenu(nullptr, nullptr);
+	}
+
+	if (PlayerUIWidget == nullptr)
+	{
+		return;
+	}
+
 	bCharacterMenuOpen = !bCharacterMenuOpen;
 	PlayerUIWidget->SetCharacterMenuVisible(bCharacterMenuOpen);
 	
@@ -43,6 +59,66 @@ void ATinoPlayerController::ToggleCharacterMenu()
 	SetPause(false);
 	bShowMouseCursor = false;
 	SetInputMode(FInputModeGameOnly());
+}
+
+void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponent, UInventoryComponent* InventoryComponent)
+{
+	if (bCharacterMenuOpen)
+	{
+		ToggleCharacterMenu();
+	}
+
+	bCookingMenuOpen = !bCookingMenuOpen;
+
+	if (!bCookingMenuOpen)
+	{
+		if (CookingUIWidget != nullptr)
+		{
+			CookingUIWidget->RemoveFromParent();
+		}
+
+		SetPause(false);
+		bShowMouseCursor = false;
+		SetInputMode(FInputModeGameOnly());
+		return;
+	}
+
+	if (CookingUIClass == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("CookingUIClass가 지정되지 않았습니다."));
+		bCookingMenuOpen = false;
+		return;
+	}
+
+	if (CookingComponent == nullptr || InventoryComponent == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cooking UI를 열 수 없습니다. CookingComponent 또는 InventoryComponent가 없습니다."));
+		bCookingMenuOpen = false;
+		return;
+	}
+
+	if (CookingUIWidget == nullptr)
+	{
+		CookingUIWidget = CreateWidget<UCookingWidget>(this, CookingUIClass);
+	}
+
+	if (CookingUIWidget == nullptr)
+	{
+		bCookingMenuOpen = false;
+		return;
+	}
+
+	CookingUIWidget->InitializeCookingWidget(CookingComponent, InventoryComponent);
+	CookingUIWidget->AddToViewport();
+
+	FInputModeGameAndUI InputMode;
+	InputMode.SetWidgetToFocus(CookingUIWidget->TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+	SetPause(true);
 }
 
 void ATinoPlayerController::BeginPlay()

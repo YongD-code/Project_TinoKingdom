@@ -8,6 +8,9 @@
 #include "CookingWidget.generated.h"
 
 class UCookingComponent;
+class UButton;
+class UEditableTextBox;
+class UTextBlock;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API UCookingWidget : public UUserWidget
@@ -20,6 +23,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	bool AddIngredientFromInventory(const FInventoryItemStack& Ingredient);
+
+	UFUNCTION(BlueprintCallable, Category = "Cooking")
+	bool AddFirstAvailableIngredientFromInventory();
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	void RemoveIngredientAt(int32 Index);
@@ -37,6 +43,8 @@ public:
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
 protected:
+	virtual void NativeOnInitialized() override;
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "Cooking")
 	void OnSelectedIngredientsChanged(const TArray<FInventoryItemStack>& SelectedIngredients);
 
@@ -45,10 +53,25 @@ protected:
 
 private:
 	void BroadcastSelectedIngredientsChanged();
+	void UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients);
+	void SetIngredientSlotText(int32 Index, const FText& Text);
+	void SetResultText(const FText& Text);
+
+	UFUNCTION()
+	void HandleStartCookingClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCookingComponent> CookingComponent;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> Button_StartCooking;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UEditableTextBox> TextBox_Result;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+	float DefaultCookingScore = 75.0f;
 };

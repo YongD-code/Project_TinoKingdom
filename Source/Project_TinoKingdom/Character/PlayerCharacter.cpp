@@ -15,6 +15,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
+#include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
@@ -79,6 +80,7 @@ APlayerCharacter::APlayerCharacter()
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	CookingComponent = CreateDefaultSubobject<UCookingComponent>(TEXT("CookingComponent"));
 	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
 	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
 	TargetingComponent = CreateDefaultSubobject<UTargetingComponent>(TEXT("TargetingComponent"));
@@ -367,6 +369,17 @@ void APlayerCharacter::ToggleCharacterMenu()
 {
 	ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController());
 	PlayerController->ToggleCharacterMenu();
+}
+
+void APlayerCharacter::ToggleCookingMenu()
+{
+	ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController());
+	if (PlayerController == nullptr)
+	{
+		return;
+	}
+
+	PlayerController->ToggleCookingMenu(CookingComponent, InventoryComponent);
 }
 
 void APlayerCharacter::StartRunning()

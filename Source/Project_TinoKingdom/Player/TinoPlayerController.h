@@ -8,6 +8,9 @@
 
 class UInputMappingContext;
 class UTinoPlayerWidget;
+class UCookingComponent;
+class UCookingWidget;
+class UInventoryComponent;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
@@ -19,6 +22,9 @@ public:
 	void SetLockOnMarkerTarget(AActor* NewTarget);
 	
 	void ToggleCharacterMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "Cooking")
+	void ToggleCookingMenu(UCookingComponent* CookingComponent, UInventoryComponent* InventoryComponent);
 	
 protected:
 	virtual void BeginPlay() override;
@@ -29,10 +35,17 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UTinoPlayerWidget> PlayerUIClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Cooking")
+	TSubclassOf<UCookingWidget> CookingUIClass;
 	
 	UPROPERTY()
 	TObjectPtr<UTinoPlayerWidget> PlayerUIWidget;
+
+	UPROPERTY()
+	TObjectPtr<UCookingWidget> CookingUIWidget;
 	
 private:
 	bool bCharacterMenuOpen = false;
+	bool bCookingMenuOpen = false;
 };
