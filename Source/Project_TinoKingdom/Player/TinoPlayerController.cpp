@@ -138,6 +138,14 @@ void ATinoPlayerController::ShowCookingIngredientPicker(UCookingWidget* CookingW
 	PlayerUIWidget->AddToViewport(10);
 }
 
+void ATinoPlayerController::RefreshCookingIngredientPicker()
+{
+	if (PlayerUIWidget != nullptr)
+	{
+		PlayerUIWidget->RefreshCookingIngredientPicker();
+	}
+}
+
 void ATinoPlayerController::BeginPlay()
 {
 	Super::BeginPlay();

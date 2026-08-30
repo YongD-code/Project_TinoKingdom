@@ -43,6 +43,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
+	const TArray<FInventoryItemStack>& GetSelectedIngredients() const;
+
 protected:
 	virtual void NativeOnInitialized() override;
 
@@ -62,6 +64,9 @@ private:
 	void RefreshIngredientList();
 	void SelectIngredientOption(int32 OptionIndex);
 	void CloseCookingWidget();
+	bool CanStartCooking() const;
+	void RefreshCookingActions();
+	void RefreshLinkedInventoryPicker();
 
 	UFUNCTION()
 	void HandleStartCookingClicked();

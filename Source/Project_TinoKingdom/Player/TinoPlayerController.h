@@ -27,6 +27,7 @@ public:
 	void ToggleCookingMenu(UCookingComponent* CookingComponent, UInventoryComponent* InventoryComponent);
 
 	void ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent);
+	void RefreshCookingIngredientPicker();
 	
 protected:
 	virtual void BeginPlay() override;

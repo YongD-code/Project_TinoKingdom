@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
+#include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
@@ -51,6 +52,15 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 		bCookingIngredientPickerOpen = false;
 		CookingIngredientTarget = nullptr;
 		DisplayedInventoryComponent = ResolveInventoryComponent();
+
+		if (UCanvasPanelSlot* InventoryPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(InventoryPanel))
+		{
+			InventoryPanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+			InventoryPanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			InventoryPanelSlot->SetPosition(FVector2D(-242.960938f, -2.540527f));
+			InventoryPanelSlot->SetSize(FVector2D(700.0f, 700.0f));
+		}
+
 		RefreshInventorySlots();
 	}
 	else
@@ -76,7 +86,24 @@ void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidge
 
 	InventoryPanel->SetVisibility(ESlateVisibility::Visible);
 	StatusPanel->SetVisibility(ESlateVisibility::Collapsed);
+
+	if (UCanvasPanelSlot* InventoryPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(InventoryPanel))
+	{
+		InventoryPanelSlot->SetAnchors(FAnchors(0.0f, 0.5f, 0.0f, 0.5f));
+		InventoryPanelSlot->SetAlignment(FVector2D(0.0f, 0.5f));
+		InventoryPanelSlot->SetPosition(FVector2D(40.0f, 0.0f));
+		InventoryPanelSlot->SetSize(FVector2D(520.0f, 520.0f));
+	}
+
 	RefreshInventorySlots();
+}
+
+void UTinoPlayerWidget::RefreshCookingIngredientPicker()
+{
+	if (bCookingIngredientPickerOpen)
+	{
+		RefreshInventorySlots();
+	}
 }
 
 void UTinoPlayerWidget::CloseCookingIngredientPicker()
@@ -249,6 +276,51 @@ void UTinoPlayerWidget::HandleInventorySlot14Clicked()
 void UTinoPlayerWidget::HandleInventorySlot15Clicked()
 {
 	HandleInventorySlotClicked(15);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot16Clicked()
+{
+	HandleInventorySlotClicked(16);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot17Clicked()
+{
+	HandleInventorySlotClicked(17);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot18Clicked()
+{
+	HandleInventorySlotClicked(18);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot19Clicked()
+{
+	HandleInventorySlotClicked(19);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot20Clicked()
+{
+	HandleInventorySlotClicked(20);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot21Clicked()
+{
+	HandleInventorySlotClicked(21);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot22Clicked()
+{
+	HandleInventorySlotClicked(22);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot23Clicked()
+{
+	HandleInventorySlotClicked(23);
+}
+
+void UTinoPlayerWidget::HandleInventorySlot24Clicked()
+{
+	HandleInventorySlotClicked(24);
 }
 
 bool UTinoPlayerWidget::BindToAbilitySystem()
@@ -620,24 +692,46 @@ void UTinoPlayerWidget::TryUpgradeStat(EPlayerStatType StatType)
 
 void UTinoPlayerWidget::RefreshInventorySlots()
 {
-	if (SlotGrid == nullptr || WidgetTree == nullptr)
+	if (WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	UUniformGridPanel* SlotGrid = WidgetTree->FindWidget<UUniformGridPanel>(TEXT("SlotGrid"));
+	if (SlotGrid == nullptr)
 	{
 		return;
 	}
 
 	SlotGrid->ClearChildren();
 	DisplayedInventoryItems.Empty();
+	DisplayedInventorySlots.Empty();
 
 	if (DisplayedInventoryComponent != nullptr)
 	{
 		for (const FInventoryItemStack& Item : DisplayedInventoryComponent->GetItems())
 		{
-			if (Item.Count <= 0)
+			int32 DisplayCount = Item.Count;
+
+			if (bCookingIngredientPickerOpen && CookingIngredientTarget != nullptr)
+			{
+				for (const FInventoryItemStack& SelectedIngredient : CookingIngredientTarget->GetSelectedIngredients())
+				{
+					if (SelectedIngredient.ItemId == Item.ItemId)
+					{
+						--DisplayCount;
+					}
+				}
+			}
+
+			if (DisplayCount <= 0)
 			{
 				continue;
 			}
 
-			DisplayedInventoryItems.Add(Item);
+			FInventoryItemStack DisplayItem = Item;
+			DisplayItem.Count = DisplayCount;
+			DisplayedInventoryItems.Add(DisplayItem);
 			if (DisplayedInventoryItems.Num() >= MaxInventorySlotCount)
 			{
 				break;
@@ -645,98 +739,132 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 		}
 	}
 
+	if (InventorySlotWidgetClass == nullptr)
+	{
+		InventorySlotWidgetClass = LoadClass<UUserWidget>(
+			nullptr,
+			TEXT("/Game/UI/InventoryUI.InventoryUI_C")
+		);
+	}
+
 	for (int32 Index = 0; Index < MaxInventorySlotCount; ++Index)
 	{
-		UButton* SlotButton = WidgetTree->ConstructWidget<UButton>(
-			UButton::StaticClass(),
-			NAME_None
-		);
-		UTextBlock* SlotText = WidgetTree->ConstructWidget<UTextBlock>(
-			UTextBlock::StaticClass(),
-			NAME_None
-		);
+		UUserWidget* SlotWidget = nullptr;
+		if (InventorySlotWidgetClass != nullptr)
+		{
+			SlotWidget = CreateWidget<UUserWidget>(GetOwningPlayer(), InventorySlotWidgetClass);
+		}
 
-		if (SlotButton == nullptr || SlotText == nullptr)
+		if (SlotWidget == nullptr)
 		{
 			continue;
 		}
 
-		SlotText->SetJustification(ETextJustify::Center);
-
-		if (DisplayedInventoryItems.IsValidIndex(Index))
+		if (UFunction* SetSlotItemFunction = SlotWidget->FindFunction(TEXT("SetSlotItem")))
 		{
-			const FInventoryItemStack& Item = DisplayedInventoryItems[Index];
-			SlotText->SetText(FText::Format(
-				FText::FromString(TEXT("{0}\nx{1}")),
-				Item.DisplayName,
-				FText::AsNumber(Item.Count)
-			));
-			SlotButton->SetIsEnabled(bCookingIngredientPickerOpen);
+			struct FSetSlotItemParams
+			{
+				UTexture2D* ItemIcon = nullptr;
+				int32 ItemCount = 0;
+			};
+
+			FSetSlotItemParams Params;
+			if (DisplayedInventoryItems.IsValidIndex(Index))
+			{
+				Params.ItemIcon = DisplayedInventoryItems[Index].Icon;
+				Params.ItemCount = DisplayedInventoryItems[Index].Count;
+			}
+			SlotWidget->ProcessEvent(SetSlotItemFunction, &Params);
 		}
-		else
-		{
-			SlotText->SetText(FText::GetEmpty());
-			SlotButton->SetIsEnabled(false);
-		}
 
-		SlotButton->SetContent(SlotText);
-
-		switch (Index)
+		if (UButton* SlotButton = Cast<UButton>(SlotWidget->GetWidgetFromName(TEXT("ButtonSlot"))))
 		{
-		case 0:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot0Clicked);
-			break;
-		case 1:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot1Clicked);
-			break;
-		case 2:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot2Clicked);
-			break;
-		case 3:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot3Clicked);
-			break;
-		case 4:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot4Clicked);
-			break;
-		case 5:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot5Clicked);
-			break;
-		case 6:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot6Clicked);
-			break;
-		case 7:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot7Clicked);
-			break;
-		case 8:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot8Clicked);
-			break;
-		case 9:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot9Clicked);
-			break;
-		case 10:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot10Clicked);
-			break;
-		case 11:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot11Clicked);
-			break;
-		case 12:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot12Clicked);
-			break;
-		case 13:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot13Clicked);
-			break;
-		case 14:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot14Clicked);
-			break;
-		case 15:
-			SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot15Clicked);
-			break;
-		default:
-			break;
+			SlotButton->SetIsEnabled(DisplayedInventoryItems.IsValidIndex(Index));
+
+			switch (Index)
+			{
+			case 0:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot0Clicked);
+				break;
+			case 1:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot1Clicked);
+				break;
+			case 2:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot2Clicked);
+				break;
+			case 3:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot3Clicked);
+				break;
+			case 4:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot4Clicked);
+				break;
+			case 5:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot5Clicked);
+				break;
+			case 6:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot6Clicked);
+				break;
+			case 7:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot7Clicked);
+				break;
+			case 8:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot8Clicked);
+				break;
+			case 9:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot9Clicked);
+				break;
+			case 10:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot10Clicked);
+				break;
+			case 11:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot11Clicked);
+				break;
+			case 12:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot12Clicked);
+				break;
+			case 13:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot13Clicked);
+				break;
+			case 14:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot14Clicked);
+				break;
+			case 15:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot15Clicked);
+				break;
+			case 16:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot16Clicked);
+				break;
+			case 17:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot17Clicked);
+				break;
+			case 18:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot18Clicked);
+				break;
+			case 19:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot19Clicked);
+				break;
+			case 20:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot20Clicked);
+				break;
+			case 21:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot21Clicked);
+				break;
+			case 22:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot22Clicked);
+				break;
+			case 23:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot23Clicked);
+				break;
+			case 24:
+				SlotButton->OnClicked.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot24Clicked);
+				break;
+			default:
+				break;
+			}
 		}
 
 		UUniformGridSlot* GridSlot = SlotGrid->AddChildToUniformGrid(
-			SlotButton,
+			SlotWidget,
 			Index / InventoryColumnCount,
 			Index % InventoryColumnCount
 		);
@@ -745,6 +873,8 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 			GridSlot->SetHorizontalAlignment(HAlign_Fill);
 			GridSlot->SetVerticalAlignment(VAlign_Fill);
 		}
+
+		DisplayedInventorySlots.Add(SlotWidget);
 	}
 }
 

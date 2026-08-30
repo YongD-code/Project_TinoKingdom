@@ -150,6 +150,7 @@ void UCookingWidget::InitializeCookingWidget(
 	RefreshIngredientList();
 	SetIngredientListVisible(false);
 	BroadcastSelectedIngredientsChanged();
+	RefreshCookingActions();
 }
 
 bool UCookingWidget::AddIngredientFromInventory(const FInventoryItemStack& Ingredient)
@@ -188,6 +189,7 @@ bool UCookingWidget::AddIngredientFromInventory(const FInventoryItemStack& Ingre
 	if (bAdded)
 	{
 		BroadcastSelectedIngredientsChanged();
+		RefreshLinkedInventoryPicker();
 	}
 
 	return bAdded;
@@ -227,6 +229,7 @@ void UCookingWidget::RemoveIngredientAt(int32 Index)
 
 	CookingComponent->RemoveCookingIngredientAt(Index);
 	BroadcastSelectedIngredientsChanged();
+	RefreshLinkedInventoryPicker();
 }
 
 void UCookingWidget::ClearIngredients()
@@ -238,6 +241,8 @@ void UCookingWidget::ClearIngredients()
 
 	CookingComponent->ClearCookingIngredients();
 	BroadcastSelectedIngredientsChanged();
+	RefreshLinkedInventoryPicker();
+	SetResultText(FText::GetEmpty());
 }
 
 bool UCookingWidget::CompleteCooking(float MinigameScore, FCookingResultData& OutResult)
@@ -258,9 +263,16 @@ bool UCookingWidget::CompleteCooking(float MinigameScore, FCookingResultData& Ou
 		SetResultText(OutResult.ResultName);
 		OnCookingCompleted(OutResult);
 		BroadcastSelectedIngredientsChanged();
+		RefreshLinkedInventoryPicker();
 	}
 
 	return bCompleted;
+}
+
+const TArray<FInventoryItemStack>& UCookingWidget::GetSelectedIngredients() const
+{
+	static const TArray<FInventoryItemStack> EmptyIngredients;
+	return CookingComponent != nullptr ? CookingComponent->GetSelectedIngredients() : EmptyIngredients;
 }
 
 void UCookingWidget::BroadcastSelectedIngredientsChanged()
@@ -275,6 +287,7 @@ void UCookingWidget::BroadcastSelectedIngredientsChanged()
 	const TArray<FInventoryItemStack>& SelectedIngredients = CookingComponent->GetSelectedIngredients();
 	UpdateIngredientSlotTexts(SelectedIngredients);
 	OnSelectedIngredientsChanged(SelectedIngredients);
+	RefreshCookingActions();
 }
 
 void UCookingWidget::UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients)
@@ -323,6 +336,12 @@ void UCookingWidget::SetResultText(const FText& Text)
 
 void UCookingWidget::HandleStartCookingClicked()
 {
+	if (!CanStartCooking())
+	{
+		SetResultText(FText::FromString(TEXT("재료가 부족합니다")));
+		return;
+	}
+
 	FCookingResultData Result;
 	if (CompleteCooking(DefaultCookingScore, Result))
 	{
@@ -331,6 +350,27 @@ void UCookingWidget::HandleStartCookingClicked()
 	}
 
 	SetResultText(FText::FromString(TEXT("재료가 부족합니다")));
+}
+
+bool UCookingWidget::CanStartCooking() const
+{
+	return CookingComponent != nullptr && CookingComponent->CanFinishCooking();
+}
+
+void UCookingWidget::RefreshCookingActions()
+{
+	if (Button_StartCooking != nullptr)
+	{
+		Button_StartCooking->SetIsEnabled(CanStartCooking());
+	}
+}
+
+void UCookingWidget::RefreshLinkedInventoryPicker()
+{
+	if (ATinoPlayerController* TinoPlayerController = Cast<ATinoPlayerController>(GetOwningPlayer()))
+	{
+		TinoPlayerController->RefreshCookingIngredientPicker();
+	}
 }
 
 void UCookingWidget::ToggleIngredientList()

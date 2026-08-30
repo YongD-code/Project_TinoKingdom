@@ -27,6 +27,7 @@ class UPlayerProgressionComponent;
 class USizeBox;
 class UTextBlock;
 class UUniformGridPanel;
+class UUserWidget;
 class UWidget;
 class UCookingWidget;
 
@@ -43,6 +44,7 @@ public:
 	
 	void SetCharacterMenuVisible(bool bVisible);
 	void ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent);
+	void RefreshCookingIngredientPicker();
 	void CloseCookingIngredientPicker();
 	
 protected:
@@ -100,9 +102,6 @@ protected:
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> InventoryPanel;
-
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UUniformGridPanel> SlotGrid;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> StatusPanel;
@@ -176,6 +175,33 @@ private:
 
 	UFUNCTION()
 	void HandleInventorySlot15Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot16Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot17Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot18Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot19Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot20Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot21Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot22Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot23Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot24Clicked();
 	
 private:
 	bool BindToAbilitySystem();
@@ -296,8 +322,14 @@ private:
 	UPROPERTY(Transient)
 	TArray<FInventoryItemStack> DisplayedInventoryItems;
 
-	static constexpr int32 InventoryColumnCount = 4;
-	static constexpr int32 MaxInventorySlotCount = 16;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UUserWidget>> DisplayedInventorySlots;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Inventory")
+	TSubclassOf<UUserWidget> InventorySlotWidgetClass;
+
+	static constexpr int32 InventoryColumnCount = 5;
+	static constexpr int32 MaxInventorySlotCount = 25;
 
 	bool bCookingIngredientPickerOpen = false;
 };

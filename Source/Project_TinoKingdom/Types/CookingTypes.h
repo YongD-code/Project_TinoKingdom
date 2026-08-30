@@ -88,6 +88,27 @@ struct FCookingIconData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon")
 	FLinearColor BaseTint = FLinearColor::White;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float FishRatio = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SlimeRatio = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MushroomRatio = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MeatRatio = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float HerbRatio = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float WoodRatio = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking|Icon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MonsterRatio = 0.0f;
 };
 
 USTRUCT(BlueprintType)

@@ -3,6 +3,9 @@
 
 
 #include "CookingComponent.h"
+
+#include "Engine/Texture2D.h"
+#include "Math/UnrealMathUtility.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 
 UCookingComponent::UCookingComponent()
@@ -82,6 +85,13 @@ FCookingResultData UCookingComponent::MakeCookingResult(const TArray<FInventoryI
 	Result.IconData.MainTag = MainTag;
 	Result.IconData.SubTag = SubTag;
 	Result.IconData.BaseTint = GetBaseTintByMainTag(MainTag);
+	Result.IconData.FishRatio = TagRatios.FindRef(ECookingTag::Fish);
+	Result.IconData.SlimeRatio = TagRatios.FindRef(ECookingTag::Slime);
+	Result.IconData.MushroomRatio = TagRatios.FindRef(ECookingTag::Mushroom);
+	Result.IconData.MeatRatio = TagRatios.FindRef(ECookingTag::Meat);
+	Result.IconData.HerbRatio = TagRatios.FindRef(ECookingTag::Herb);
+	Result.IconData.WoodRatio = TagRatios.FindRef(ECookingTag::Wood);
+	Result.IconData.MonsterRatio = TagRatios.FindRef(ECookingTag::Monster);
 
 	return Result;
 }
@@ -369,8 +379,23 @@ const TArray<FInventoryItemStack>& UCookingComponent::GetSelectedIngredients() c
 	return SelectedIngredients;
 }
 
+bool UCookingComponent::CanFinishCooking() const
+{
+	return SelectedIngredients.Num() >= MaxIngredientCount;
+}
+
 FCookingResultData UCookingComponent::FinishCooking(float MinigameScore)
 {
+	if (!CanFinishCooking())
+	{
+		FCookingResultData Result;
+		Result.ResultType = ECookingResultType::Failed;
+		Result.Quality = ECookingQuality::Failed;
+		Result.ResultName = FText::FromString(TEXT("재료가 부족합니다"));
+		Result.ResultItemId = FName(TEXT("Food_NotEnoughIngredients"));
+		return Result;
+	}
+
 	FCookingResultData Result = MakeCookingResult(SelectedIngredients);
 
 	if (Result.ResultType == ECookingResultType::Failed)
@@ -413,32 +438,53 @@ bool UCookingComponent::FinishCookingToInventory(
 	FCookingResultData& OutResult
 )
 {
-	if (InventoryComponent == nullptr || SelectedIngredients.Num() == 0)
+	if (InventoryComponent == nullptr || !CanFinishCooking())
 	{
-		OutResult = MakeCookingResult(SelectedIngredients);
+		OutResult = FCookingResultData();
+		OutResult.ResultType = ECookingResultType::Failed;
+		OutResult.Quality = ECookingQuality::Failed;
+		OutResult.ResultName = FText::FromString(TEXT("재료가 부족합니다"));
+		OutResult.ResultItemId = FName(TEXT("Food_NotEnoughIngredients"));
 		return false;
 	}
 
+	TMap<FName, int32> RequiredItemCounts;
 	for (const FInventoryItemStack& Ingredient : SelectedIngredients)
 	{
-		if (!InventoryComponent->HasItem(Ingredient.ItemId, 1))
+		RequiredItemCounts.FindOrAdd(Ingredient.ItemId) += 1;
+	}
+
+	for (const TPair<FName, int32>& RequiredItemCount : RequiredItemCounts)
+	{
+		if (!InventoryComponent->HasItem(RequiredItemCount.Key, RequiredItemCount.Value))
 		{
+			OutResult = FCookingResultData();
+			OutResult.ResultType = ECookingResultType::Failed;
+			OutResult.Quality = ECookingQuality::Failed;
+			OutResult.ResultName = FText::FromString(TEXT("재료가 부족합니다"));
+			OutResult.ResultItemId = FName(TEXT("Food_NotEnoughIngredients"));
 			return false;
 		}
 	}
 
 	OutResult = FinishCooking(MinigameScore);
-
-	for (const FInventoryItemStack& Ingredient : SelectedIngredients)
+	if (OutResult.ResultType == ECookingResultType::Failed || OutResult.Quality == ECookingQuality::Failed)
 	{
-		InventoryComponent->RemoveItem(Ingredient.ItemId, 1);
+		return false;
+	}
+
+	UTexture2D* ResultIcon = CreateResultIconTexture(OutResult);
+
+	for (const TPair<FName, int32>& RequiredItemCount : RequiredItemCounts)
+	{
+		InventoryComponent->RemoveItem(RequiredItemCount.Key, RequiredItemCount.Value);
 	}
 
 	InventoryComponent->AddItem(
 		OutResult.ResultItemId,
 		OutResult.ResultName,
 		1,
-		nullptr,
+		ResultIcon,
 		EInventoryItemType::Food,
 		ECookingTag::None,
 		EFoodEffectType::None,
@@ -448,4 +494,124 @@ bool UCookingComponent::FinishCookingToInventory(
 
 	ClearCookingIngredients();
 	return true;
+}
+
+UTexture2D* UCookingComponent::CreateResultIconTexture(const FCookingResultData& ResultData) const
+{
+	constexpr int32 TextureSize = 128;
+	TArray<FColor> Pixels;
+	Pixels.SetNumZeroed(TextureSize * TextureSize);
+
+	const auto ToColor = [](const FLinearColor& Color)
+	{
+		return Color.ToFColor(true);
+	};
+
+	const FColor FishColor = FColor(70, 165, 255, 255);
+	const FColor SlimeColor = FColor(55, 235, 125, 255);
+	const FColor MushroomColor = FColor(210, 115, 70, 255);
+	const FColor MeatColor = FColor(215, 65, 55, 255);
+	const FColor HerbColor = FColor(80, 205, 65, 255);
+	const FColor WoodColor = FColor(80, 55, 35, 255);
+	const FColor MonsterColor = FColor(145, 90, 210, 255);
+	const FColor EmptyColor = FColor(0, 0, 0, 0);
+
+	const TArray<TPair<float, FColor>> RatioColors =
+	{
+		{ ResultData.IconData.FishRatio, FishColor },
+		{ ResultData.IconData.SlimeRatio, SlimeColor },
+		{ ResultData.IconData.MushroomRatio, MushroomColor },
+		{ ResultData.IconData.MeatRatio, MeatColor },
+		{ ResultData.IconData.HerbRatio, HerbColor },
+		{ ResultData.IconData.WoodRatio, WoodColor },
+		{ ResultData.IconData.MonsterRatio, MonsterColor }
+	};
+
+	FColor QualityColor = FColor(220, 220, 220, 255);
+	switch (ResultData.Quality)
+	{
+	case ECookingQuality::Good:
+		QualityColor = FColor(95, 205, 255, 255);
+		break;
+	case ECookingQuality::Special:
+		QualityColor = FColor(255, 210, 70, 255);
+		break;
+	default:
+		break;
+	}
+
+	const FVector2D Center((TextureSize - 1) * 0.5f, (TextureSize - 1) * 0.5f);
+	const float OuterRadius = TextureSize * 0.46f;
+	const float InnerRadius = TextureSize * 0.17f;
+	const float BorderRadius = TextureSize * 0.42f;
+
+	for (int32 Y = 0; Y < TextureSize; ++Y)
+	{
+		for (int32 X = 0; X < TextureSize; ++X)
+		{
+			const FVector2D Delta(X - Center.X, Y - Center.Y);
+			const float Distance = Delta.Size();
+			FColor PixelColor = EmptyColor;
+
+			if (Distance <= OuterRadius)
+			{
+				if (Distance >= BorderRadius)
+				{
+					PixelColor = QualityColor;
+				}
+				else if (Distance <= InnerRadius)
+				{
+					PixelColor = ToColor(ResultData.IconData.BaseTint);
+				}
+				else
+				{
+					float Angle = FMath::Atan2(Delta.Y, Delta.X);
+					if (Angle < 0.0f)
+					{
+						Angle += 2.0f * PI;
+					}
+
+					const float RatioPosition = Angle / (2.0f * PI);
+					float AccumulatedRatio = 0.0f;
+					PixelColor = ToColor(ResultData.IconData.BaseTint);
+
+					for (const TPair<float, FColor>& RatioColor : RatioColors)
+					{
+						const float Ratio = FMath::Max(RatioColor.Key, 0.0f);
+						if (Ratio <= 0.0f)
+						{
+							continue;
+						}
+
+						AccumulatedRatio += Ratio;
+						if (RatioPosition <= AccumulatedRatio)
+						{
+							PixelColor = RatioColor.Value;
+							break;
+						}
+					}
+				}
+			}
+
+			Pixels[Y * TextureSize + X] = PixelColor;
+		}
+	}
+
+	UTexture2D* Texture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_B8G8R8A8);
+	if (Texture == nullptr || Texture->GetPlatformData() == nullptr || Texture->GetPlatformData()->Mips.Num() == 0)
+	{
+		return nullptr;
+	}
+
+	Texture->NeverStream = true;
+	Texture->CompressionSettings = TC_VectorDisplacementmap;
+	Texture->SRGB = true;
+
+	FTexture2DMipMap& Mip = Texture->GetPlatformData()->Mips[0];
+	void* TextureData = Mip.BulkData.Lock(LOCK_READ_WRITE);
+	FMemory::Memcpy(TextureData, Pixels.GetData(), Pixels.Num() * sizeof(FColor));
+	Mip.BulkData.Unlock();
+	Texture->UpdateResource();
+
+	return Texture;
 }
