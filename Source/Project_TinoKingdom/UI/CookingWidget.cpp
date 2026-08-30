@@ -6,10 +6,65 @@
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Components/VerticalBoxSlot.h"
 #include "Blueprint/WidgetTree.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
+
+namespace
+{
+ECookingTag InferCookingTagFromItem(const FInventoryItemStack& Item)
+{
+	if (Item.CookingTag != ECookingTag::None)
+	{
+		return Item.CookingTag;
+	}
+
+	const FString SearchText = Item.ItemId.ToString() + TEXT(" ") + Item.DisplayName.ToString();
+
+	if (SearchText.Contains(TEXT("Slime")) || SearchText.Contains(TEXT("슬라임")))
+	{
+		return ECookingTag::Slime;
+	}
+	if (SearchText.Contains(TEXT("WaterBest")) || SearchText.Contains(TEXT("Fish")) || SearchText.Contains(TEXT("Fin")) ||
+		SearchText.Contains(TEXT("물짱")) || SearchText.Contains(TEXT("생선")) || SearchText.Contains(TEXT("지느러미")))
+	{
+		return ECookingTag::Fish;
+	}
+	if (SearchText.Contains(TEXT("Mushroom")) || SearchText.Contains(TEXT("버섯")))
+	{
+		return ECookingTag::Mushroom;
+	}
+	if (SearchText.Contains(TEXT("Meat")) || SearchText.Contains(TEXT("고기")))
+	{
+		return ECookingTag::Meat;
+	}
+	if (SearchText.Contains(TEXT("Herb")) || SearchText.Contains(TEXT("약초")))
+	{
+		return ECookingTag::Herb;
+	}
+	if (SearchText.Contains(TEXT("Wood")) || SearchText.Contains(TEXT("나무")))
+	{
+		return ECookingTag::Wood;
+	}
+
+	return ECookingTag::None;
+}
+
+bool MakeCookingIngredient(const FInventoryItemStack& SourceItem, FInventoryItemStack& OutIngredient)
+{
+	const ECookingTag CookingTag = InferCookingTagFromItem(SourceItem);
+	if (CookingTag == ECookingTag::None || SourceItem.Count <= 0)
+	{
+		return false;
+	}
+
+	OutIngredient = SourceItem;
+	OutIngredient.ItemType = EInventoryItemType::Material;
+	OutIngredient.CookingTag = CookingTag;
+	OutIngredient.Count = 1;
+	return true;
+}
+}
 
 void UCookingWidget::NativeOnInitialized()
 {
@@ -25,53 +80,27 @@ void UCookingWidget::NativeOnInitialized()
 		return;
 	}
 
-	UVerticalBox* RootVerticalBox = WidgetTree->FindWidget<UVerticalBox>(TEXT("VerticalBox_79"));
-	if (RootVerticalBox == nullptr)
+	CloseCookingButton = WidgetTree->FindWidget<UButton>(TEXT("Button_CloseCooking_Static"));
+	if (CloseCookingButton != nullptr)
 	{
-		return;
+		CloseCookingButton->OnClicked.AddUniqueDynamic(this, &UCookingWidget::HandleCloseCookingClicked);
 	}
-
-	Button_CloseCooking = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("Button_CloseCooking"));
-	UTextBlock* CloseButtonText = WidgetTree->ConstructWidget<UTextBlock>(
-		UTextBlock::StaticClass(),
-		TEXT("TextBlock_CloseCooking")
-	);
-	if (Button_CloseCooking != nullptr && CloseButtonText != nullptr)
+	if (UTextBlock* CloseButtonText = WidgetTree->FindWidget<UTextBlock>(TEXT("TextBlock_CloseCooking_Static")))
 	{
 		CloseButtonText->SetText(FText::FromString(TEXT("끝내기")));
-		Button_CloseCooking->AddChild(CloseButtonText);
-		Button_CloseCooking->OnClicked.AddUniqueDynamic(this, &UCookingWidget::HandleCloseCookingClicked);
-		RootVerticalBox->AddChildToVerticalBox(Button_CloseCooking);
 	}
 
-	IngredientListBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("IngredientListBox"));
-	RootVerticalBox->AddChildToVerticalBox(IngredientListBox);
-
+	IngredientListBox = WidgetTree->FindWidget<UVerticalBox>(TEXT("IngredientInventoryPanel"));
 	IngredientOptionButtons.Empty();
 	IngredientOptionTexts.Empty();
 
 	for (int32 Index = 0; Index < MaxIngredientOptionCount; ++Index)
 	{
-		UButton* OptionButton = WidgetTree->ConstructWidget<UButton>(
-			UButton::StaticClass(),
-			*FString::Printf(TEXT("IngredientOptionButton_%d"), Index)
-		);
-		UTextBlock* OptionText = WidgetTree->ConstructWidget<UTextBlock>(
-			UTextBlock::StaticClass(),
-			*FString::Printf(TEXT("IngredientOptionText_%d"), Index)
-		);
+		const FName ButtonName(*FString::Printf(TEXT("IngredientOptionButton_%d"), Index));
+		const FName TextName(*FString::Printf(TEXT("IngredientOptionText_%d"), Index));
 
-		if (OptionButton == nullptr || OptionText == nullptr)
-		{
-			continue;
-		}
-
-		OptionText->SetText(FText::GetEmpty());
-		OptionButton->AddChild(OptionText);
-		IngredientListBox->AddChildToVerticalBox(OptionButton);
-
-		IngredientOptionButtons.Add(OptionButton);
-		IngredientOptionTexts.Add(OptionText);
+		IngredientOptionButtons.Add(WidgetTree->FindWidget<UButton>(ButtonName));
+		IngredientOptionTexts.Add(WidgetTree->FindWidget<UTextBlock>(TextName));
 	}
 
 	if (IngredientOptionButtons.IsValidIndex(0))
@@ -130,7 +159,32 @@ bool UCookingWidget::AddIngredientFromInventory(const FInventoryItemStack& Ingre
 		return false;
 	}
 
-	const bool bAdded = CookingComponent->AddCookingIngredient(Ingredient);
+	FInventoryItemStack CookingIngredient;
+	if (!MakeCookingIngredient(Ingredient, CookingIngredient))
+	{
+		return false;
+	}
+
+	if (InventoryComponent != nullptr)
+	{
+		const int32 AvailableCount = InventoryComponent->GetItemCount(CookingIngredient.ItemId);
+		int32 AlreadySelectedCount = 0;
+
+		for (const FInventoryItemStack& SelectedIngredient : CookingComponent->GetSelectedIngredients())
+		{
+			if (SelectedIngredient.ItemId == CookingIngredient.ItemId)
+			{
+				++AlreadySelectedCount;
+			}
+		}
+
+		if (AlreadySelectedCount >= AvailableCount)
+		{
+			return false;
+		}
+	}
+
+	const bool bAdded = CookingComponent->AddCookingIngredient(CookingIngredient);
 	if (bAdded)
 	{
 		BroadcastSelectedIngredientsChanged();
@@ -148,12 +202,8 @@ bool UCookingWidget::AddFirstAvailableIngredientFromInventory()
 
 	for (const FInventoryItemStack& Item : InventoryComponent->GetItems())
 	{
-		if (Item.Count <= 0 || Item.ItemType != EInventoryItemType::Material)
-		{
-			continue;
-		}
-
-		if (AddIngredientFromInventory(Item))
+		FInventoryItemStack CookingIngredient;
+		if (MakeCookingIngredient(Item, CookingIngredient) && AddIngredientFromInventory(CookingIngredient))
 		{
 			return true;
 		}
@@ -285,6 +335,13 @@ void UCookingWidget::HandleStartCookingClicked()
 
 void UCookingWidget::ToggleIngredientList()
 {
+	if (ATinoPlayerController* TinoPlayerController = Cast<ATinoPlayerController>(GetOwningPlayer()))
+	{
+		SetIngredientListVisible(false);
+		TinoPlayerController->ShowCookingIngredientPicker(this, InventoryComponent);
+		return;
+	}
+
 	SetIngredientListVisible(!bIngredientListVisible);
 }
 
@@ -311,12 +368,14 @@ void UCookingWidget::RefreshIngredientList()
 	{
 		for (const FInventoryItemStack& Item : InventoryComponent->GetItems())
 		{
-			if (Item.Count <= 0 || Item.ItemType != EInventoryItemType::Material)
+			FInventoryItemStack CookingIngredient;
+			if (!MakeCookingIngredient(Item, CookingIngredient))
 			{
 				continue;
 			}
 
-			IngredientOptions.Add(Item);
+			CookingIngredient.Count = Item.Count;
+			IngredientOptions.Add(CookingIngredient);
 			if (IngredientOptions.Num() >= MaxIngredientOptionCount)
 			{
 				break;

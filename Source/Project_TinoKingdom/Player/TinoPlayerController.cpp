@@ -72,6 +72,11 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 
 	if (!bCookingMenuOpen)
 	{
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->CloseCookingIngredientPicker();
+		}
+
 		if (CookingUIWidget != nullptr)
 		{
 			CookingUIWidget->RemoveFromParent();
@@ -109,7 +114,7 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 	}
 
 	CookingUIWidget->InitializeCookingWidget(CookingComponent, InventoryComponent);
-	CookingUIWidget->AddToViewport();
+	CookingUIWidget->AddToViewport(5);
 
 	FInputModeGameAndUI InputMode;
 	InputMode.SetWidgetToFocus(CookingUIWidget->TakeWidget());
@@ -119,6 +124,18 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
 	SetPause(true);
+}
+
+void ATinoPlayerController::ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent)
+{
+	if (PlayerUIWidget == nullptr)
+	{
+		return;
+	}
+
+	PlayerUIWidget->ShowCookingIngredientPicker(CookingWidget, InventoryComponent);
+	PlayerUIWidget->RemoveFromParent();
+	PlayerUIWidget->AddToViewport(10);
 }
 
 void ATinoPlayerController::BeginPlay()

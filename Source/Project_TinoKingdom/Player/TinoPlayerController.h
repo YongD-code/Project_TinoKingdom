@@ -25,6 +25,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	void ToggleCookingMenu(UCookingComponent* CookingComponent, UInventoryComponent* InventoryComponent);
+
+	void ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent);
 	
 protected:
 	virtual void BeginPlay() override;

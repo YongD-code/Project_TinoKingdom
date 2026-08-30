@@ -109,7 +109,7 @@ private:
 	TObjectPtr<UVerticalBox> IngredientListBox;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> Button_CloseCooking;
+	TObjectPtr<UButton> CloseCookingButton;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UButton>> IngredientOptionButtons;
