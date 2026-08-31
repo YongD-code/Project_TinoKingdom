@@ -70,6 +70,8 @@ private:
 	// 카메라가 화면 중앙에 둘 지점. 머리 본을 찾으면 그 위치를 기준으로 한다.
 	FVector GetDialogueFocusLocation() const;
 
+	void PlayHitReaction();
+
 	static void PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage);
 	static void StopMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage, float BlendOutTime);
 
@@ -144,6 +146,10 @@ protected:
 	// 대사마다 재생할 표정. 비워두면 표정 변화가 없다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue|Animation")
 	TObjectPtr<UAnimMontage> TalkFaceMontage;
+
+	// 생존 가능한 피해를 받았을 때 몸 메시에서 재생할 피격 몽타주.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation|Hit")
+	TObjectPtr<UAnimMontage> HitBodyMontage;
 
 	// 메타휴먼 블루프린트의 컴포넌트 이름. 다른 이름을 쓰는 NPC는 여기서 바꾼다.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dialogue|Animation")

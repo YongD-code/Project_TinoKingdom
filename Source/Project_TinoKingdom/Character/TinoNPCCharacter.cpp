@@ -66,6 +66,11 @@ float ATinoNPCCharacter::TakeDamage(float DamageAmount, struct FDamageEvent cons
 	{
 		return 0.f;
 	}
+
+	if (!IsDead())
+	{
+		PlayHitReaction();
+	}
 	
 	UE_LOG(
 		LogTinoNPC,
@@ -273,6 +278,11 @@ void ATinoNPCCharacter::StopTalkAnimation()
 	StopMontageOnMesh(FaceMesh, TalkFaceMontage, TalkMontageBlendOutTime);
 }
 
+void ATinoNPCCharacter::PlayHitReaction()
+{
+	PlayMontageOnMesh(BodyMesh, HitBodyMontage);
+}
+
 void ATinoNPCCharacter::PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage)
 {
 	if (!IsValid(Mesh) || !IsValid(Montage))
@@ -287,7 +297,7 @@ void ATinoNPCCharacter::PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMon
 		return;
 	}
 
-	// 이미 같은 몽타주가 재생 중이면 처음부터 다시 재생해 대사마다 동작이 새로 시작되게 한다.
+	// 같은 몽타주가 재생 중이어도 다시 호출되면 처음부터 재생한다.
 	AnimInstance->Montage_Play(Montage);
 }
 
@@ -320,7 +330,7 @@ bool ATinoNPCCharacter::InitializeDefaultAttributes()
 	
 	const FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
 		DefaultAttributesEffect, 1.f, EffectContext);
-	if (!ensureMsgf(EffectSpecHandle.IsValid(), TEXT("NPC 기본 능력치 Gameplay Effect Sped 생성 실패")))
+	if (!ensureMsgf(EffectSpecHandle.IsValid(), TEXT("NPC 기본 능력치 Gameplay Effect Spec 생성 실패")))
 	{
 		return false;
 	}
@@ -336,6 +346,10 @@ float ATinoNPCCharacter::ApplyDamageGameplayEffect(float DamageAmount, AControll
 	AActor* DamageCauser)
 {
 	if (DamageAmount <= 0.f)
+	{
+		return 0.f;
+	}
+	if (!ensureMsgf(DamageEffect != nullptr, TEXT("DamageEffect 미지정")))
 	{
 		return 0.f;
 	}
