@@ -65,7 +65,7 @@ protected:
 	void Interact();
 	void DialogueAdvancePressed();
 	void DialogueAdvanceReleased();
-	void DialogueCancel();
+
 	void Attack();
 	void StartJump();
 	void MoveDebugFlyUp();
@@ -189,9 +189,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
 	TObjectPtr<UInputAction> DialAdvanceAction;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Dialogue")
-	TObjectPtr<UInputAction> DialCancelAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
 	TObjectPtr<UInputAction> ToggleDebugAction;

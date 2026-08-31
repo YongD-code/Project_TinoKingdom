@@ -36,10 +36,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
 	bool StartDialogue(ATinoNPCCharacter* InNPC);
 
-	// 대화를 즉시 중단하고 원래 상태로 되돌린다. (ESC)
-	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	void CancelDialogue();
-
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsInDialogue() const;
 
@@ -75,12 +71,16 @@ private:
 
 	// 다음 대사로 넘어간다. 남은 대사가 없으면 대화를 끝낸다.
 	void AdvanceToNextLine();
+	
+	void AdvanceAfterCinematic();
 
 	// 현재 대사에 지정된 시네마틱이 있으면 재생하고 true를 반환한다.
 	bool TryPlayCinematicForCurrentLine();
 
 	// 재생 중인 시퀀스를 정리한다. 종료 콜백은 호출되지 않는다.
 	void ClearCinematicPlayer();
+	
+	void CompleteDialogue();
 
 	// 대화를 종료하고 입력·카메라·상태를 대화 시작 전으로 되돌린다.
 	void EndDialogue();

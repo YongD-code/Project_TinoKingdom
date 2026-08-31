@@ -1,6 +1,7 @@
 #include "EnemyCharacter.h"
 
 #include "AIController.h"
+#include "DrawDebugHelpers.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "GameFramework/Controller.h"
@@ -55,8 +56,20 @@ void AEnemyCharacter::BeginPlay()
 
 	if (StatComponent != nullptr)
 	{
-		StatComponent->OnDead.AddDynamic(this, &AEnemyCharacter::HandleDead);
+		StatComponent->OnDead.AddUniqueDynamic(this, &AEnemyCharacter::HandleDead);
 	}
+}
+
+void AEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
+	GetWorldTimerManager().ClearTimer(HitReactionResetTimerHandle);
+	
+	if (IsValid(StatComponent))
+	{
+		StatComponent->OnDead.RemoveDynamic(this, &AEnemyCharacter::HandleDead);
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 float AEnemyCharacter::TakeDamage(
