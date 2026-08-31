@@ -74,6 +74,8 @@ float ATinoNPCCharacter::TakeDamage(float DamageAmount, struct FDamageEvent cons
 	}
 	else
 	{
+		AActor* DamageInstigator = ResolveDamageInstigator(EventInstigator, DamageCauser);
+		SetCombatTarget(DamageInstigator);
 		PlayHitReaction();
 	}
 	
@@ -290,6 +292,7 @@ void ATinoNPCCharacter::PlayHitReaction()
 
 void ATinoNPCCharacter::HandleDeath()
 {
+	CombatTarget.Reset();
 	StopTalkAnimation();
 	
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
@@ -301,6 +304,46 @@ void ATinoNPCCharacter::HandleDeath()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	PlayMontageOnMesh(BodyMesh, DeathBodyMontage);
+}
+
+AActor* ATinoNPCCharacter::ResolveDamageInstigator(AController* EventInstigator, AActor* DamageCauser) const
+{
+	if (EventInstigator != nullptr)
+	{
+		if (APawn* InstigatorPawn = EventInstigator->GetPawn())
+		{
+			return InstigatorPawn;
+		}
+	}
+
+	if (IsValid(DamageCauser))
+	{
+		if (APawn* CauserInstigator = DamageCauser->GetInstigator())
+		{
+			return CauserInstigator;
+		}
+
+		return DamageCauser;
+	}
+
+	return nullptr;
+}
+
+void ATinoNPCCharacter::SetCombatTarget(AActor* NewTarget)
+{
+	if (!IsValid(NewTarget) || NewTarget == this || IsDead())
+	{
+		return;
+	}
+	
+	CombatTarget = NewTarget;
+	UE_LOG(
+		LogTinoNPC,
+		Log,
+		TEXT("%s의 전투 대상 설정: %s"),
+		*GetName(),
+		*GetNameSafe(NewTarget)
+	);
 }
 
 void ATinoNPCCharacter::PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage)
@@ -375,12 +418,7 @@ float ATinoNPCCharacter::ApplyDamageGameplayEffect(float DamageAmount, AControll
 	}
 	
 	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-	AActor* InstigatorActor = DamageCauser;
-	
-	if (EventInstigator != nullptr && EventInstigator->GetPawn() != nullptr)
-	{
-		InstigatorActor = EventInstigator->GetPawn();
-	}
+	AActor* InstigatorActor = ResolveDamageInstigator(EventInstigator, DamageCauser);
 	
 	EffectContext.AddInstigator(InstigatorActor, DamageCauser);
 	EffectContext.AddSourceObject(DamageCauser);

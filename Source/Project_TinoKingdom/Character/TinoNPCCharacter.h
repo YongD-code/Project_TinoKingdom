@@ -41,6 +41,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "NPC|State")
 	bool IsDead() const;
 	
+	UFUNCTION(BlueprintPure, Category = "NPC|Combat")
+	AActor* GetCombatTarget() const { return CombatTarget.Get(); }
+	
 	// 이 NPC가 사용할 대사 묶음. 대화 진행은 플레이어의 DialogueComponent가 담당한다.
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	UDialogueData* GetDialogueData() const { return DialogueData; }
@@ -73,6 +76,9 @@ private:
 	void PlayHitReaction();
 	
 	void HandleDeath();
+	
+	AActor* ResolveDamageInstigator(AController* EventInstigator, AActor* DamageCauser) const;
+	void SetCombatTarget(AActor* NewTarget);
 
 	static void PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage);
 	static void StopMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage, float BlendOutTime);
@@ -172,4 +178,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> FaceMesh;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> CombatTarget;
 };
