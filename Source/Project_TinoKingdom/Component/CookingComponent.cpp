@@ -8,6 +8,369 @@
 #include "Math/UnrealMathUtility.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 
+namespace
+{
+constexpr int32 CookingIconTextureSize = 128;
+
+struct FCookingTexturePixels
+{
+	int32 Width = 0;
+	int32 Height = 0;
+	TArray<FColor> Pixels;
+
+	bool IsValid() const
+	{
+		return Width > 0 && Height > 0 && Pixels.Num() == Width * Height;
+	}
+};
+
+UTexture2D* LoadCookingLayerTexture(const TCHAR* AssetPath)
+{
+	return Cast<UTexture2D>(StaticLoadObject(UTexture2D::StaticClass(), nullptr, AssetPath));
+}
+
+bool ReadTextureSourcePixels(UTexture2D* Texture, FCookingTexturePixels& OutPixels)
+{
+	if (Texture == nullptr)
+	{
+		return false;
+	}
+
+#if WITH_EDITORONLY_DATA
+	if (Texture->Source.IsValid())
+	{
+		TArray64<uint8> SourceData;
+		Texture->Source.GetMipData(SourceData, 0);
+
+		const int32 Width = Texture->Source.GetSizeX();
+		const int32 Height = Texture->Source.GetSizeY();
+		if (Width <= 0 || Height <= 0)
+		{
+			return false;
+		}
+
+		const ETextureSourceFormat SourceFormat = Texture->Source.GetFormat();
+		OutPixels.Width = Width;
+		OutPixels.Height = Height;
+		OutPixels.Pixels.SetNumZeroed(Width * Height);
+
+		if (SourceFormat == TSF_BGRA8 && SourceData.Num() >= Width * Height * 4)
+		{
+			FMemory::Memcpy(OutPixels.Pixels.GetData(), SourceData.GetData(), Width * Height * sizeof(FColor));
+			return true;
+		}
+
+	}
+#endif
+
+	return false;
+}
+
+void AlphaBlendPixel(FColor& Target, const FColor& Source, float Opacity)
+{
+	const float SourceAlpha = (Source.A / 255.0f) * FMath::Clamp(Opacity, 0.0f, 1.0f);
+	if (SourceAlpha <= 0.0f)
+	{
+		return;
+	}
+
+	const float TargetAlpha = Target.A / 255.0f;
+	const float OutAlpha = SourceAlpha + TargetAlpha * (1.0f - SourceAlpha);
+	if (OutAlpha <= 0.0f)
+	{
+		Target = FColor(0, 0, 0, 0);
+		return;
+	}
+
+	const auto BlendChannel = [SourceAlpha, TargetAlpha, OutAlpha](uint8 SourceValue, uint8 TargetValue)
+	{
+		const float SourceLinear = SourceValue / 255.0f;
+		const float TargetLinear = TargetValue / 255.0f;
+		return static_cast<uint8>(FMath::Clamp(
+			((SourceLinear * SourceAlpha) + (TargetLinear * TargetAlpha * (1.0f - SourceAlpha))) / OutAlpha * 255.0f,
+			0.0f,
+			255.0f
+		));
+	};
+
+	Target.R = BlendChannel(Source.R, Target.R);
+	Target.G = BlendChannel(Source.G, Target.G);
+	Target.B = BlendChannel(Source.B, Target.B);
+	Target.A = static_cast<uint8>(FMath::Clamp(OutAlpha * 255.0f, 0.0f, 255.0f));
+}
+
+void BlendTextureLayer(TArray<FColor>& TargetPixels, int32 TargetSize, const FCookingTexturePixels& SourcePixels, float Opacity)
+{
+	if (!SourcePixels.IsValid() || TargetPixels.Num() != TargetSize * TargetSize || Opacity <= 0.0f)
+	{
+		return;
+	}
+
+	for (int32 Y = 0; Y < TargetSize; ++Y)
+	{
+		const int32 SourceY = FMath::Clamp((Y * SourcePixels.Height) / TargetSize, 0, SourcePixels.Height - 1);
+		for (int32 X = 0; X < TargetSize; ++X)
+		{
+			const int32 SourceX = FMath::Clamp((X * SourcePixels.Width) / TargetSize, 0, SourcePixels.Width - 1);
+			AlphaBlendPixel(TargetPixels[Y * TargetSize + X], SourcePixels.Pixels[SourceY * SourcePixels.Width + SourceX], Opacity);
+		}
+	}
+}
+
+void BlendCookingLayer(TArray<FColor>& TargetPixels, const TCHAR* AssetPath, float Opacity)
+{
+	FCookingTexturePixels LayerPixels;
+	if (ReadTextureSourcePixels(LoadCookingLayerTexture(AssetPath), LayerPixels))
+	{
+		BlendTextureLayer(TargetPixels, CookingIconTextureSize, LayerPixels, Opacity);
+	}
+}
+
+void BlendTextureLayerAt(
+	TArray<FColor>& TargetPixels,
+	const FCookingTexturePixels& SourcePixels,
+	float CenterX,
+	float CenterY,
+	float Scale,
+	float Opacity
+)
+{
+	if (!SourcePixels.IsValid() || TargetPixels.Num() != CookingIconTextureSize * CookingIconTextureSize || Scale <= 0.0f || Opacity <= 0.0f)
+	{
+		return;
+	}
+
+	const int32 DrawWidth = FMath::Max(1, FMath::RoundToInt(CookingIconTextureSize * Scale));
+	const int32 DrawHeight = DrawWidth;
+	const int32 MinX = FMath::RoundToInt(CenterX * CookingIconTextureSize) - DrawWidth / 2;
+	const int32 MinY = FMath::RoundToInt(CenterY * CookingIconTextureSize) - DrawHeight / 2;
+	const int32 MaxX = MinX + DrawWidth;
+	const int32 MaxY = MinY + DrawHeight;
+
+	for (int32 Y = FMath::Max(0, MinY); Y < FMath::Min(CookingIconTextureSize, MaxY); ++Y)
+	{
+		const int32 SourceY = FMath::Clamp(((Y - MinY) * SourcePixels.Height) / DrawHeight, 0, SourcePixels.Height - 1);
+		for (int32 X = FMath::Max(0, MinX); X < FMath::Min(CookingIconTextureSize, MaxX); ++X)
+		{
+			const int32 SourceX = FMath::Clamp(((X - MinX) * SourcePixels.Width) / DrawWidth, 0, SourcePixels.Width - 1);
+			AlphaBlendPixel(TargetPixels[Y * CookingIconTextureSize + X], SourcePixels.Pixels[SourceY * SourcePixels.Width + SourceX], Opacity);
+		}
+	}
+}
+
+void BlendCookingLayerAt(
+	TArray<FColor>& TargetPixels,
+	const TCHAR* AssetPath,
+	float CenterX,
+	float CenterY,
+	float Scale,
+	float Opacity
+)
+{
+	FCookingTexturePixels LayerPixels;
+	if (ReadTextureSourcePixels(LoadCookingLayerTexture(AssetPath), LayerPixels))
+	{
+		BlendTextureLayerAt(TargetPixels, LayerPixels, CenterX, CenterY, Scale, Opacity);
+	}
+}
+
+void BlendTintLayer(TArray<FColor>& TargetPixels, const FColor& TintColor, float Opacity)
+{
+	const FVector2D Center((CookingIconTextureSize - 1) * 0.5f, (CookingIconTextureSize - 1) * 0.5f);
+	const float Radius = CookingIconTextureSize * 0.34f;
+
+	for (int32 Y = 0; Y < CookingIconTextureSize; ++Y)
+	{
+		for (int32 X = 0; X < CookingIconTextureSize; ++X)
+		{
+			if (FVector2D(X - Center.X, Y - Center.Y).Size() <= Radius)
+			{
+				AlphaBlendPixel(TargetPixels[Y * CookingIconTextureSize + X], TintColor, Opacity);
+			}
+		}
+	}
+}
+
+float GetVisibleRatioOpacity(float Ratio)
+{
+	if (Ratio <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	return FMath::Clamp(0.5f + Ratio * 0.5f, 0.0f, 1.0f);
+}
+
+const TCHAR* GetCookingBaseAssetPath(ECookingResultType ResultType)
+{
+	switch (ResultType)
+	{
+	case ECookingResultType::Jelly:
+		return TEXT("/Game/Cooking/Assets/Base_Jelly.Base_Jelly");
+	case ECookingResultType::Soup:
+		return TEXT("/Game/Cooking/Assets/Base_Soup.Base_Soup");
+	case ECookingResultType::Grill:
+		return TEXT("/Game/Cooking/Assets/Base_Grill.Base_Grill");
+	case ECookingResultType::Failed:
+	default:
+		return TEXT("/Game/Cooking/Assets/Base_Failed.Base_Failed");
+	}
+}
+
+const TCHAR* GetCookingFrameAssetPath(ECookingQuality Quality)
+{
+	switch (Quality)
+	{
+	case ECookingQuality::Good:
+		return TEXT("/Game/Cooking/Assets/Frame_Good.Frame_Good");
+	case ECookingQuality::Special:
+		return TEXT("/Game/Cooking/Assets/Frame_Rare.Frame_Rare");
+	case ECookingQuality::Failed:
+		return TEXT("/Game/Cooking/Assets/Frame_Failed.Frame_Failed");
+	case ECookingQuality::Normal:
+	default:
+		return TEXT("/Game/Cooking/Assets/Frame_Normal.Frame_Normal");
+	}
+}
+
+const TCHAR* GetCookingChunkAssetPath(ECookingTag Tag)
+{
+	switch (Tag)
+	{
+	case ECookingTag::Fish:
+		return TEXT("/Game/Cooking/Assets/Chunk_Fish.Chunk_Fish");
+	case ECookingTag::Slime:
+		return TEXT("/Game/Cooking/Assets/Chunk_SlimeBubble.Chunk_SlimeBubble");
+	case ECookingTag::Mushroom:
+		return TEXT("/Game/Cooking/Assets/Chunk_MushroomSlice.Chunk_MushroomSlice");
+	case ECookingTag::Meat:
+		return TEXT("/Game/Cooking/Assets/Chunk_MeatCube.Chunk_MeatCube");
+	default:
+		return nullptr;
+	}
+}
+
+const TCHAR* GetCookingToppingAssetPath(ECookingTag Tag)
+{
+	switch (Tag)
+	{
+	case ECookingTag::Fish:
+		return TEXT("/Game/Cooking/Assets/Topping_FishFin.Topping_FishFin");
+	case ECookingTag::Slime:
+		return TEXT("/Game/Cooking/Assets/Topping_SlimeDrop.Topping_SlimeDrop");
+	case ECookingTag::Mushroom:
+		return TEXT("/Game/Cooking/Assets/Topping_Mushroom.Topping_Mushroom");
+	case ECookingTag::Meat:
+		return TEXT("/Game/Cooking/Assets/Topping_Meat.Topping_Meat");
+	case ECookingTag::Herb:
+		return TEXT("/Game/Cooking/Assets/Topping_Herb.Topping_Herb");
+	default:
+		return nullptr;
+	}
+}
+
+float GetCookingTagRatio(const FCookingIconData& IconData, ECookingTag Tag)
+{
+	switch (Tag)
+	{
+	case ECookingTag::Fish:
+		return IconData.FishRatio;
+	case ECookingTag::Slime:
+		return IconData.SlimeRatio;
+	case ECookingTag::Mushroom:
+		return IconData.MushroomRatio;
+	case ECookingTag::Meat:
+		return IconData.MeatRatio;
+	case ECookingTag::Herb:
+		return IconData.HerbRatio;
+	case ECookingTag::Wood:
+		return IconData.WoodRatio;
+	case ECookingTag::Monster:
+		return IconData.MonsterRatio;
+	default:
+		return 0.0f;
+	}
+}
+
+FColor GetFallbackTintByTag(ECookingTag Tag)
+{
+	switch (Tag)
+	{
+	case ECookingTag::Wood:
+		return FColor(80, 55, 35, 255);
+	case ECookingTag::Monster:
+		return FColor(145, 90, 210, 255);
+	default:
+		return FColor(255, 255, 255, 0);
+	}
+}
+
+void BlendMainIngredientLayer(TArray<FColor>& Pixels, ECookingTag MainTag)
+{
+	if (const TCHAR* ChunkPath = GetCookingChunkAssetPath(MainTag))
+	{
+		BlendCookingLayer(Pixels, ChunkPath, 1.0f);
+		return;
+	}
+
+	if (const TCHAR* ToppingPath = GetCookingToppingAssetPath(MainTag))
+	{
+		BlendCookingLayer(Pixels, ToppingPath, 0.9f);
+		return;
+	}
+
+	BlendTintLayer(Pixels, GetFallbackTintByTag(MainTag), 0.55f);
+}
+
+void BlendIngredientPieces(TArray<FColor>& Pixels, ECookingTag Tag, float Ratio, bool bMainIngredient)
+{
+	if (Ratio <= 0.0f)
+	{
+		return;
+	}
+
+	const struct FPiecePlacement
+	{
+		float X;
+		float Y;
+		float Scale;
+	} Placements[] =
+	{
+		{ 0.50f, 0.52f, 0.46f },
+		{ 0.35f, 0.47f, 0.36f },
+		{ 0.65f, 0.48f, 0.36f },
+		{ 0.43f, 0.66f, 0.30f },
+		{ 0.59f, 0.34f, 0.29f },
+		{ 0.28f, 0.62f, 0.25f },
+		{ 0.72f, 0.64f, 0.25f },
+		{ 0.50f, 0.28f, 0.24f }
+	};
+
+	const int32 PieceCount = FMath::Clamp(FMath::RoundToInt(Ratio * 8.0f), 1, bMainIngredient ? 6 : 4);
+	const float Opacity = bMainIngredient ? 0.82f : GetVisibleRatioOpacity(Ratio);
+	const float ScaleMultiplier = bMainIngredient ? 1.0f : 0.82f;
+
+	if (const TCHAR* ToppingPath = GetCookingToppingAssetPath(Tag))
+	{
+		for (int32 Index = 0; Index < PieceCount; ++Index)
+		{
+			const FPiecePlacement& Placement = Placements[Index % UE_ARRAY_COUNT(Placements)];
+			BlendCookingLayerAt(
+				Pixels,
+				ToppingPath,
+				Placement.X,
+				Placement.Y,
+				Placement.Scale * ScaleMultiplier,
+				Opacity
+			);
+		}
+		return;
+	}
+
+	BlendTintLayer(Pixels, GetFallbackTintByTag(Tag), Opacity * 0.45f);
+}
+}
+
 UCookingComponent::UCookingComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -146,13 +509,13 @@ ECookingResultType UCookingComponent::GetResultTypeByMainTag(ECookingTag MainTag
 		return ECookingResultType::Jelly;
 
 	case ECookingTag::Fish:
-	case ECookingTag::Meat:
-		return ECookingResultType::Grill;
-
 	case ECookingTag::Mushroom:
 	case ECookingTag::Herb:
 	case ECookingTag::Monster:
 		return ECookingResultType::Soup;
+
+	case ECookingTag::Meat:
+		return ECookingResultType::Grill;
 
 	case ECookingTag::Wood:
 		return ECookingResultType::Failed;
@@ -498,106 +861,47 @@ bool UCookingComponent::FinishCookingToInventory(
 
 UTexture2D* UCookingComponent::CreateResultIconTexture(const FCookingResultData& ResultData) const
 {
-	constexpr int32 TextureSize = 128;
 	TArray<FColor> Pixels;
-	Pixels.SetNumZeroed(TextureSize * TextureSize);
+	Pixels.SetNumZeroed(CookingIconTextureSize * CookingIconTextureSize);
 
-	const auto ToColor = [](const FLinearColor& Color)
+	BlendCookingLayer(Pixels, GetCookingBaseAssetPath(ResultData.ResultType), 1.0f);
+	BlendMainIngredientLayer(Pixels, ResultData.IconData.MainTag);
+	BlendIngredientPieces(
+		Pixels,
+		ResultData.IconData.MainTag,
+		GetCookingTagRatio(ResultData.IconData, ResultData.IconData.MainTag),
+		true
+	);
+
+	TArray<TPair<ECookingTag, float>> SubIngredientRatios =
 	{
-		return Color.ToFColor(true);
+		{ ECookingTag::Fish, GetCookingTagRatio(ResultData.IconData, ECookingTag::Fish) },
+		{ ECookingTag::Slime, GetCookingTagRatio(ResultData.IconData, ECookingTag::Slime) },
+		{ ECookingTag::Mushroom, GetCookingTagRatio(ResultData.IconData, ECookingTag::Mushroom) },
+		{ ECookingTag::Meat, GetCookingTagRatio(ResultData.IconData, ECookingTag::Meat) },
+		{ ECookingTag::Herb, GetCookingTagRatio(ResultData.IconData, ECookingTag::Herb) },
+		{ ECookingTag::Wood, GetCookingTagRatio(ResultData.IconData, ECookingTag::Wood) },
+		{ ECookingTag::Monster, GetCookingTagRatio(ResultData.IconData, ECookingTag::Monster) }
 	};
 
-	const FColor FishColor = FColor(70, 165, 255, 255);
-	const FColor SlimeColor = FColor(55, 235, 125, 255);
-	const FColor MushroomColor = FColor(210, 115, 70, 255);
-	const FColor MeatColor = FColor(215, 65, 55, 255);
-	const FColor HerbColor = FColor(80, 205, 65, 255);
-	const FColor WoodColor = FColor(80, 55, 35, 255);
-	const FColor MonsterColor = FColor(145, 90, 210, 255);
-	const FColor EmptyColor = FColor(0, 0, 0, 0);
-
-	const TArray<TPair<float, FColor>> RatioColors =
+	SubIngredientRatios.Sort([](const TPair<ECookingTag, float>& Left, const TPair<ECookingTag, float>& Right)
 	{
-		{ ResultData.IconData.FishRatio, FishColor },
-		{ ResultData.IconData.SlimeRatio, SlimeColor },
-		{ ResultData.IconData.MushroomRatio, MushroomColor },
-		{ ResultData.IconData.MeatRatio, MeatColor },
-		{ ResultData.IconData.HerbRatio, HerbColor },
-		{ ResultData.IconData.WoodRatio, WoodColor },
-		{ ResultData.IconData.MonsterRatio, MonsterColor }
-	};
+		return Left.Value > Right.Value;
+	});
 
-	FColor QualityColor = FColor(220, 220, 220, 255);
-	switch (ResultData.Quality)
+	for (const TPair<ECookingTag, float>& Pair : SubIngredientRatios)
 	{
-	case ECookingQuality::Good:
-		QualityColor = FColor(95, 205, 255, 255);
-		break;
-	case ECookingQuality::Special:
-		QualityColor = FColor(255, 210, 70, 255);
-		break;
-	default:
-		break;
-	}
-
-	const FVector2D Center((TextureSize - 1) * 0.5f, (TextureSize - 1) * 0.5f);
-	const float OuterRadius = TextureSize * 0.46f;
-	const float InnerRadius = TextureSize * 0.17f;
-	const float BorderRadius = TextureSize * 0.42f;
-
-	for (int32 Y = 0; Y < TextureSize; ++Y)
-	{
-		for (int32 X = 0; X < TextureSize; ++X)
+		if (Pair.Key == ResultData.IconData.MainTag || Pair.Value <= 0.0f)
 		{
-			const FVector2D Delta(X - Center.X, Y - Center.Y);
-			const float Distance = Delta.Size();
-			FColor PixelColor = EmptyColor;
-
-			if (Distance <= OuterRadius)
-			{
-				if (Distance >= BorderRadius)
-				{
-					PixelColor = QualityColor;
-				}
-				else if (Distance <= InnerRadius)
-				{
-					PixelColor = ToColor(ResultData.IconData.BaseTint);
-				}
-				else
-				{
-					float Angle = FMath::Atan2(Delta.Y, Delta.X);
-					if (Angle < 0.0f)
-					{
-						Angle += 2.0f * PI;
-					}
-
-					const float RatioPosition = Angle / (2.0f * PI);
-					float AccumulatedRatio = 0.0f;
-					PixelColor = ToColor(ResultData.IconData.BaseTint);
-
-					for (const TPair<float, FColor>& RatioColor : RatioColors)
-					{
-						const float Ratio = FMath::Max(RatioColor.Key, 0.0f);
-						if (Ratio <= 0.0f)
-						{
-							continue;
-						}
-
-						AccumulatedRatio += Ratio;
-						if (RatioPosition <= AccumulatedRatio)
-						{
-							PixelColor = RatioColor.Value;
-							break;
-						}
-					}
-				}
-			}
-
-			Pixels[Y * TextureSize + X] = PixelColor;
+			continue;
 		}
+
+		BlendIngredientPieces(Pixels, Pair.Key, Pair.Value, false);
 	}
 
-	UTexture2D* Texture = UTexture2D::CreateTransient(TextureSize, TextureSize, PF_B8G8R8A8);
+	BlendCookingLayer(Pixels, GetCookingFrameAssetPath(ResultData.Quality), 1.0f);
+
+	UTexture2D* Texture = UTexture2D::CreateTransient(CookingIconTextureSize, CookingIconTextureSize, PF_B8G8R8A8);
 	if (Texture == nullptr || Texture->GetPlatformData() == nullptr || Texture->GetPlatformData()->Mips.Num() == 0)
 	{
 		return nullptr;
