@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Project_TinoKingdom/Interface/TargetableInterface.h"
 #include "TinoNPCCharacter.generated.h"
 
 class UAnimMontage;
@@ -14,12 +15,15 @@ class UQuestData;
 class USkeletalMeshComponent;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API ATinoNPCCharacter : public ACharacter
+class PROJECT_TINOKINGDOM_API ATinoNPCCharacter : public ACharacter, public ITargetableInterface
 {
 	GENERATED_BODY()
 
 public:
 	ATinoNPCCharacter();
+	
+	virtual bool CanBeTargeted_Implementation() const override;
+	virtual FVector GetLockOnLocation_Implementation() const override;
 
 	// 이 NPC가 사용할 대사 묶음. 대화 진행은 플레이어의 DialogueComponent가 담당한다.
 	UFUNCTION(BlueprintPure, Category = "Dialogue")

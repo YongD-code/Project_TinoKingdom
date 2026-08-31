@@ -6,6 +6,7 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/DataAsset/DialogueData.h"
@@ -17,6 +18,10 @@ DEFINE_LOG_CATEGORY_STATIC(LogTinoNPC, Log, All);
 ATinoNPCCharacter::ATinoNPCCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	
+	GetCapsuleComponent()->SetCollisionProfileName(TEXT("TinoCapsule"));
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
 	DialogueCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DialogueCamera"));
 	DialogueCamera->SetupAttachment(GetRootComponent());
@@ -26,6 +31,17 @@ ATinoNPCCharacter::ATinoNPCCharacter()
 	DialogueCamera->SetRelativeLocation(FVector(DialogueCameraDistance, DialogueCameraSideOffset, 60.0f));
 	DialogueCamera->SetRelativeRotation(FRotator(0.0f, 180.0f, 0.0f));
 	DialogueCamera->SetFieldOfView(DialogueCameraFOV);
+}
+
+bool ATinoNPCCharacter::CanBeTargeted_Implementation() const
+{
+	// return ITargetableInterface::CanBeTargeted_Implementation();
+	return true;
+}
+
+FVector ATinoNPCCharacter::GetLockOnLocation_Implementation() const
+{
+	return GetDialogueFocusLocation();
 }
 
 void ATinoNPCCharacter::FocusDialogueCamera()
