@@ -11,6 +11,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameplayEffect.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/DataAsset/DialogueData.h"
@@ -67,7 +68,11 @@ float ATinoNPCCharacter::TakeDamage(float DamageAmount, struct FDamageEvent cons
 		return 0.f;
 	}
 
-	if (!IsDead())
+	if (IsDead())
+	{
+		HandleDeath();
+	}
+	else
 	{
 		PlayHitReaction();
 	}
@@ -281,6 +286,21 @@ void ATinoNPCCharacter::StopTalkAnimation()
 void ATinoNPCCharacter::PlayHitReaction()
 {
 	PlayMontageOnMesh(BodyMesh, HitBodyMontage);
+}
+
+void ATinoNPCCharacter::HandleDeath()
+{
+	StopTalkAnimation();
+	
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		MovementComponent->DisableMovement();
+	}
+	
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	PlayMontageOnMesh(BodyMesh, DeathBodyMontage);
 }
 
 void ATinoNPCCharacter::PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage)

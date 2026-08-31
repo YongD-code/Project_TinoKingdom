@@ -71,6 +71,8 @@ private:
 	FVector GetDialogueFocusLocation() const;
 
 	void PlayHitReaction();
+	
+	void HandleDeath();
 
 	static void PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage);
 	static void StopMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage, float BlendOutTime);
@@ -150,6 +152,9 @@ protected:
 	// 생존 가능한 피해를 받았을 때 몸 메시에서 재생할 피격 몽타주.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation|Hit")
 	TObjectPtr<UAnimMontage> HitBodyMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation|Death")
+	TObjectPtr<UAnimMontage> DeathBodyMontage;
 
 	// 메타휴먼 블루프린트의 컴포넌트 이름. 다른 이름을 쓰는 NPC는 여기서 바꾼다.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dialogue|Animation")
