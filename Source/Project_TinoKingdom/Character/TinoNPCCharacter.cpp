@@ -3,14 +3,20 @@
 
 #include "TinoNPCCharacter.h"
 
+#include "AbilitySystemComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameplayEffect.h"
+#include "GameFramework/Controller.h"
+#include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/DataAsset/DialogueData.h"
 #include "Project_TinoKingdom/DataAsset/QuestData.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
+#include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoNPC, Log, All);
 
@@ -23,6 +29,9 @@ ATinoNPCCharacter::ATinoNPCCharacter()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
+	AbilitySystemComponent = CreateDefaultSubobject<UTinoAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AttributeSet = CreateDefaultSubobject<UTinoAttributeSet>(TEXT("AttributeSet"));
+	
 	DialogueCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("DialogueCamera"));
 	DialogueCamera->SetupAttachment(GetRootComponent());
 
@@ -33,15 +42,60 @@ ATinoNPCCharacter::ATinoNPCCharacter()
 	DialogueCamera->SetFieldOfView(DialogueCameraFOV);
 }
 
+UAbilitySystemComponent* ATinoNPCCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+float ATinoNPCCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+	class AController* EventInstigator, AActor* DamageCauser)
+{
+	if (DamageAmount <= 0.f || IsDead())
+	{
+		return 0.f;
+	}
+	
+	const float DamageToApply = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	if (DamageToApply <= 0.f)
+	{
+		return 0.f;
+	}
+	
+	const float AppliedDamage = ApplyDamageGameplayEffect(DamageToApply, EventInstigator, DamageCauser);
+	if (AppliedDamage <= 0.f)
+	{
+		return 0.f;
+	}
+	
+	UE_LOG(
+		LogTinoNPC,
+		Log,
+		TEXT(
+			"NPC 피격: %s, Damage %.1f, Health %.1f / %.1f, DamageCauser %s"
+		),
+		*GetName(),
+		AppliedDamage,
+		AttributeSet->GetHealth(),
+		AttributeSet->GetMaxHealth(),
+		*GetNameSafe(DamageCauser)
+	);
+	
+	return AppliedDamage;
+}
+
 bool ATinoNPCCharacter::CanBeTargeted_Implementation() const
 {
-	// return ITargetableInterface::CanBeTargeted_Implementation();
-	return true;
+	return !IsDead();
 }
 
 FVector ATinoNPCCharacter::GetLockOnLocation_Implementation() const
 {
 	return GetDialogueFocusLocation();
+}
+
+bool ATinoNPCCharacter::IsDead() const
+{
+	return AttributeSet == nullptr || AttributeSet->GetHealth() <= 0.f;
 }
 
 void ATinoNPCCharacter::FocusDialogueCamera()
@@ -110,6 +164,28 @@ void ATinoNPCCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	CacheAnimationMeshes();
+	
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	const UTinoAttributeSet* RegisteredAttributeSet =
+		AbilitySystemComponent->GetSet<UTinoAttributeSet>();
+
+	const bool bAttributeSetRegistered = ensureMsgf(
+		RegisteredAttributeSet == AttributeSet,
+		TEXT("TinoNPCCharacter의 AttributeSet이 ASC에 올바르게 등록되지 않았습니다.")
+	);
+
+	if (bAttributeSetRegistered && InitializeDefaultAttributes())
+	{
+		UE_LOG(
+			LogTinoNPC,
+			Log,
+			TEXT("NPC GAS 초기화 완료: %s, Health %.1f / %.1f, Defense %.1f"),
+			*GetName(),
+			AttributeSet->GetHealth(),
+			AttributeSet->GetMaxHealth(),
+			AttributeSet->GetDefense()
+		);
+	}
 }
 
 UDialogueData* ATinoNPCCharacter::SelectDialogueData(const UQuestComponent* PlayerQuest) const
@@ -230,4 +306,62 @@ void ATinoNPCCharacter::StopMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMon
 	}
 
 	AnimInstance->Montage_Stop(BlendOutTime, Montage);
+}
+
+bool ATinoNPCCharacter::InitializeDefaultAttributes()
+{
+	if (!ensureMsgf(DefaultAttributesEffect != nullptr, TEXT("DefaultAttributesEffect가 지정되지 않음")))
+	{
+		return false;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	
+	const FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		DefaultAttributesEffect, 1.f, EffectContext);
+	if (!ensureMsgf(EffectSpecHandle.IsValid(), TEXT("NPC 기본 능력치 Gameplay Effect Sped 생성 실패")))
+	{
+		return false;
+	}
+	
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	
+	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+	
+	return true;
+}
+
+float ATinoNPCCharacter::ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	if (DamageAmount <= 0.f)
+	{
+		return 0.f;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+	AActor* InstigatorActor = DamageCauser;
+	
+	if (EventInstigator != nullptr && EventInstigator->GetPawn() != nullptr)
+	{
+		InstigatorActor = EventInstigator->GetPawn();
+	}
+	
+	EffectContext.AddInstigator(InstigatorActor, DamageCauser);
+	EffectContext.AddSourceObject(DamageCauser);
+	
+	FGameplayEffectSpecHandle EffectSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		DamageEffect, 1.f, EffectContext);
+	if (!ensureMsgf(EffectSpecHandle.IsValid(), TEXT("NPC 피해 Gameplay Effect Spec 생성 실패")))
+	{
+		return 0.f;
+	}
+	
+	EffectSpecHandle.Data->SetSetByCallerMagnitude(TinoGameplayTags::Data_Damage, DamageAmount);
+	
+	const float PreviousHealth = AttributeSet->GetHealth();
+	AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
+	
+	return FMath::Max(PreviousHealth - AttributeSet->GetHealth(), 0.f);
 }

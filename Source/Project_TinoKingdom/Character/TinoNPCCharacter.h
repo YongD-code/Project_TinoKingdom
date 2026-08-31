@@ -4,9 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 #include "TinoNPCCharacter.generated.h"
 
+class UAbilitySystemComponent;
+class UGameplayEffect;
+class UTinoAbilitySystemComponent;
+class UTinoAttributeSet;
 class UAnimMontage;
 class UCameraComponent;
 class UDialogueData;
@@ -15,16 +20,27 @@ class UQuestData;
 class USkeletalMeshComponent;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API ATinoNPCCharacter : public ACharacter, public ITargetableInterface
+class PROJECT_TINOKINGDOM_API ATinoNPCCharacter :	public ACharacter,
+													public ITargetableInterface,
+													public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ATinoNPCCharacter();
 	
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
+		class AController* EventInstigator, AActor* DamageCauser) override;
+	
 	virtual bool CanBeTargeted_Implementation() const override;
 	virtual FVector GetLockOnLocation_Implementation() const override;
 
+	UFUNCTION(BlueprintPure, Category = "NPC|State")
+	bool IsDead() const;
+	
 	// 이 NPC가 사용할 대사 묶음. 대화 진행은 플레이어의 DialogueComponent가 담당한다.
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	UDialogueData* GetDialogueData() const { return DialogueData; }
@@ -57,7 +73,23 @@ private:
 	static void PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage);
 	static void StopMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage, float BlendOutTime);
 
+	bool InitializeDefaultAttributes();
+	
+	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
+	
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAttributeSet> AttributeSet;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DamageEffect;
+	
 	// 퀘스트를 받기 전에 할 대사.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> DialogueData;
