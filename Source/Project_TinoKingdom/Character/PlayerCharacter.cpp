@@ -282,7 +282,6 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueAdvancePressed);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Completed, this, &APlayerCharacter::DialogueAdvanceReleased);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Canceled, this, &APlayerCharacter::DialogueAdvanceReleased);
-	EnhancedInputComponent->BindAction(DialCancelAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueCancel);
 }
 
 void APlayerCharacter::Interact()
@@ -311,14 +310,6 @@ void APlayerCharacter::DialogueAdvanceReleased()
 	if (IsValid(DialogueComponent))
 	{
 		DialogueComponent->OnAdvanceReleased();
-	}
-}
-
-void APlayerCharacter::DialogueCancel()
-{
-	if (IsValid(DialogueComponent))
-	{
-		DialogueComponent->CancelDialogue();
 	}
 }
 

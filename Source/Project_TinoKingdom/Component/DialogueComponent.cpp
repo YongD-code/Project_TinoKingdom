@@ -9,6 +9,7 @@
 #include "LevelSequence.h"
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
+#include "Engine/LocalPlayer.h"
 #include "Project_TinoKingdom/Character/TinoNPCCharacter.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
@@ -175,9 +176,8 @@ void UDialogueComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 	SetComponentTickEnabled(false);
 	OnDialogueSkipProgress.Broadcast(0.f);
 
-	// 시퀀스를 끊고 대화를 이어간다.
 	ClearCinematicPlayer();
-	AdvanceToNextLine();
+	AdvanceAfterCinematic();
 }
 
 void UDialogueComponent::BroadcastCurrentLine()
@@ -228,7 +228,27 @@ void UDialogueComponent::AdvanceToNextLine()
 
 	if (!CurrentDialogueData->Lines.IsValidIndex(CurrentLineIndex))
 	{
+		CompleteDialogue();
+		return;
+	}
+
+	BroadcastCurrentLine();
+}
+
+void UDialogueComponent::AdvanceAfterCinematic()
+{
+	// 시네마틱이 연결되어 있던 현재 대사를 소비한다.
+	++CurrentLineIndex;
+
+	if (!IsValid(CurrentDialogueData))
+	{
 		EndDialogue();
+		return;
+	}
+
+	if (!CurrentDialogueData->Lines.IsValidIndex(CurrentLineIndex))
+	{
+		CompleteDialogue();
 		return;
 	}
 
@@ -283,18 +303,19 @@ bool UDialogueComponent::TryPlayCinematicForCurrentLine()
 
 void UDialogueComponent::HandleCinematicFinished()
 {
-	ClearCinematicPlayer();
+	// 현재 OnFinished.Broadcast()가 실행 중이므로
+	// 여기서 RemoveDynamic()이나 Stop()을 호출하면 안 된다.
+	CinematicPlayer = nullptr;
 
-	// 시네마틱을 유발한 대사는 소비된 것으로 보고 다음 대사로 넘어간다.
-	++CurrentLineIndex;
-
-	if (!IsValid(CurrentDialogueData) || !CurrentDialogueData->Lines.IsValidIndex(CurrentLineIndex))
+	if (IsValid(CinematicActor))
 	{
-		EndDialogue();
-		return;
+		// Destroy는 즉시 메모리를 제거하지 않고 안전하게 제거 예약을 한다.
+		CinematicActor->Destroy();
 	}
 
-	BroadcastCurrentLine();
+	CinematicActor = nullptr;
+
+	AdvanceAfterCinematic();
 }
 
 void UDialogueComponent::ClearCinematicPlayer()
@@ -315,14 +336,17 @@ void UDialogueComponent::ClearCinematicPlayer()
 	CinematicActor = nullptr;
 }
 
-void UDialogueComponent::CancelDialogue()
+void UDialogueComponent::CompleteDialogue()
 {
 	if (!IsInDialogue())
 	{
 		return;
 	}
-
+	
+	ATinoNPCCharacter* CompletedNPC = CurrentNPC;
+	
 	EndDialogue();
+	ResolveQuest(CompletedNPC);
 }
 
 void UDialogueComponent::EndDialogue()
@@ -333,11 +357,6 @@ void UDialogueComponent::EndDialogue()
 	{
 		CurrentNPC->StopTalkAnimation();
 	}
-
-	// 퀘스트 처리는 대화 정리가 끝난 뒤로 미룬다.
-	// 여기서 바로 방송하면 아직 NPC 카메라를 보고 자막이 떠 있는 상태에서
-	// 퀘스트 UI가 겹쳐 나온다.
-	ATinoNPCCharacter* NPCToResolve = CurrentNPC;
 
 	bSkipHoldActive = false;
 	SkipHoldElapsed = 0.f;
@@ -365,9 +384,6 @@ void UDialogueComponent::EndDialogue()
 	CurrentLineIndex = INDEX_NONE;
 
 	OnDialogueEnded.Broadcast();
-
-	// 자막이 사라지고 카메라가 돌아온 뒤에 퀘스트 UI가 뜨도록 마지막에 처리한다.
-	ResolveQuest(NPCToResolve);
 }
 
 void UDialogueComponent::ResolveQuest(ATinoNPCCharacter* NPC)
