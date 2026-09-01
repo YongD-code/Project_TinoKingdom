@@ -8,6 +8,8 @@
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "CookingComponent.generated.h"
 
+class UTexture2D;
+
 UCLASS(ClassGroup=(Tino), meta=(BlueprintSpawnableComponent))
 class PROJECT_TINOKINGDOM_API UCookingComponent : public UActorComponent
 {
@@ -30,6 +32,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Cooking")
 	const TArray<FInventoryItemStack>& GetSelectedIngredients() const;
+
+	UFUNCTION(BlueprintPure, Category="Cooking")
+	bool CanFinishCooking() const;
 	
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	ECookingQuality GetQualityByMinigameScore(float MinigameScore) const;
@@ -77,5 +82,6 @@ private:
 	float GetQualityMultiplier(ECookingQuality Quality) const;
 	FText GetTagDisplayName(ECookingTag Tag) const;
 	FText GetResultTypeDisplayName(ECookingResultType ResultType) const;
+	UTexture2D* CreateResultIconTexture(const FCookingResultData& ResultData) const;
 };
 

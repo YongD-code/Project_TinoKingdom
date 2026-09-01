@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "TinoPlayerWidget.generated.h"
 
 enum class EExperienceBarState : uint8
@@ -18,6 +19,7 @@ enum class EPlayerStatType : uint8;
 
 class AActor;
 class UAbilitySystemComponent;
+class UBorder;
 class UButton;
 class UCanvasPanelSlot;
 class UImage;
@@ -25,7 +27,10 @@ class UProgressBar;
 class UPlayerProgressionComponent;
 class USizeBox;
 class UTextBlock;
+class UUniformGridPanel;
+class UUserWidget;
 class UWidget;
+class UCookingWidget;
 
 struct FOnAttributeChangeData;
 
@@ -39,6 +44,9 @@ public:
 	void SetLockOnMarkerTarget(AActor* NewTarget);
 	
 	void SetCharacterMenuVisible(bool bVisible);
+	void ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent);
+	void RefreshCookingIngredientPicker();
+	void CloseCookingIngredientPicker();
 	
 protected:
 	virtual void NativeOnInitialized() override;
@@ -120,6 +128,81 @@ private:
 
 	UFUNCTION()
 	void HandleDefenseUpgradeClicked();
+
+	UFUNCTION()
+	void HandleInventorySlot0Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot1Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot2Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot3Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot4Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot5Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot6Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot7Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot8Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot9Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot10Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot11Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot12Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot13Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot14Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot15Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot16Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot17Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot18Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot19Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot20Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot21Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot22Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot23Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot24Clicked();
 	
 private:
 	bool BindToAbilitySystem();
@@ -146,6 +229,13 @@ private:
 	void RefreshStatValue();
 	
 	void TryUpgradeStat(EPlayerStatType StatType);
+
+	void RefreshInventorySlots();
+	void HandleInventorySlotClicked(int32 SlotIndex);
+	UInventoryComponent* ResolveInventoryComponent() const;
+	void EnsureInventoryPreviewWidget();
+	void ShowInventoryItemPreview(const FInventoryItemStack& Item);
+	void HideInventoryItemPreview();
 	
 	void SetDisplayedLevel(int32 NewLevel);
 	
@@ -226,4 +316,30 @@ private:
 	FDelegateHandle DefenseChangedDelegateHandle;
 
 	FDelegateHandle StatPointsChangedDelegateHandle;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInventoryComponent> DisplayedInventoryComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCookingWidget> CookingIngredientTarget;
+
+	UPROPERTY(Transient)
+	TArray<FInventoryItemStack> DisplayedInventoryItems;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UUserWidget>> DisplayedInventorySlots;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> InventoryPreviewPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> InventoryPreviewImage;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Inventory")
+	TSubclassOf<UUserWidget> InventorySlotWidgetClass;
+
+	static constexpr int32 InventoryColumnCount = 5;
+	static constexpr int32 MaxInventorySlotCount = 25;
+
+	bool bCookingIngredientPickerOpen = false;
 };
