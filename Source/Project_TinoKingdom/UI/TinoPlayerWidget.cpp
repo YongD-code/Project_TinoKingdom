@@ -7,7 +7,9 @@
 #include "AbilitySystemInterface.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
@@ -52,6 +54,7 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 		bCookingIngredientPickerOpen = false;
 		CookingIngredientTarget = nullptr;
 		DisplayedInventoryComponent = ResolveInventoryComponent();
+		EnsureInventoryPreviewWidget();
 
 		if (UCanvasPanelSlot* InventoryPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(InventoryPanel))
 		{
@@ -66,6 +69,7 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 	else
 	{
 		CloseCookingIngredientPicker();
+		HideInventoryItemPreview();
 	}
 
 	const ESlateVisibility MenuVisibility = bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
@@ -86,6 +90,7 @@ void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidge
 
 	InventoryPanel->SetVisibility(ESlateVisibility::Visible);
 	StatusPanel->SetVisibility(ESlateVisibility::Collapsed);
+	HideInventoryItemPreview();
 
 	if (UCanvasPanelSlot* InventoryPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(InventoryPanel))
 	{
@@ -116,6 +121,7 @@ void UTinoPlayerWidget::CloseCookingIngredientPicker()
 		{
 			InventoryPanel->SetVisibility(ESlateVisibility::Collapsed);
 		}
+		HideInventoryItemPreview();
 	}
 }
 
@@ -880,26 +886,90 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 
 void UTinoPlayerWidget::HandleInventorySlotClicked(int32 SlotIndex)
 {
-	if (!bCookingIngredientPickerOpen || CookingIngredientTarget == nullptr)
-	{
-		return;
-	}
-
 	if (!DisplayedInventoryItems.IsValidIndex(SlotIndex))
 	{
+		HideInventoryItemPreview();
 		return;
 	}
 
-	if (CookingIngredientTarget->AddIngredientFromInventory(DisplayedInventoryItems[SlotIndex]))
+	if (bCookingIngredientPickerOpen && CookingIngredientTarget != nullptr)
 	{
-		RefreshInventorySlots();
+		if (CookingIngredientTarget->AddIngredientFromInventory(DisplayedInventoryItems[SlotIndex]))
+		{
+			RefreshInventorySlots();
+		}
+		return;
 	}
+
+	ShowInventoryItemPreview(DisplayedInventoryItems[SlotIndex]);
 }
 
 UInventoryComponent* UTinoPlayerWidget::ResolveInventoryComponent() const
 {
 	const APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn());
 	return PlayerCharacter != nullptr ? PlayerCharacter->GetInventoryComponent() : nullptr;
+}
+
+void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
+{
+	if (InventoryPreviewPanel != nullptr && InventoryPreviewImage != nullptr)
+	{
+		return;
+	}
+
+	if (WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	UCanvasPanel* RootCanvas = Cast<UCanvasPanel>(GetRootWidget());
+	if (RootCanvas == nullptr)
+	{
+		return;
+	}
+
+	InventoryPreviewPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryPreviewPanel_Runtime"));
+	InventoryPreviewImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryPreviewImage_Runtime"));
+	if (InventoryPreviewPanel == nullptr || InventoryPreviewImage == nullptr)
+	{
+		return;
+	}
+
+	InventoryPreviewPanel->SetBrushColor(FLinearColor(0.02f, 0.018f, 0.015f, 0.86f));
+	InventoryPreviewPanel->SetPadding(FMargin(18.0f));
+	InventoryPreviewPanel->SetContent(InventoryPreviewImage);
+	InventoryPreviewPanel->SetVisibility(ESlateVisibility::Collapsed);
+
+	UCanvasPanelSlot* PreviewSlot = RootCanvas->AddChildToCanvas(InventoryPreviewPanel);
+	if (PreviewSlot != nullptr)
+	{
+		PreviewSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+		PreviewSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+		PreviewSlot->SetPosition(FVector2D(360.0f, -2.0f));
+		PreviewSlot->SetSize(FVector2D(300.0f, 300.0f));
+		PreviewSlot->SetZOrder(20);
+	}
+}
+
+void UTinoPlayerWidget::ShowInventoryItemPreview(const FInventoryItemStack& Item)
+{
+	EnsureInventoryPreviewWidget();
+	if (InventoryPreviewPanel == nullptr || InventoryPreviewImage == nullptr || Item.Icon == nullptr)
+	{
+		HideInventoryItemPreview();
+		return;
+	}
+
+	InventoryPreviewImage->SetBrushFromTexture(Item.Icon, true);
+	InventoryPreviewPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void UTinoPlayerWidget::HideInventoryItemPreview()
+{
+	if (InventoryPreviewPanel != nullptr)
+	{
+		InventoryPreviewPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void UTinoPlayerWidget::SetDisplayedLevel(int32 NewLevel)

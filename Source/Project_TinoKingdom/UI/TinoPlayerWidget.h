@@ -19,6 +19,7 @@ enum class EPlayerStatType : uint8;
 
 class AActor;
 class UAbilitySystemComponent;
+class UBorder;
 class UButton;
 class UCanvasPanelSlot;
 class UImage;
@@ -232,6 +233,9 @@ private:
 	void RefreshInventorySlots();
 	void HandleInventorySlotClicked(int32 SlotIndex);
 	UInventoryComponent* ResolveInventoryComponent() const;
+	void EnsureInventoryPreviewWidget();
+	void ShowInventoryItemPreview(const FInventoryItemStack& Item);
+	void HideInventoryItemPreview();
 	
 	void SetDisplayedLevel(int32 NewLevel);
 	
@@ -324,6 +328,12 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UUserWidget>> DisplayedInventorySlots;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> InventoryPreviewPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> InventoryPreviewImage;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Inventory")
 	TSubclassOf<UUserWidget> InventorySlotWidgetClass;

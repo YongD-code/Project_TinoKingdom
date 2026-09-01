@@ -899,8 +899,6 @@ UTexture2D* UCookingComponent::CreateResultIconTexture(const FCookingResultData&
 		BlendIngredientPieces(Pixels, Pair.Key, Pair.Value, false);
 	}
 
-	BlendCookingLayer(Pixels, GetCookingFrameAssetPath(ResultData.Quality), 1.0f);
-
 	UTexture2D* Texture = UTexture2D::CreateTransient(CookingIconTextureSize, CookingIconTextureSize, PF_B8G8R8A8);
 	if (Texture == nullptr || Texture->GetPlatformData() == nullptr || Texture->GetPlatformData()->Mips.Num() == 0)
 	{
