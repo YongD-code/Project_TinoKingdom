@@ -4,16 +4,22 @@
 #include "PlayerCharacter.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameplayEffect.h"
 #include "InputActionValue.h"
 #include "Kismet/GameplayStatics.h"
+#include "LevelSequence.h"
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
 #include "Math/RotationMatrix.h"
+#include "MovieSceneSequencePlaybackSettings.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
@@ -170,11 +176,21 @@ void APlayerCharacter::BeginPlay()
 	// 숨겨진 Driver Mesh의 포즈를 보이는 Body Mesh에 전달한다.
 	// Body Mesh는 별도로 포즈를 계산하지 않고 Leader Pose를 따라간다.
 	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (IsValid(PlayerController->PlayerCameraManager) && StartupFadeInDuration > 0.f)
+		{
+			PlayerController->PlayerCameraManager->SetManualCameraFade(1.f, FLinearColor::Black, false);
+			PlayerController->PlayerCameraManager->StartCameraFade(1.f, 0.f, StartupFadeInDuration, FLinearColor::Black, false, false);
+		}
+	}
 }
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	ClearRespawnSequence();
 	
 	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
 	StopSlowMotion();
@@ -811,37 +827,112 @@ bool APlayerCharacter::InitializeDefaultAttributes()
 void APlayerCharacter::RespawnAtInitialTransform()
 {
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
-	
+	ClearRespawnSequence();
 	ReactionComponent->ResetDeathReaction();
-	
 	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
-	
+
 	if (AController* OwningController = GetController())
 	{
-		OwningController->SetControlRotation(
-			InitialSpawnTransform.GetRotation().Rotator());
+		OwningController->SetControlRotation(InitialSpawnTransform.GetRotation().Rotator());
 	}
-	
+
 	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
 	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
-	
+
+	if (!IsValid(RespawnSequence))
+	{
+		FinishRespawn(false);
+		return;
+	}
+
+	FMovieSceneSequencePlaybackSettings PlaybackSettings;
+	PlaybackSettings.bDisableMovementInput = true;
+	PlaybackSettings.bDisableLookAtInput = true;
+	PlaybackSettings.FinishCompletionStateOverride = EMovieSceneCompletionModeOverride::ForceRestoreState;
+
+	ALevelSequenceActor* NewSequenceActor = nullptr;
+	ULevelSequencePlayer* NewSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
+		GetWorld(), RespawnSequence, PlaybackSettings, NewSequenceActor);
+	if (!IsValid(NewSequencePlayer) || !IsValid(NewSequenceActor))
+	{
+		if (IsValid(NewSequenceActor))
+		{
+			NewSequenceActor->Destroy();
+		}
+		FinishRespawn(false);
+		return;
+	}
+
+	RespawnSequencePlayer = NewSequencePlayer;
+	RespawnSequenceActor = NewSequenceActor;
+	RespawnSequencePlayer->OnFinished.AddUniqueDynamic(
+		this, &APlayerCharacter::HandleRespawnSequenceFinished);
+	RespawnSequencePlayer->Play();
+}
+
+void APlayerCharacter::HandleRespawnSequenceFinished()
+{
+	if (RespawnSequencePlayer != nullptr)
+	{
+		RespawnSequencePlayer->OnFinished.RemoveDynamic(this, &APlayerCharacter::HandleRespawnSequenceFinished);
+		RespawnSequencePlayer = nullptr;
+	}
+	if (IsValid(RespawnSequenceActor))
+	{
+		RespawnSequenceActor->Destroy();
+	}
+	RespawnSequenceActor = nullptr;
+	FinishRespawn(true);
+}
+
+void APlayerCharacter::FinishRespawn(bool bFadeInFromBlack)
+{
+	// 시퀀스의 Transform/Animation 트랙이 남긴 값을 제거하고 정확한 부활 위치를 보장한다.
+	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
 	CharacterStateComponent->RemoveStateTag(TinoGameplayTags::State_Dead);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	
+
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
 	{
 		MovementComponent->StopMovementImmediately();
 		MovementComponent->SetMovementMode(MOVE_Walking);
 	}
-	
+
 	ConsumeMovementInputVector();
-	
 	bRunning = false;
 	StaminaDelayTime = 0.f;
 	bDeathHandled = false;
-	
 	UpdateRotationMode();
 	UpdateMovementSpeed();
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (bFadeInFromBlack && IsValid(PlayerController->PlayerCameraManager) && RespawnFadeInDuration > 0.f)
+		{
+			PlayerController->PlayerCameraManager->SetManualCameraFade(1.f, FLinearColor::Black, false);
+			PlayerController->SetViewTarget(this);
+			PlayerController->PlayerCameraManager->StartCameraFade(1.f, 0.f, RespawnFadeInDuration, FLinearColor::Black, false, false);
+		}
+		else
+		{
+			PlayerController->SetViewTarget(this);
+		}
+	}
+}
+
+void APlayerCharacter::ClearRespawnSequence()
+{
+	if (RespawnSequencePlayer != nullptr)
+	{
+		RespawnSequencePlayer->OnFinished.RemoveDynamic(this, &APlayerCharacter::HandleRespawnSequenceFinished);
+		RespawnSequencePlayer->Stop();
+		RespawnSequencePlayer = nullptr;
+	}
+	if (IsValid(RespawnSequenceActor))
+	{
+		RespawnSequenceActor->Destroy();
+	}
+	RespawnSequenceActor = nullptr;
 }
 
 float APlayerCharacter::ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator,

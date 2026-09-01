@@ -28,6 +28,9 @@ class UCookingComponent;
 class ATinoNPCCharacter;
 class UTinoStateComponent;
 class UTinoAbilitySystemComponent;
+class ULevelSequence;
+class ULevelSequencePlayer;
+class ALevelSequenceActor;
 struct FInputActionValue;
 
 UCLASS()
@@ -283,9 +286,20 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina")
 	float StaminaDelay = 1.5f;
+
+	// 프롤로그 종료 후 검은 화면에서 플레이어 화면으로 전환되는 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Startup", meta = (ClampMin = "0.0"))
+	float StartupFadeInDuration = 3.f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn")
 	float RespawnDelay = 4.f;
+
+	// 런타임에 직접 재생할 부활 카메라/사운드 시퀀스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic")
+	TObjectPtr<ULevelSequence> RespawnSequence;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic", meta = (ClampMin = "0.0"))
+	float RespawnFadeInDuration = 1.f;
 
 protected:
 	UPROPERTY(Transient)
@@ -304,6 +318,12 @@ private:
 	float StaminaDelayTime = 0.0f;
 
 	FTimerHandle RespawnTimerHandle;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ULevelSequencePlayer> RespawnSequencePlayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ALevelSequenceActor> RespawnSequenceActor;
 	
 	bool bDeathHandled = false;
 
@@ -323,6 +343,11 @@ private:
 	bool InitializeDefaultAttributes();
 
 	void RespawnAtInitialTransform();
+	void FinishRespawn(bool bFadeInFromBlack);
+	void ClearRespawnSequence();
+
+	UFUNCTION()
+	void HandleRespawnSequenceFinished();
 	
 	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
 	
