@@ -943,10 +943,10 @@ void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
 	UCanvasPanelSlot* PreviewSlot = RootCanvas->AddChildToCanvas(InventoryPreviewPanel);
 	if (PreviewSlot != nullptr)
 	{
-		PreviewSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+		PreviewSlot->SetAnchors(FAnchors(1.0f, 0.5f, 1.0f, 0.5f));
 		PreviewSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		PreviewSlot->SetPosition(FVector2D(360.0f, -2.0f));
-		PreviewSlot->SetSize(FVector2D(300.0f, 300.0f));
+		PreviewSlot->SetPosition(FVector2D(-210.0f, -2.0f));
+		PreviewSlot->SetSize(FVector2D(360.0f, 360.0f));
 		PreviewSlot->SetZOrder(20);
 	}
 }
