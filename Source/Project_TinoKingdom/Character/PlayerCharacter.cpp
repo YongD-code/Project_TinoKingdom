@@ -176,6 +176,15 @@ void APlayerCharacter::BeginPlay()
 	// 숨겨진 Driver Mesh의 포즈를 보이는 Body Mesh에 전달한다.
 	// Body Mesh는 별도로 포즈를 계산하지 않고 Leader Pose를 따라간다.
 	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (IsValid(PlayerController->PlayerCameraManager) && StartupFadeInDuration > 0.f)
+		{
+			PlayerController->PlayerCameraManager->SetManualCameraFade(1.f, FLinearColor::Black, false);
+			PlayerController->PlayerCameraManager->StartCameraFade(1.f, 0.f, StartupFadeInDuration, FLinearColor::Black, false, false);
+		}
+	}
 }
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
