@@ -6,6 +6,7 @@
 
 #include "Engine/Texture2D.h"
 #include "Math/UnrealMathUtility.h"
+#include "Misc/Guid.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 
 namespace
@@ -22,6 +23,16 @@ struct FCookingTexturePixels
 	{
 		return Width > 0 && Height > 0 && Pixels.Num() == Width * Height;
 	}
+};
+
+struct FCookingPlacementBounds
+{
+	float MinX = 0.25f;
+	float MaxX = 0.75f;
+	float MinY = 0.25f;
+	float MaxY = 0.75f;
+	float MinDistance = 0.13f;
+	float ScaleMultiplier = 1.0f;
 };
 
 UTexture2D* LoadCookingLayerTexture(const TCHAR* AssetPath)
@@ -255,7 +266,7 @@ const TCHAR* GetCookingToppingAssetPath(ECookingTag Tag)
 	switch (Tag)
 	{
 	case ECookingTag::Fish:
-		return TEXT("/Game/Cooking/Assets/Topping_FishFin.Topping_FishFin");
+		return nullptr;
 	case ECookingTag::Slime:
 		return TEXT("/Game/Cooking/Assets/Topping_SlimeDrop.Topping_SlimeDrop");
 	case ECookingTag::Mushroom:
@@ -266,6 +277,53 @@ const TCHAR* GetCookingToppingAssetPath(ECookingTag Tag)
 		return TEXT("/Game/Cooking/Assets/Topping_Herb.Topping_Herb");
 	default:
 		return nullptr;
+	}
+}
+
+float GetCookingPieceScaleMultiplier(ECookingTag Tag, bool bMainIngredient)
+{
+	switch (Tag)
+	{
+	case ECookingTag::Fish:
+		return bMainIngredient ? 0.66f : 0.58f;
+	case ECookingTag::Meat:
+		return bMainIngredient ? 0.88f : 0.76f;
+	case ECookingTag::Mushroom:
+		return bMainIngredient ? 0.82f : 0.72f;
+	case ECookingTag::Slime:
+		return bMainIngredient ? 1.0f : 0.86f;
+	default:
+		return 1.0f;
+	}
+}
+
+FCookingPlacementBounds GetCookingPlacementBounds(
+	ECookingResultType ResultType,
+	bool bMainIngredient
+)
+{
+	switch (ResultType)
+	{
+	case ECookingResultType::Soup:
+		return bMainIngredient
+			? FCookingPlacementBounds{ 0.32f, 0.68f, 0.43f, 0.67f, 0.12f, 0.86f }
+			: FCookingPlacementBounds{ 0.35f, 0.65f, 0.39f, 0.62f, 0.14f, 0.72f };
+
+	case ECookingResultType::Jelly:
+		return bMainIngredient
+			? FCookingPlacementBounds{ 0.32f, 0.68f, 0.30f, 0.53f, 0.13f, 0.78f }
+			: FCookingPlacementBounds{ 0.35f, 0.65f, 0.24f, 0.43f, 0.15f, 0.62f };
+
+	case ECookingResultType::Grill:
+		return bMainIngredient
+			? FCookingPlacementBounds{ 0.29f, 0.71f, 0.42f, 0.68f, 0.13f, 0.92f }
+			: FCookingPlacementBounds{ 0.34f, 0.66f, 0.33f, 0.56f, 0.15f, 0.70f };
+
+	case ECookingResultType::Failed:
+	default:
+		return bMainIngredient
+			? FCookingPlacementBounds{ 0.34f, 0.66f, 0.40f, 0.65f, 0.13f, 0.82f }
+			: FCookingPlacementBounds{ 0.37f, 0.63f, 0.35f, 0.57f, 0.15f, 0.64f };
 	}
 }
 
@@ -345,50 +403,30 @@ void BlendMainIngredientLayer(TArray<FColor>& Pixels, ECookingTag MainTag)
 	BlendTintLayer(Pixels, GetFallbackTintByTag(MainTag), 0.55f);
 }
 
-void BlendIngredientPieces(TArray<FColor>& Pixels, ECookingTag Tag, float Ratio, bool bMainIngredient)
+void BlendIngredientPieces(
+	TArray<FColor>& Pixels,
+	ECookingResultType ResultType,
+	ECookingTag Tag,
+	float Ratio,
+	bool bMainIngredient
+)
 {
 	if (Ratio <= 0.0f)
 	{
 		return;
 	}
 
-	const struct FPiecePlacement
-	{
-		float X;
-		float Y;
-		float Scale;
-	};
-
-	const FPiecePlacement MainPlacements[] =
-	{
-		{ 0.50f, 0.54f, 1.00f },
-		{ 0.34f, 0.48f, 0.78f },
-		{ 0.66f, 0.49f, 0.78f },
-		{ 0.43f, 0.69f, 0.66f },
-		{ 0.59f, 0.35f, 0.62f },
-		{ 0.26f, 0.64f, 0.54f },
-		{ 0.74f, 0.65f, 0.54f },
-		{ 0.49f, 0.29f, 0.50f }
-	};
-
-	const FPiecePlacement SubPlacements[] =
-	{
-		{ 0.61f, 0.55f, 1.00f },
-		{ 0.39f, 0.43f, 0.82f },
-		{ 0.69f, 0.38f, 0.70f },
-		{ 0.31f, 0.65f, 0.64f },
-		{ 0.51f, 0.72f, 0.58f }
-	};
-
 	const int32 PieceCount = bMainIngredient
-		? FMath::Clamp(FMath::RoundToInt(2.0f + Ratio * 8.0f), 3, 8)
-		: FMath::Clamp(FMath::RoundToInt(Ratio * 7.0f), 1, 5);
+		? FMath::Clamp(FMath::RoundToInt(2.0f + Ratio * 8.0f + FMath::FRandRange(-1.0f, 1.0f)), 3, 9)
+		: FMath::Clamp(FMath::RoundToInt(1.0f + Ratio * 6.0f + FMath::FRandRange(-0.75f, 0.75f)), 1, 5);
 	const float Opacity = bMainIngredient
 		? FMath::Clamp(0.66f + Ratio * 0.28f, 0.0f, 0.94f)
 		: FMath::Clamp(0.74f + Ratio * 0.22f, 0.0f, 0.96f);
 	const float BaseScale = bMainIngredient
 		? FMath::Lerp(0.20f, 0.34f, Ratio)
 		: FMath::Lerp(0.17f, 0.26f, Ratio);
+	const float PieceScaleMultiplier = GetCookingPieceScaleMultiplier(Tag, bMainIngredient);
+	const FCookingPlacementBounds Bounds = GetCookingPlacementBounds(ResultType, bMainIngredient);
 
 	const TCHAR* PiecePath = GetCookingChunkAssetPath(Tag);
 	if (PiecePath == nullptr)
@@ -402,18 +440,45 @@ void BlendIngredientPieces(TArray<FColor>& Pixels, ECookingTag Tag, float Ratio,
 		return;
 	}
 
-	const FPiecePlacement* Placements = bMainIngredient ? MainPlacements : SubPlacements;
-	const int32 PlacementCount = bMainIngredient ? UE_ARRAY_COUNT(MainPlacements) : UE_ARRAY_COUNT(SubPlacements);
+	TArray<FVector2D> UsedPositions;
 	for (int32 Index = 0; Index < PieceCount; ++Index)
 	{
-		const FPiecePlacement& Placement = Placements[Index % PlacementCount];
+		FVector2D Position(0.5f, 0.5f);
+
+		for (int32 Attempt = 0; Attempt < 12; ++Attempt)
+		{
+			const float CenterX = FMath::FRandRange(Bounds.MinX, Bounds.MaxX);
+			const float CenterY = FMath::FRandRange(Bounds.MinY, Bounds.MaxY);
+			const FVector2D Candidate(CenterX, CenterY);
+
+			bool bTooClose = false;
+			for (const FVector2D& UsedPosition : UsedPositions)
+			{
+				if (FVector2D::Distance(Candidate, UsedPosition) < Bounds.MinDistance)
+				{
+					bTooClose = true;
+					break;
+				}
+			}
+
+			Position = Candidate;
+			if (!bTooClose)
+			{
+				break;
+			}
+		}
+
+		UsedPositions.Add(Position);
+
+		const float ScaleJitter = FMath::FRandRange(0.82f, 1.22f);
+		const float EdgeScale = bMainIngredient ? FMath::Lerp(1.10f, 0.82f, Index / static_cast<float>(FMath::Max(PieceCount - 1, 1))) : 1.0f;
 		BlendCookingLayerAt(
 			Pixels,
 			PiecePath,
-			Placement.X,
-			Placement.Y,
-			BaseScale * Placement.Scale,
-			Opacity
+			Position.X,
+			Position.Y,
+			BaseScale * Bounds.ScaleMultiplier * PieceScaleMultiplier * ScaleJitter * EdgeScale,
+			Opacity * FMath::FRandRange(0.88f, 1.0f)
 		);
 	}
 
@@ -421,7 +486,9 @@ void BlendIngredientPieces(TArray<FColor>& Pixels, ECookingTag Tag, float Ratio,
 	{
 		if (const TCHAR* ToppingPath = GetCookingToppingAssetPath(Tag))
 		{
-			BlendCookingLayerAt(Pixels, ToppingPath, 0.50f, 0.30f, BaseScale * 0.72f, Opacity * 0.88f);
+			const float AccentX = FMath::FRandRange(Bounds.MinX, Bounds.MaxX);
+			const float AccentY = FMath::FRandRange(Bounds.MinY, Bounds.MaxY);
+			BlendCookingLayerAt(Pixels, ToppingPath, AccentX, AccentY, BaseScale * Bounds.ScaleMultiplier * FMath::FRandRange(0.42f, 0.66f), Opacity * 0.82f);
 		}
 	}
 }
@@ -892,6 +959,12 @@ bool UCookingComponent::FinishCookingToInventory(
 		return false;
 	}
 
+	OutResult.ResultItemId = FName(*FString::Printf(
+		TEXT("%s_%s"),
+		*OutResult.ResultItemId.ToString(),
+		*FGuid::NewGuid().ToString(EGuidFormats::Short)
+	));
+
 	UTexture2D* ResultIcon = CreateResultIconTexture(OutResult);
 
 	for (const TPair<FName, int32>& RequiredItemCount : RequiredItemCounts)
@@ -924,6 +997,7 @@ UTexture2D* UCookingComponent::CreateResultIconTexture(const FCookingResultData&
 	BlendTintLayer(Pixels, GetAccentColorByTag(ResultData.IconData.MainTag), 0.10f);
 	BlendIngredientPieces(
 		Pixels,
+		ResultData.ResultType,
 		ResultData.IconData.MainTag,
 		GetCookingTagRatio(ResultData.IconData, ResultData.IconData.MainTag),
 		true
@@ -952,7 +1026,7 @@ UTexture2D* UCookingComponent::CreateResultIconTexture(const FCookingResultData&
 			continue;
 		}
 
-		BlendIngredientPieces(Pixels, Pair.Key, Pair.Value, false);
+		BlendIngredientPieces(Pixels, ResultData.ResultType, Pair.Key, Pair.Value, false);
 	}
 
 	UTexture2D* Texture = UTexture2D::CreateTransient(CookingIconTextureSize, CookingIconTextureSize, PF_B8G8R8A8);
