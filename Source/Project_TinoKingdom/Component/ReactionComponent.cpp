@@ -87,7 +87,7 @@ void UReactionComponent::ResetDeathReaction()
 	{
 		if (UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance())
 		{
-			if (AnimInstance->Montage_IsPlaying(DeathMontage))
+			if (DeathMontage != nullptr)
 			{
 				AnimInstance->Montage_Stop(0.f, DeathMontage);
 			}
