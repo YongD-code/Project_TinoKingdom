@@ -4,6 +4,7 @@
 #include "PlayerCharacter.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "EnhancedInputComponent.h"
@@ -831,7 +832,7 @@ void APlayerCharacter::RespawnAtInitialTransform()
 
 	if (!IsValid(RespawnSequence))
 	{
-		FinishRespawn();
+		FinishRespawn(false);
 		return;
 	}
 
@@ -849,7 +850,7 @@ void APlayerCharacter::RespawnAtInitialTransform()
 		{
 			NewSequenceActor->Destroy();
 		}
-		FinishRespawn();
+		FinishRespawn(false);
 		return;
 	}
 
@@ -862,17 +863,20 @@ void APlayerCharacter::RespawnAtInitialTransform()
 
 void APlayerCharacter::HandleRespawnSequenceFinished()
 {
-	// OnFinished 브로드캐스트 중에는 Player의 델리게이트를 제거하거나 Stop을 호출하지 않는다.
-	RespawnSequencePlayer = nullptr;
+	if (RespawnSequencePlayer != nullptr)
+	{
+		RespawnSequencePlayer->OnFinished.RemoveDynamic(this, &APlayerCharacter::HandleRespawnSequenceFinished);
+		RespawnSequencePlayer = nullptr;
+	}
 	if (IsValid(RespawnSequenceActor))
 	{
 		RespawnSequenceActor->Destroy();
 	}
 	RespawnSequenceActor = nullptr;
-	FinishRespawn();
+	FinishRespawn(true);
 }
 
-void APlayerCharacter::FinishRespawn()
+void APlayerCharacter::FinishRespawn(bool bFadeInFromBlack)
 {
 	// 시퀀스의 Transform/Animation 트랙이 남긴 값을 제거하고 정확한 부활 위치를 보장한다.
 	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
@@ -894,7 +898,16 @@ void APlayerCharacter::FinishRespawn()
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
-		PlayerController->SetViewTargetWithBlend(this, 0.25f);
+		if (bFadeInFromBlack && IsValid(PlayerController->PlayerCameraManager) && RespawnFadeInDuration > 0.f)
+		{
+			PlayerController->PlayerCameraManager->SetManualCameraFade(1.f, FLinearColor::Black, false);
+			PlayerController->SetViewTarget(this);
+			PlayerController->PlayerCameraManager->StartCameraFade(1.f, 0.f, RespawnFadeInDuration, FLinearColor::Black, false, false);
+		}
+		else
+		{
+			PlayerController->SetViewTarget(this);
+		}
 	}
 }
 

@@ -294,6 +294,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic")
 	TObjectPtr<ULevelSequence> RespawnSequence;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic", meta = (ClampMin = "0.0"))
+	float RespawnFadeInDuration = 1.f;
+
 protected:
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
@@ -336,7 +339,7 @@ private:
 	bool InitializeDefaultAttributes();
 
 	void RespawnAtInitialTransform();
-	void FinishRespawn();
+	void FinishRespawn(bool bFadeInFromBlack);
 	void ClearRespawnSequence();
 
 	UFUNCTION()
