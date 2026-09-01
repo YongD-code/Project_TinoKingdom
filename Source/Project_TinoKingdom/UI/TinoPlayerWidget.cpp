@@ -579,7 +579,9 @@ void UTinoPlayerWidget::HandleExperienceChanged(int32 NewExperience, int32 Requi
 
 void UTinoPlayerWidget::HandleStatPointsChanged(int32 NewStatPoints)
 {
-	StatPointsTextBlock->SetText(FText::AsNumber(NewStatPoints));
+	StatPointsTextBlock->SetText(
+		FText::Format(NSLOCTEXT("TinoPlayerWidget", "StatPointsTextFormat", "Stat Points {0}"),
+			FText::AsNumber(NewStatPoints)));
 	
 	const bool bCanUpgrade = NewStatPoints > 0;
 	
@@ -974,7 +976,9 @@ void UTinoPlayerWidget::HideInventoryItemPreview()
 
 void UTinoPlayerWidget::SetDisplayedLevel(int32 NewLevel)
 {
-	LevelTextBlock->SetText(FText::AsNumber(NewLevel));
+	LevelTextBlock->SetText(
+		FText::Format(NSLOCTEXT("TinoPlayerWidget", "LevelTextFormat", "Level {0}"), 
+		FText::AsNumber(NewLevel)));
 	
 	ExperienceBarSizeBox->SetWidthOverride(
 		CalculateBarWidth(static_cast<float>(NewLevel), 1.f, ExperienceBarWidthPerLevel));

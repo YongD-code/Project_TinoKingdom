@@ -283,12 +283,17 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina")
 	float StaminaDelay = 1.5f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn")
+	float RespawnDelay = 4.f;
 
 protected:
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
 
 private:
+	FTransform InitialSpawnTransform = FTransform::Identity;
+	
 	UPROPERTY(Transient)
 	float SavedGlobalTimeDilation = 1.f;
 
@@ -298,6 +303,8 @@ private:
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
 
+	FTimerHandle RespawnTimerHandle;
+	
 	bool bDeathHandled = false;
 
 	bool bIsAiming = false;
@@ -314,6 +321,8 @@ private:
 
 private:
 	bool InitializeDefaultAttributes();
+
+	void RespawnAtInitialTransform();
 	
 	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
 	
