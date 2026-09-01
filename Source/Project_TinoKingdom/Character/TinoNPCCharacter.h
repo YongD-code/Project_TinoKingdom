@@ -4,8 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AbilitySystemInterface.h"
+#include "Project_TinoKingdom/Interface/TargetableInterface.h"
 #include "TinoNPCCharacter.generated.h"
 
+class UAbilitySystemComponent;
+class UGameplayEffect;
+class UTinoAbilitySystemComponent;
+class UTinoAttributeSet;
 class UAnimMontage;
 class UCameraComponent;
 class UDialogueData;
@@ -14,13 +20,30 @@ class UQuestData;
 class USkeletalMeshComponent;
 
 UCLASS()
-class PROJECT_TINOKINGDOM_API ATinoNPCCharacter : public ACharacter
+class PROJECT_TINOKINGDOM_API ATinoNPCCharacter :	public ACharacter,
+													public ITargetableInterface,
+													public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ATinoNPCCharacter();
+	
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
+		class AController* EventInstigator, AActor* DamageCauser) override;
+	
+	virtual bool CanBeTargeted_Implementation() const override;
+	virtual FVector GetLockOnLocation_Implementation() const override;
 
+	UFUNCTION(BlueprintPure, Category = "NPC|State")
+	bool IsDead() const;
+	
+	UFUNCTION(BlueprintPure, Category = "NPC|Combat")
+	AActor* GetCombatTarget() const { return CombatTarget.Get(); }
+	
 	// 이 NPC가 사용할 대사 묶음. 대화 진행은 플레이어의 DialogueComponent가 담당한다.
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	UDialogueData* GetDialogueData() const { return DialogueData; }
@@ -42,6 +65,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	// 메타휴먼은 몸과 얼굴이 각각 다른 스켈레탈 메시라 이름으로 찾아 캐시한다.
@@ -50,10 +74,40 @@ private:
 	// 카메라가 화면 중앙에 둘 지점. 머리 본을 찾으면 그 위치를 기준으로 한다.
 	FVector GetDialogueFocusLocation() const;
 
+	void PlayHitReaction();
+	
+	void HandleDeath();
+	
+	void StartRespawnCheck();
+	void CheckRespawnCondition();
+	
+	bool IsInsidePlayerViewFrustum() const;
+	
+	void RespawnAtInitialTransform();
+	
+	AActor* ResolveDamageInstigator(AController* EventInstigator, AActor* DamageCauser) const;
+	void SetCombatTarget(AActor* NewTarget);
+
 	static void PlayMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage);
 	static void StopMontageOnMesh(USkeletalMeshComponent* Mesh, UAnimMontage* Montage, float BlendOutTime);
 
+	bool InitializeDefaultAttributes();
+	
+	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
+	
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
+	TObjectPtr<UTinoAttributeSet> AttributeSet;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ability System")
+	TSubclassOf<UGameplayEffect> DamageEffect;
+	
 	// 퀘스트를 받기 전에 할 대사.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> DialogueData;
@@ -109,6 +163,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue|Animation")
 	TObjectPtr<UAnimMontage> TalkFaceMontage;
 
+	// 생존 가능한 피해를 받았을 때 몸 메시에서 재생할 피격 몽타주.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation|Hit")
+	TObjectPtr<UAnimMontage> HitBodyMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation|Death")
+	TObjectPtr<UAnimMontage> DeathBodyMontage;
+
+	// 사망한 NPC가 이 시간 동안 연속으로 화면 밖에 있으면 부활
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Respawn", meta = (ClampMin = "0.0"))
+	float OutOfViewRespawnDelay = 3.f;
+
+	// 사망한 NPC가 화면 안에 있는지 검사하는 주기
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Respawn", meta = (ClampMin = "0.05"))
+	float RespawnVisibilityCheckInterval = 0.25f;
+	
 	// 메타휴먼 블루프린트의 컴포넌트 이름. 다른 이름을 쓰는 NPC는 여기서 바꾼다.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dialogue|Animation")
 	FName BodyMeshComponentName = TEXT("Body");
@@ -125,4 +194,14 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> FaceMesh;
+	
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> CombatTarget;
+	
+private:
+	FTransform InitialSpawnTransform = FTransform::Identity;
+	
+	FTimerHandle RespawnCheckTimerHandle;
+	
+	double OutOfViewStartTime = -1.0;
 };
