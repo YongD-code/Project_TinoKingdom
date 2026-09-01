@@ -7,17 +7,26 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Camera/CameraComponent.h"
+#include "ConvexVolume.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/LocalPlayer.h"
+#include "Engine/World.h"
 #include "GameplayEffect.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/DataAsset/DialogueData.h"
 #include "Project_TinoKingdom/DataAsset/QuestData.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
+#include "SceneView.h"
+#include "TimerManager.h"
+#include "Slate/SceneViewport.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoNPC, Log, All);
 
@@ -175,6 +184,8 @@ void ATinoNPCCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitialSpawnTransform = GetActorTransform();
+	
 	CacheAnimationMeshes();
 	
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
@@ -198,6 +209,12 @@ void ATinoNPCCharacter::BeginPlay()
 			AttributeSet->GetDefense()
 		);
 	}
+}
+
+void ATinoNPCCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorldTimerManager().ClearTimer(RespawnCheckTimerHandle);
+	Super::EndPlay(EndPlayReason);
 }
 
 UDialogueData* ATinoNPCCharacter::SelectDialogueData(const UQuestComponent* PlayerQuest) const
@@ -304,6 +321,112 @@ void ATinoNPCCharacter::HandleDeath()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	PlayMontageOnMesh(BodyMesh, DeathBodyMontage);
+	
+	StartRespawnCheck();
+}
+
+void ATinoNPCCharacter::StartRespawnCheck()
+{
+	OutOfViewStartTime = -1.0;
+	
+	const float CheckInterval = FMath::Max(RespawnVisibilityCheckInterval, 0.05);
+	GetWorldTimerManager().SetTimer(RespawnCheckTimerHandle, this, &ATinoNPCCharacter::CheckRespawnCondition,
+		CheckInterval, true);
+}
+
+void ATinoNPCCharacter::CheckRespawnCondition()
+{
+	if (!IsDead())
+	{
+		GetWorldTimerManager().ClearTimer(RespawnCheckTimerHandle);
+		OutOfViewStartTime = -1.0;
+		return;
+	}
+	
+	if (IsInsidePlayerViewFrustum())
+	{
+		OutOfViewStartTime = -1.0;
+		return;
+	}
+	
+	const UWorld* World = GetWorld();
+	const double CurrentTime = World->GetTimeSeconds();
+	
+	if (OutOfViewStartTime < 0.0)
+	{
+		OutOfViewStartTime = CurrentTime;
+	}
+	if (CurrentTime - OutOfViewStartTime < OutOfViewRespawnDelay)
+	{
+		return;
+	}
+	
+	RespawnAtInitialTransform();
+}
+
+bool ATinoNPCCharacter::IsInsidePlayerViewFrustum() const
+{
+	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0);
+	if (!IsValid(PlayerController))
+	{
+		return true;
+	}
+
+	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+	if (LocalPlayer == nullptr || LocalPlayer->ViewportClient == nullptr)
+	{
+		return true;
+	}
+
+	FSceneViewport* SceneViewport = LocalPlayer->ViewportClient->GetGameViewport();
+	if (SceneViewport == nullptr)
+	{
+		return true;
+	}
+
+	FSceneViewProjectionData ProjectionData;
+	if (!LocalPlayer->GetProjectionData(SceneViewport, ProjectionData))
+	{
+		return true;
+	}
+
+	FConvexVolume ViewFrustum;
+	GetViewFrustumBounds(ViewFrustum, ProjectionData.ComputeViewProjectionMatrix(), true);
+
+	FVector BoundsOrigin;
+	FVector BoundsExtent;
+	GetActorBounds(false, BoundsOrigin, BoundsExtent);
+
+	return ViewFrustum.IntersectBox(BoundsOrigin, BoundsExtent);
+}
+
+void ATinoNPCCharacter::RespawnAtInitialTransform()
+{
+	GetWorldTimerManager().ClearTimer(RespawnCheckTimerHandle);
+	OutOfViewStartTime = -1.0;
+
+	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
+
+	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+
+	StopMontageOnMesh(BodyMesh, DeathBodyMontage, 0.0f);
+
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		MovementComponent->SetMovementMode(MOVE_Walking);
+	}
+
+	UE_LOG(
+		LogTinoNPC,
+		Log,
+		TEXT("NPC 부활: %s, Health %.1f / %.1f"),
+		*GetName(),
+		AttributeSet->GetHealth(),
+		AttributeSet->GetMaxHealth()
+	);
 }
 
 AActor* ATinoNPCCharacter::ResolveDamageInstigator(AController* EventInstigator, AActor* DamageCauser) const

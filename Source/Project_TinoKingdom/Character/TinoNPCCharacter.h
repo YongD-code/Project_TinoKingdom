@@ -65,6 +65,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	// 메타휴먼은 몸과 얼굴이 각각 다른 스켈레탈 메시라 이름으로 찾아 캐시한다.
@@ -76,6 +77,13 @@ private:
 	void PlayHitReaction();
 	
 	void HandleDeath();
+	
+	void StartRespawnCheck();
+	void CheckRespawnCondition();
+	
+	bool IsInsidePlayerViewFrustum() const;
+	
+	void RespawnAtInitialTransform();
 	
 	AActor* ResolveDamageInstigator(AController* EventInstigator, AActor* DamageCauser) const;
 	void SetCombatTarget(AActor* NewTarget);
@@ -162,6 +170,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Animation|Death")
 	TObjectPtr<UAnimMontage> DeathBodyMontage;
 
+	// 사망한 NPC가 이 시간 동안 연속으로 화면 밖에 있으면 부활
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Respawn", meta = (ClampMin = "0.0"))
+	float OutOfViewRespawnDelay = 3.f;
+
+	// 사망한 NPC가 화면 안에 있는지 검사하는 주기
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NPC|Respawn", meta = (ClampMin = "0.05"))
+	float RespawnVisibilityCheckInterval = 0.25f;
+	
 	// 메타휴먼 블루프린트의 컴포넌트 이름. 다른 이름을 쓰는 NPC는 여기서 바꾼다.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dialogue|Animation")
 	FName BodyMeshComponentName = TEXT("Body");
@@ -181,4 +197,11 @@ private:
 	
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> CombatTarget;
+	
+private:
+	FTransform InitialSpawnTransform = FTransform::Identity;
+	
+	FTimerHandle RespawnCheckTimerHandle;
+	
+	double OutOfViewStartTime = -1.0;
 };
