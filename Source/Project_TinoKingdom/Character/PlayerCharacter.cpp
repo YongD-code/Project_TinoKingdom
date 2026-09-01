@@ -27,6 +27,7 @@
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
+#include "TimerManager.h"
 #include "Engine/OverlapResult.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
@@ -110,6 +111,8 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitialSpawnTransform = GetActorTransform();
+	
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	const UTinoAttributeSet* RegisteredAttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
 
@@ -171,6 +174,8 @@ void APlayerCharacter::BeginPlay()
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	
 	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
 	StopSlowMotion();
 	StopAiming();
@@ -803,8 +808,44 @@ bool APlayerCharacter::InitializeDefaultAttributes()
 	return true;
 }
 
+void APlayerCharacter::RespawnAtInitialTransform()
+{
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	
+	ReactionComponent->ResetDeathReaction();
+	
+	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
+	
+	if (AController* OwningController = GetController())
+	{
+		OwningController->SetControlRotation(
+			InitialSpawnTransform.GetRotation().Rotator());
+	}
+	
+	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
+	
+	CharacterStateComponent->RemoveStateTag(TinoGameplayTags::State_Dead);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		MovementComponent->SetMovementMode(MOVE_Walking);
+	}
+	
+	ConsumeMovementInputVector();
+	
+	bRunning = false;
+	StaminaDelayTime = 0.f;
+	bDeathHandled = false;
+	
+	UpdateRotationMode();
+	UpdateMovementSpeed();
+}
+
 float APlayerCharacter::ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator,
-	AActor* DamageCauser)
+                                                  AActor* DamageCauser)
 {
 	if (DamageAmount <= 0.f)
 	{
@@ -870,6 +911,15 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ReactionComponent->PlayDeathReaction(DamageCauser);
+	
+	if (RespawnDelay <= 0.f)
+	{
+		RespawnAtInitialTransform();
+		return;
+	}
+	
+	GetWorldTimerManager().SetTimer(RespawnTimerHandle, this,
+		&APlayerCharacter::RespawnAtInitialTransform, RespawnDelay, false);
 }
 
 void APlayerCharacter::HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget)
