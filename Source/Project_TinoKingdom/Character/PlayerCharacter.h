@@ -24,6 +24,7 @@ class UTinoCombatComponent;
 class UTinoEquipmentComponent;
 class UEquipmentLoadoutData;
 class UInventoryComponent;
+class UCookingComponent;
 class ATinoNPCCharacter;
 class UTinoStateComponent;
 class UTinoAbilitySystemComponent;
@@ -92,6 +93,12 @@ protected:
 public:
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Cooking")
+	UCookingComponent* GetCookingComponent() const { return CookingComponent; }
+
+	UFUNCTION(BlueprintCallable, Category = "Cooking")
+	void ToggleCookingMenu();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
@@ -225,6 +232,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking")
+	TObjectPtr<UCookingComponent> CookingComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	TObjectPtr<UTinoStateComponent> CharacterStateComponent;
