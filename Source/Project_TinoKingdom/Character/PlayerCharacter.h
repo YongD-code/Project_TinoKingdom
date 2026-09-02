@@ -28,6 +28,9 @@ class UCookingComponent;
 class ATinoNPCCharacter;
 class UTinoStateComponent;
 class UTinoAbilitySystemComponent;
+class ULevelSequence;
+class ULevelSequencePlayer;
+class ALevelSequenceActor;
 struct FInputActionValue;
 
 UCLASS()
@@ -42,6 +45,9 @@ public:
 	UTinoAbilitySystemComponent* GetTinoAbilitySystemComponent() const { return AbilitySystemComponent; }
 	UPlayerProgressionComponent* GetProgressionComponent() const { return ProgressionComponent; }
 	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	UTinoAttributeSet* GetMutableAttributeSet() { return AttributeSet; }
+	UTinoEquipmentComponent* GetEquipmentComponent() const { return EquipmentComponent; }
+	UQuestComponent* GetQuestComponent() const { return QuestComponent; }
 	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 		class AController* EventInstigator, AActor* DamageCauser) override;
@@ -77,6 +83,7 @@ protected:
 	void StartAiming();
 	void StopAiming();
 	void RequestTargeting();
+	void OpenSecretPlace();
 	void UpdateCameraTransition(float DeltaTime);
 
 	bool ShouldUseStrafeMovement() const;
@@ -206,6 +213,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> TargetingAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Level Travel")
+	TObjectPtr<UInputAction> OpenSecretPlaceAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel")
+	FName SecretPlaceLevelName = TEXT("/Game/MedievalDungeon/Maps/SecretPlace");
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
 	float InteractionRadius = 300.f;
 
@@ -284,11 +297,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|Stamina")
 	float StaminaDelay = 1.5f;
 
+	// 프롤로그 종료 후 검은 화면에서 플레이어 화면으로 전환되는 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Startup", meta = (ClampMin = "0.0"))
+	float StartupFadeInDuration = 3.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn")
+	float RespawnDelay = 4.f;
+
+	// 런타임에 직접 재생할 부활 카메라/사운드 시퀀스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic")
+	TObjectPtr<ULevelSequence> RespawnSequence;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic", meta = (ClampMin = "0.0"))
+	float RespawnFadeInDuration = 1.f;
+
 protected:
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> VisibleBodyMesh;
 
 private:
+	FTransform InitialSpawnTransform = FTransform::Identity;
+	
 	UPROPERTY(Transient)
 	float SavedGlobalTimeDilation = 1.f;
 
@@ -298,7 +327,16 @@ private:
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
 
+	FTimerHandle RespawnTimerHandle;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ULevelSequencePlayer> RespawnSequencePlayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ALevelSequenceActor> RespawnSequenceActor;
+	
 	bool bDeathHandled = false;
+	bool bLevelTravelInProgress = false;
 
 	bool bIsAiming = false;
 	bool bCameraTransition = false;
@@ -314,6 +352,13 @@ private:
 
 private:
 	bool InitializeDefaultAttributes();
+
+	void RespawnAtInitialTransform();
+	void FinishRespawn(bool bFadeInFromBlack);
+	void ClearRespawnSequence();
+
+	UFUNCTION()
+	void HandleRespawnSequenceFinished();
 	
 	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
 	

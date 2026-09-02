@@ -40,6 +40,9 @@ public:
 	void AddExperience(int32 Amount);
 	
 	bool TryUpgradeStat(EPlayerStatType StatType);
+
+	// OpenLevel 뒤 새로 생성된 컴포넌트에 진행 정보를 복원한다.
+	void RestoreTravelState(int32 Level, int32 Experience, int32 StatPoints);
 	
 public:
 	FOnPlayerLevelChanged OnLevelChanged;

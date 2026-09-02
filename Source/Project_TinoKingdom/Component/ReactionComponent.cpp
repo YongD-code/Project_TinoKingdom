@@ -81,6 +81,24 @@ void UReactionComponent::SetReactionSet(const FEquipmentReactionSet& ReactionSet
 	CurrentReactionSet = ReactionSet;
 }
 
+void UReactionComponent::ResetDeathReaction()
+{
+	if (IsValid(AnimationMesh))
+	{
+		if (UAnimInstance* AnimInstance = AnimationMesh->GetAnimInstance())
+		{
+			if (DeathMontage != nullptr)
+			{
+				AnimInstance->Montage_Stop(0.f, DeathMontage);
+			}
+		}
+	}
+	
+	bDeathReactionPlayed = false;
+	ActiveHitMontage = nullptr;
+	SetReacting(false);
+}
+
 // Called when the game starts
 void UReactionComponent::BeginPlay()
 {
