@@ -54,6 +54,7 @@ protected:
 	virtual void NativeDestruct() override;
 	
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual FReply NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -203,6 +204,84 @@ private:
 
 	UFUNCTION()
 	void HandleInventorySlot24Clicked();
+
+	UFUNCTION()
+	void HandleInventorySlot0Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot1Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot2Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot3Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot4Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot5Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot6Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot7Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot8Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot9Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot10Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot11Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot12Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot13Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot14Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot15Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot16Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot17Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot18Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot19Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot20Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot21Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot22Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot23Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlot24Hovered();
+
+	UFUNCTION()
+	void HandleInventorySlotUnhovered();
 	
 private:
 	bool BindToAbilitySystem();
@@ -236,6 +315,11 @@ private:
 	void EnsureInventoryPreviewWidget();
 	void ShowInventoryItemPreview(const FInventoryItemStack& Item);
 	void HideInventoryItemPreview();
+	FText BuildInventoryItemToolTipText(const FInventoryItemStack& Item) const;
+	UWidget* BuildInventoryItemToolTipWidget(const FInventoryItemStack& Item, int32 SlotIndex);
+	void HandleInventorySlotHovered(int32 SlotIndex);
+	bool TryUseInventoryFoodAt(int32 SlotIndex);
+	bool ApplyFoodEffectsToAbilitySystem(const FCookingResultData& FoodData);
 	
 	void SetDisplayedLevel(int32 NewLevel);
 	
@@ -334,6 +418,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> InventoryPreviewImage;
+
+	int32 HoveredInventorySlotIndex = INDEX_NONE;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Inventory")
 	TSubclassOf<UUserWidget> InventorySlotWidgetClass;

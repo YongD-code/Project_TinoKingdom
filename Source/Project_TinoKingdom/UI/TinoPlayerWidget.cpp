@@ -19,12 +19,34 @@
 #include "Components/UniformGridSlot.h"
 #include "Blueprint/WidgetTree.h"
 #include "GameFramework/Pawn.h"
+#include "InputCoreTypes.h"
+#include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 #include "Project_TinoKingdom/UI/CookingWidget.h"
+
+namespace
+{
+FString GetCookingQualityDisplayString(ECookingQuality Quality)
+{
+	switch (Quality)
+	{
+	case ECookingQuality::Failed:
+		return TEXT("Failed");
+	case ECookingQuality::Normal:
+		return TEXT("Normal");
+	case ECookingQuality::Good:
+		return TEXT("Good");
+	case ECookingQuality::Special:
+		return TEXT("Special");
+	default:
+		return TEXT("Unknown");
+	}
+}
+}
 
 void UTinoPlayerWidget::SetCrosshairVisible(bool bVisible)
 {
@@ -94,10 +116,10 @@ void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidge
 
 	if (UCanvasPanelSlot* InventoryPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(InventoryPanel))
 	{
-		InventoryPanelSlot->SetAnchors(FAnchors(0.0f, 0.5f, 0.0f, 0.5f));
-		InventoryPanelSlot->SetAlignment(FVector2D(0.0f, 0.5f));
-		InventoryPanelSlot->SetPosition(FVector2D(40.0f, 0.0f));
-		InventoryPanelSlot->SetSize(FVector2D(520.0f, 520.0f));
+		InventoryPanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+		InventoryPanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+		InventoryPanelSlot->SetPosition(FVector2D(-455.0f, 0.0f));
+		InventoryPanelSlot->SetSize(FVector2D(460.0f, 460.0f));
 	}
 
 	RefreshInventorySlots();
@@ -182,6 +204,16 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 		return;
 	}
 	UpdateLockOnMarkerPosition();
+}
+
+FReply UTinoPlayerWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && TryUseInventoryFoodAt(HoveredInventorySlotIndex))
+	{
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnPreviewMouseButtonDown(InGeometry, InMouseEvent);
 }
 
 void UTinoPlayerWidget::HandleMaxHealthUpgradeClicked()
@@ -327,6 +359,45 @@ void UTinoPlayerWidget::HandleInventorySlot23Clicked()
 void UTinoPlayerWidget::HandleInventorySlot24Clicked()
 {
 	HandleInventorySlotClicked(24);
+}
+
+#define DEFINE_INVENTORY_SLOT_HOVERED(SlotIndex) \
+void UTinoPlayerWidget::HandleInventorySlot##SlotIndex##Hovered() \
+{ \
+	HandleInventorySlotHovered(SlotIndex); \
+}
+
+DEFINE_INVENTORY_SLOT_HOVERED(0)
+DEFINE_INVENTORY_SLOT_HOVERED(1)
+DEFINE_INVENTORY_SLOT_HOVERED(2)
+DEFINE_INVENTORY_SLOT_HOVERED(3)
+DEFINE_INVENTORY_SLOT_HOVERED(4)
+DEFINE_INVENTORY_SLOT_HOVERED(5)
+DEFINE_INVENTORY_SLOT_HOVERED(6)
+DEFINE_INVENTORY_SLOT_HOVERED(7)
+DEFINE_INVENTORY_SLOT_HOVERED(8)
+DEFINE_INVENTORY_SLOT_HOVERED(9)
+DEFINE_INVENTORY_SLOT_HOVERED(10)
+DEFINE_INVENTORY_SLOT_HOVERED(11)
+DEFINE_INVENTORY_SLOT_HOVERED(12)
+DEFINE_INVENTORY_SLOT_HOVERED(13)
+DEFINE_INVENTORY_SLOT_HOVERED(14)
+DEFINE_INVENTORY_SLOT_HOVERED(15)
+DEFINE_INVENTORY_SLOT_HOVERED(16)
+DEFINE_INVENTORY_SLOT_HOVERED(17)
+DEFINE_INVENTORY_SLOT_HOVERED(18)
+DEFINE_INVENTORY_SLOT_HOVERED(19)
+DEFINE_INVENTORY_SLOT_HOVERED(20)
+DEFINE_INVENTORY_SLOT_HOVERED(21)
+DEFINE_INVENTORY_SLOT_HOVERED(22)
+DEFINE_INVENTORY_SLOT_HOVERED(23)
+DEFINE_INVENTORY_SLOT_HOVERED(24)
+
+#undef DEFINE_INVENTORY_SLOT_HOVERED
+
+void UTinoPlayerWidget::HandleInventorySlotUnhovered()
+{
+	HoveredInventorySlotIndex = INDEX_NONE;
 }
 
 bool UTinoPlayerWidget::BindToAbilitySystem()
@@ -781,6 +852,11 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 			{
 				Params.ItemIcon = DisplayedInventoryItems[Index].Icon;
 				Params.ItemCount = DisplayedInventoryItems[Index].Count;
+				SlotWidget->SetToolTip(BuildInventoryItemToolTipWidget(DisplayedInventoryItems[Index], Index));
+			}
+			else
+			{
+				SlotWidget->SetToolTip(nullptr);
 			}
 			SlotWidget->ProcessEvent(SetSlotItemFunction, &Params);
 		}
@@ -869,6 +945,89 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 			default:
 				break;
 			}
+
+			switch (Index)
+			{
+			case 0:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot0Hovered);
+				break;
+			case 1:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot1Hovered);
+				break;
+			case 2:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot2Hovered);
+				break;
+			case 3:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot3Hovered);
+				break;
+			case 4:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot4Hovered);
+				break;
+			case 5:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot5Hovered);
+				break;
+			case 6:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot6Hovered);
+				break;
+			case 7:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot7Hovered);
+				break;
+			case 8:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot8Hovered);
+				break;
+			case 9:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot9Hovered);
+				break;
+			case 10:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot10Hovered);
+				break;
+			case 11:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot11Hovered);
+				break;
+			case 12:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot12Hovered);
+				break;
+			case 13:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot13Hovered);
+				break;
+			case 14:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot14Hovered);
+				break;
+			case 15:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot15Hovered);
+				break;
+			case 16:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot16Hovered);
+				break;
+			case 17:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot17Hovered);
+				break;
+			case 18:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot18Hovered);
+				break;
+			case 19:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot19Hovered);
+				break;
+			case 20:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot20Hovered);
+				break;
+			case 21:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot21Hovered);
+				break;
+			case 22:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot22Hovered);
+				break;
+			case 23:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot23Hovered);
+				break;
+			case 24:
+				SlotButton->OnHovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlot24Hovered);
+				break;
+			default:
+				break;
+			}
+
+			SlotButton->OnUnhovered.AddUniqueDynamic(this, &UTinoPlayerWidget::HandleInventorySlotUnhovered);
 		}
 
 		UUniformGridSlot* GridSlot = SlotGrid->AddChildToUniformGrid(
@@ -945,10 +1104,10 @@ void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
 	UCanvasPanelSlot* PreviewSlot = RootCanvas->AddChildToCanvas(InventoryPreviewPanel);
 	if (PreviewSlot != nullptr)
 	{
-		PreviewSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+		PreviewSlot->SetAnchors(FAnchors(1.0f, 0.5f, 1.0f, 0.5f));
 		PreviewSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		PreviewSlot->SetPosition(FVector2D(360.0f, -2.0f));
-		PreviewSlot->SetSize(FVector2D(300.0f, 300.0f));
+		PreviewSlot->SetPosition(FVector2D(-210.0f, -2.0f));
+		PreviewSlot->SetSize(FVector2D(360.0f, 360.0f));
 		PreviewSlot->SetZOrder(20);
 	}
 }
@@ -972,6 +1131,179 @@ void UTinoPlayerWidget::HideInventoryItemPreview()
 	{
 		InventoryPreviewPanel->SetVisibility(ESlateVisibility::Collapsed);
 	}
+}
+
+FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack& Item) const
+{
+	FString ToolTip = FString::Printf(TEXT("%s x%d"), *Item.DisplayName.ToString(), Item.Count);
+
+	if (Item.ItemType == EInventoryItemType::Food)
+	{
+		const FCookingResultData& FoodData = Item.FoodResultData;
+		ToolTip += FString::Printf(TEXT("\n품질: %s"), *GetCookingQualityDisplayString(FoodData.Quality));
+
+		if (FoodData.HealAmount > 0.0f)
+		{
+			ToolTip += FString::Printf(TEXT("\n체력 회복 +%d"), FMath::RoundToInt(FoodData.HealAmount));
+		}
+		if (FoodData.StaminaAmount > 0.0f)
+		{
+			ToolTip += FString::Printf(TEXT("\n스태미나 회복 +%d"), FMath::RoundToInt(FoodData.StaminaAmount));
+		}
+		if (FoodData.AttackBuffAmount > 0.0f)
+		{
+			ToolTip += FString::Printf(TEXT("\n공격력 +%d"), FMath::RoundToInt(FoodData.AttackBuffAmount));
+		}
+		if (FoodData.DefenseBuffAmount > 0.0f)
+		{
+			ToolTip += FString::Printf(TEXT("\n방어력 +%d"), FMath::RoundToInt(FoodData.DefenseBuffAmount));
+		}
+
+		ToolTip += TEXT("\n우클릭: 먹기");
+	}
+
+	return FText::FromString(ToolTip);
+}
+
+UWidget* UTinoPlayerWidget::BuildInventoryItemToolTipWidget(const FInventoryItemStack& Item, int32 SlotIndex)
+{
+	if (WidgetTree == nullptr)
+	{
+		return nullptr;
+	}
+
+	UBorder* ToolTipBorder = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass()
+	);
+	UTextBlock* ToolTipTextBlock = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass()
+	);
+
+	if (ToolTipBorder == nullptr || ToolTipTextBlock == nullptr)
+	{
+		return nullptr;
+	}
+
+	FSlateFontInfo ToolTipFont = ToolTipTextBlock->GetFont();
+	ToolTipFont.Size = 26;
+	ToolTipTextBlock->SetFont(ToolTipFont);
+	ToolTipTextBlock->SetText(BuildInventoryItemToolTipText(Item));
+	ToolTipTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	ToolTipTextBlock->SetAutoWrapText(true);
+	ToolTipTextBlock->SetMinDesiredWidth(280.0f);
+
+	ToolTipBorder->SetBrushColor(FLinearColor(0.02f, 0.018f, 0.014f, 0.96f));
+	ToolTipBorder->SetPadding(FMargin(18.0f, 14.0f));
+	ToolTipBorder->SetContent(ToolTipTextBlock);
+
+	return ToolTipBorder;
+}
+
+void UTinoPlayerWidget::HandleInventorySlotHovered(int32 SlotIndex)
+{
+	HoveredInventorySlotIndex = SlotIndex;
+}
+
+bool UTinoPlayerWidget::TryUseInventoryFoodAt(int32 SlotIndex)
+{
+	if (bCookingIngredientPickerOpen || !DisplayedInventoryItems.IsValidIndex(SlotIndex))
+	{
+		return false;
+	}
+
+	const FInventoryItemStack Item = DisplayedInventoryItems[SlotIndex];
+	if (Item.ItemType != EInventoryItemType::Food)
+	{
+		return false;
+	}
+
+	UInventoryComponent* InventoryComponent = DisplayedInventoryComponent.Get();
+	if (InventoryComponent == nullptr)
+	{
+		InventoryComponent = ResolveInventoryComponent();
+	}
+	if (InventoryComponent == nullptr)
+	{
+		return false;
+	}
+
+	bool bUsed = ApplyFoodEffectsToAbilitySystem(Item.FoodResultData);
+	if (!bUsed)
+	{
+		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
+		{
+			bUsed = InventoryComponent->UseFoodItem(Item.ItemId, PlayerCharacter->FindComponentByClass<UStatComponent>());
+		}
+	}
+	else
+	{
+		bUsed = InventoryComponent->RemoveItem(Item.ItemId, 1);
+	}
+
+	if (bUsed)
+	{
+		DisplayedInventoryComponent = InventoryComponent;
+		RefreshInventorySlots();
+		HideInventoryItemPreview();
+		HoveredInventorySlotIndex = INDEX_NONE;
+	}
+
+	return bUsed;
+}
+
+bool UTinoPlayerWidget::ApplyFoodEffectsToAbilitySystem(const FCookingResultData& FoodData)
+{
+	UAbilitySystemComponent* AbilitySystemComponent = BoundAbilitySystemComponent.Get();
+	if (AbilitySystemComponent == nullptr)
+	{
+		return false;
+	}
+
+	bool bApplied = false;
+
+	if (FoodData.HealAmount > 0.0f)
+	{
+		const float MaxHealth = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetMaxHealthAttribute());
+		const float CurrentHealth = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetHealthAttribute());
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UTinoAttributeSet::GetHealthAttribute(),
+			FMath::Clamp(CurrentHealth + FoodData.HealAmount, 0.0f, MaxHealth)
+		);
+		bApplied = true;
+	}
+
+	if (FoodData.StaminaAmount > 0.0f)
+	{
+		const float MaxStamina = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetMaxStaminaAttribute());
+		const float CurrentStamina = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetStaminaAttribute());
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UTinoAttributeSet::GetStaminaAttribute(),
+			FMath::Clamp(CurrentStamina + FoodData.StaminaAmount, 0.0f, MaxStamina)
+		);
+		bApplied = true;
+	}
+
+	if (FoodData.AttackBuffAmount > 0.0f)
+	{
+		const float CurrentAttackPower = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetAttackPowerAttribute());
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UTinoAttributeSet::GetAttackPowerAttribute(),
+			CurrentAttackPower + FoodData.AttackBuffAmount
+		);
+		bApplied = true;
+	}
+
+	if (FoodData.DefenseBuffAmount > 0.0f)
+	{
+		const float CurrentDefense = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetDefenseAttribute());
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UTinoAttributeSet::GetDefenseAttribute(),
+			CurrentDefense + FoodData.DefenseBuffAmount
+		);
+		bApplied = true;
+	}
+
+	return bApplied;
 }
 
 void UTinoPlayerWidget::SetDisplayedLevel(int32 NewLevel)

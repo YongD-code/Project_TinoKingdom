@@ -5,9 +5,11 @@
 
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "InputKeyEventArgs.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
+#include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/UI/CookingWidget.h"
 #include "Project_TinoKingdom/UI/TinoPlayerWidget.h"
 
@@ -126,6 +128,29 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 	SetPause(true);
 }
 
+bool ATinoPlayerController::InputKey(const FInputKeyEventArgs& Params)
+{
+	if (Params.Event == IE_Pressed && Params.Key == EKeys::C)
+	{
+		if (bCookingMenuOpen)
+		{
+			ToggleCookingMenu(nullptr, nullptr);
+			return true;
+		}
+
+		if (APlayerCharacter* TinoPlayerCharacter = Cast<APlayerCharacter>(GetPawn()))
+		{
+			ToggleCookingMenu(
+				TinoPlayerCharacter->GetCookingComponent(),
+				TinoPlayerCharacter->GetInventoryComponent()
+			);
+			return true;
+		}
+	}
+
+	return Super::InputKey(Params);
+}
+
 void ATinoPlayerController::ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent)
 {
 	if (PlayerUIWidget == nullptr)
@@ -135,7 +160,7 @@ void ATinoPlayerController::ShowCookingIngredientPicker(UCookingWidget* CookingW
 
 	PlayerUIWidget->ShowCookingIngredientPicker(CookingWidget, InventoryComponent);
 	PlayerUIWidget->RemoveFromParent();
-	PlayerUIWidget->AddToViewport(10);
+	PlayerUIWidget->AddToViewport(4);
 }
 
 void ATinoPlayerController::RefreshCookingIngredientPicker()

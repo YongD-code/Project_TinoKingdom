@@ -3,13 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Styling/SlateTypes.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "CookingWidget.generated.h"
 
 class UCookingComponent;
 class UButton;
+class UCookingMinigameWidget;
+class UContentWidget;
 class UEditableTextBox;
+class UImage;
+class UPanelWidget;
 class UTextBlock;
 class UVerticalBox;
 
@@ -47,6 +52,7 @@ public:
 
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Cooking")
 	void OnSelectedIngredientsChanged(const TArray<FInventoryItemStack>& SelectedIngredients);
@@ -55,21 +61,30 @@ protected:
 	void OnCookingCompleted(const FCookingResultData& ResultData);
 
 private:
+	void NormalizeCookingWidgetLayering();
 	void BroadcastSelectedIngredientsChanged();
 	void UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients);
+	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void SetIngredientSlotText(int32 Index, const FText& Text);
+	void SetIngredientSlotImage(int32 Index, UTexture2D* Icon);
+	void SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon);
+	void SetIngredientSlotButtonContent(int32 Index, UTexture2D* Icon);
 	void SetResultText(const FText& Text);
 	void ToggleIngredientList();
 	void SetIngredientListVisible(bool bVisible);
 	void RefreshIngredientList();
 	void SelectIngredientOption(int32 OptionIndex);
 	void CloseCookingWidget();
+	void OpenCookingMinigame();
 	bool CanStartCooking() const;
 	void RefreshCookingActions();
 	void RefreshLinkedInventoryPicker();
 
 	UFUNCTION()
 	void HandleStartCookingClicked();
+
+	UFUNCTION()
+	void HandleCookingMinigameFinished(float FinalScore);
 
 	UFUNCTION()
 	void HandleCloseCookingClicked();
@@ -126,10 +141,19 @@ private:
 	TArray<FInventoryItemStack> IngredientOptions;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "0.0", ClampMax = "100.0"))
-	float DefaultCookingScore = 75.0f;
+	float DefaultCookingScore = 50.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Cooking|Minigame")
+	TSubclassOf<UCookingMinigameWidget> CookingMinigameWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCookingMinigameWidget> ActiveMinigameWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "1", ClampMax = "8"))
 	int32 MaxIngredientOptionCount = 8;
+
+	UPROPERTY(Transient)
+	TMap<FName, FButtonStyle> OriginalIngredientSlotButtonStyles;
 
 	bool bIngredientListVisible = false;
 };
