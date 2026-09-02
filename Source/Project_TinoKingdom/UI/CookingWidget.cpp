@@ -8,6 +8,8 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Blueprint/WidgetTree.h"
+#include "Rendering/DrawElements.h"
+#include "Styling/CoreStyle.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/UI/CookingMinigameWidget.h"
@@ -151,6 +153,193 @@ void UCookingWidget::NativeDestruct()
 	}
 
 	Super::NativeDestruct();
+}
+
+int32 UCookingWidget::NativePaint(
+	const FPaintArgs& Args,
+	const FGeometry& AllottedGeometry,
+	const FSlateRect& MyCullingRect,
+	FSlateWindowElementList& OutDrawElements,
+	int32 LayerId,
+	const FWidgetStyle& InWidgetStyle,
+	bool bParentEnabled
+) const
+{
+	const FSlateBrush* WhiteBrush = FCoreStyle::Get().GetBrush(TEXT("WhiteBrush"));
+	const FVector2D WidgetSize = AllottedGeometry.GetLocalSize();
+	const FVector2D PanelPadding(14.0f, 12.0f);
+	const FVector2D ContentMin = PanelPadding;
+	const FVector2D ContentSize = WidgetSize - PanelPadding * 2.0f;
+
+	const FLinearColor WoodDark(0.12f, 0.065f, 0.032f, 0.96f);
+	const FLinearColor WoodMid(0.26f, 0.15f, 0.07f, 0.96f);
+	const FLinearColor IronDark(0.05f, 0.045f, 0.04f, 0.98f);
+	const FLinearColor Brass(0.86f, 0.58f, 0.22f, 1.0f);
+	const FLinearColor Parchment(0.58f, 0.53f, 0.43f, 0.92f);
+	const FLinearColor SlotFill(0.05f, 0.042f, 0.032f, 0.94f);
+
+	FSlateDrawElement::MakeBox(
+		OutDrawElements,
+		LayerId,
+		AllottedGeometry.ToPaintGeometry(WidgetSize, FSlateLayoutTransform(FVector2D::ZeroVector)),
+		WhiteBrush,
+		ESlateDrawEffect::None,
+		WoodDark
+	);
+
+	FSlateDrawElement::MakeBox(
+		OutDrawElements,
+		LayerId + 1,
+		AllottedGeometry.ToPaintGeometry(ContentSize, FSlateLayoutTransform(ContentMin)),
+		WhiteBrush,
+		ESlateDrawEffect::None,
+		WoodMid
+	);
+
+	FSlateDrawElement::MakeBox(
+		OutDrawElements,
+		LayerId + 2,
+		AllottedGeometry.ToPaintGeometry(ContentSize - FVector2D(10.0f, 10.0f), FSlateLayoutTransform(ContentMin + FVector2D(5.0f, 5.0f))),
+		WhiteBrush,
+		ESlateDrawEffect::None,
+		IronDark
+	);
+
+	const int32 MaxLayer = Super::NativePaint(
+		Args,
+		AllottedGeometry,
+		MyCullingRect,
+		OutDrawElements,
+		LayerId + 3,
+		InWidgetStyle,
+		bParentEnabled
+	);
+
+	const int32 OverlayLayer = MaxLayer + 1;
+	const float HeaderHeight = 34.0f;
+	const float SlotY = 46.0f;
+	const float SlotHeight = 72.0f;
+	const float ButtonHeight = 56.0f;
+	const float ButtonGap = 8.0f;
+	const float SlotGap = 8.0f;
+	const float SlotAreaX = 18.0f;
+	const float SlotAreaWidth = FMath::Max(120.0f, WidgetSize.X - SlotAreaX * 2.0f);
+	const float SlotWidth = (SlotAreaWidth - SlotGap * 3.0f) / 4.0f;
+
+	static const TArray<FInventoryItemStack> EmptyIngredients;
+	const TArray<FInventoryItemStack>& SelectedIngredients =
+		CookingComponent != nullptr ? CookingComponent->GetSelectedIngredients() : EmptyIngredients;
+	FSlateFontInfo TitleFont = FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 18);
+	FSlateFontInfo ButtonFont = FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 17);
+
+	FSlateDrawElement::MakeText(
+		OutDrawElements,
+		OverlayLayer,
+		AllottedGeometry.ToPaintGeometry(FVector2D(WidgetSize.X, HeaderHeight), FSlateLayoutTransform(FVector2D(0.0f, 8.0f))),
+		FText::FromString(TEXT("요리")),
+		TitleFont,
+		ESlateDrawEffect::None,
+		FLinearColor(1.0f, 0.88f, 0.18f, 1.0f)
+	);
+
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		const FVector2D SlotPosition(SlotAreaX + Index * (SlotWidth + SlotGap), SlotY);
+		const FVector2D SlotSize(SlotWidth, SlotHeight);
+
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			OverlayLayer,
+			AllottedGeometry.ToPaintGeometry(SlotSize, FSlateLayoutTransform(SlotPosition)),
+			WhiteBrush,
+			ESlateDrawEffect::None,
+			Brass
+		);
+
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			OverlayLayer + 1,
+			AllottedGeometry.ToPaintGeometry(SlotSize - FVector2D(8.0f, 8.0f), FSlateLayoutTransform(SlotPosition + FVector2D(4.0f, 4.0f))),
+			WhiteBrush,
+			ESlateDrawEffect::None,
+			SlotFill
+		);
+
+		if (SelectedIngredients.IsValidIndex(Index) && SelectedIngredients[Index].Icon != nullptr)
+		{
+			const float IconSide = FMath::Min(SlotSize.X, SlotSize.Y) * 0.86f;
+			const FVector2D IconSize(IconSide, IconSide);
+			const FVector2D IconPosition = SlotPosition + (SlotSize - IconSize) * 0.5f;
+
+			FSlateBrush IconBrush;
+			IconBrush.SetResourceObject(SelectedIngredients[Index].Icon);
+			IconBrush.ImageSize = IconSize;
+			IconBrush.DrawAs = ESlateBrushDrawType::Image;
+
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				OverlayLayer + 2,
+				AllottedGeometry.ToPaintGeometry(IconSize, FSlateLayoutTransform(IconPosition)),
+				&IconBrush,
+				ESlateDrawEffect::None,
+				FLinearColor::White
+			);
+		}
+		else
+		{
+			FSlateDrawElement::MakeText(
+				OutDrawElements,
+				OverlayLayer + 2,
+				AllottedGeometry.ToPaintGeometry(SlotSize, FSlateLayoutTransform(SlotPosition + FVector2D(SlotWidth * 0.43f, 16.0f))),
+				FText::FromString(TEXT("+")),
+				FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 34),
+				ESlateDrawEffect::None,
+				FLinearColor(0.95f, 0.84f, 0.45f, 1.0f)
+			);
+		}
+	}
+
+	const FVector2D ButtonSize(WidgetSize.X - 28.0f, ButtonHeight);
+	const float ButtonX = 14.0f;
+	const float ClearY = SlotY + SlotHeight + 12.0f;
+	const float StartY = ClearY + ButtonHeight + ButtonGap;
+	const float CloseY = StartY + ButtonHeight + ButtonGap;
+
+	const struct FButtonVisual
+	{
+		float Y;
+		FText Text;
+		FLinearColor Color;
+	} ButtonVisuals[] =
+	{
+		{ ClearY, FText::FromString(TEXT("비우기")), Parchment },
+		{ StartY, FText::FromString(TEXT("조리 시작")), FLinearColor(0.34f, 0.31f, 0.25f, 0.95f) },
+		{ CloseY, FText::FromString(TEXT("끝내기")), Parchment }
+	};
+
+	for (const FButtonVisual& Visual : ButtonVisuals)
+	{
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			OverlayLayer,
+			AllottedGeometry.ToPaintGeometry(ButtonSize, FSlateLayoutTransform(FVector2D(ButtonX, Visual.Y))),
+			WhiteBrush,
+			ESlateDrawEffect::None,
+			Visual.Color
+		);
+
+		FSlateDrawElement::MakeText(
+			OutDrawElements,
+			OverlayLayer + 1,
+			AllottedGeometry.ToPaintGeometry(ButtonSize, FSlateLayoutTransform(FVector2D(ButtonX + ButtonSize.X * 0.43f, Visual.Y + 16.0f))),
+			Visual.Text,
+			ButtonFont,
+			ESlateDrawEffect::None,
+			FLinearColor::White
+		);
+	}
+
+	return OverlayLayer + 3;
 }
 
 void UCookingWidget::InitializeCookingWidget(
@@ -382,6 +571,7 @@ void UCookingWidget::SetIngredientSlotImage(int32 Index, UTexture2D* Icon)
 			}
 		}
 	}
+
 }
 
 void UCookingWidget::SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon)
@@ -433,6 +623,7 @@ void UCookingWidget::SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon)
 		IconStyle.SetPressed(IconBrush);
 		SlotButton->SetStyle(IconStyle);
 	}
+
 }
 
 void UCookingWidget::SetResultText(const FText& Text)

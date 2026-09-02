@@ -116,9 +116,9 @@ void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidge
 
 	if (UCanvasPanelSlot* InventoryPanelSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(InventoryPanel))
 	{
-		InventoryPanelSlot->SetAnchors(FAnchors(0.0f, 0.5f, 0.0f, 0.5f));
-		InventoryPanelSlot->SetAlignment(FVector2D(0.0f, 0.5f));
-		InventoryPanelSlot->SetPosition(FVector2D(40.0f, 0.0f));
+		InventoryPanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+		InventoryPanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+		InventoryPanelSlot->SetPosition(FVector2D(-310.0f, 0.0f));
 		InventoryPanelSlot->SetSize(FVector2D(520.0f, 520.0f));
 	}
 

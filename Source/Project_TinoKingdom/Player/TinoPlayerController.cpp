@@ -6,6 +6,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "InputKeyEventArgs.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
@@ -117,6 +118,12 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 
 	CookingUIWidget->InitializeCookingWidget(CookingComponent, InventoryComponent);
 	CookingUIWidget->AddToViewport(5);
+	CookingUIWidget->SetDesiredSizeInViewport(FVector2D(520.0f, 290.0f));
+	CookingUIWidget->SetAlignmentInViewport(FVector2D(0.5f, 0.5f));
+	CookingUIWidget->SetPositionInViewport(
+		UWidgetLayoutLibrary::GetViewportSize(this) * 0.5f + FVector2D(230.0f, 18.0f),
+		false
+	);
 
 	FInputModeGameAndUI InputMode;
 	InputMode.SetWidgetToFocus(CookingUIWidget->TakeWidget());
