@@ -170,6 +170,16 @@ bool UInventoryComponent::UseFoodItem(FName ItemId, UStatComponent* TargetStatCo
 
 	return false;
 }
+
+void UInventoryComponent::RestoreItemsForTravel(const TArray<FInventoryItemStack>& SavedItems)
+{
+	Items = SavedItems;
+	Items.RemoveAll([](const FInventoryItemStack& ItemStack)
+	{
+		return ItemStack.ItemId.IsNone() || ItemStack.Count <= 0;
+	});
+}
+
 // Called when the game starts
 void UInventoryComponent::BeginPlay()
 {

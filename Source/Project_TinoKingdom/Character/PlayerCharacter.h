@@ -45,6 +45,9 @@ public:
 	UTinoAbilitySystemComponent* GetTinoAbilitySystemComponent() const { return AbilitySystemComponent; }
 	UPlayerProgressionComponent* GetProgressionComponent() const { return ProgressionComponent; }
 	const UTinoAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	UTinoAttributeSet* GetMutableAttributeSet() { return AttributeSet; }
+	UTinoEquipmentComponent* GetEquipmentComponent() const { return EquipmentComponent; }
+	UQuestComponent* GetQuestComponent() const { return QuestComponent; }
 	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 		class AController* EventInstigator, AActor* DamageCauser) override;
@@ -80,6 +83,7 @@ protected:
 	void StartAiming();
 	void StopAiming();
 	void RequestTargeting();
+	void OpenSecretPlace();
 	void UpdateCameraTransition(float DeltaTime);
 
 	bool ShouldUseStrafeMovement() const;
@@ -209,6 +213,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> TargetingAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Level Travel")
+	TObjectPtr<UInputAction> OpenSecretPlaceAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel")
+	FName SecretPlaceLevelName = TEXT("/Game/MedievalDungeon/Maps/SecretPlace");
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
 	float InteractionRadius = 300.f;
 
@@ -326,6 +336,7 @@ private:
 	TObjectPtr<ALevelSequenceActor> RespawnSequenceActor;
 	
 	bool bDeathHandled = false;
+	bool bLevelTravelInProgress = false;
 
 	bool bIsAiming = false;
 	bool bCameraTransition = false;

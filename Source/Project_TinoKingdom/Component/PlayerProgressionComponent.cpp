@@ -154,3 +154,15 @@ bool UPlayerProgressionComponent::TrySpendStatPoint()
 	
 	return true;
 }
+
+void UPlayerProgressionComponent::RestoreTravelState(int32 Level, int32 Experience, int32 StatPoints)
+{
+	CurrentLevel = FMath::Clamp(Level, 1, MaxLevel);
+	CurrentExperience = IsMaxLevel() ? 0 : FMath::Max(Experience, 0);
+	UnspentStatPoints = FMath::Max(StatPoints, 0);
+
+	// UI가 이미 생성된 경우에도 복원된 값을 즉시 반영한다.
+	OnLevelChanged.Broadcast(CurrentLevel);
+	OnExperienceChanged.Broadcast(CurrentExperience, GetRequiredExperienceForNextLevel());
+	OnStatPointsChanged.Broadcast(UnspentStatPoints);
+}

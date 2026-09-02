@@ -109,6 +109,39 @@ bool UQuestComponent::CompleteQuest(UQuestData* Quest)
 	return true;
 }
 
+void UQuestComponent::RestoreStateForTravel(
+	const TMap<TObjectPtr<UQuestData>, EQuestState>& SavedQuestStates,
+	UQuestData* SavedTrackedQuest)
+{
+	QuestStates.Reset();
+	TrackedQuest = nullptr;
+
+	for (const TPair<TObjectPtr<UQuestData>, EQuestState>& Pair : SavedQuestStates)
+	{
+		if (!IsValid(Pair.Key.Get()) || Pair.Value == EQuestState::NotStarted)
+		{
+			continue;
+		}
+
+		QuestStates.Add(Pair.Key, Pair.Value);
+	}
+
+	if (IsValid(SavedTrackedQuest))
+	{
+		const EQuestState RestoredState = GetQuestState(SavedTrackedQuest);
+		if (RestoredState == EQuestState::InProgress || RestoredState == EQuestState::ReadyToComplete)
+		{
+			TrackedQuest = SavedTrackedQuest;
+		}
+	}
+
+	// 인벤토리 복원 결과와 퀘스트 상태가 어긋나지 않도록 진행 중인 목표를 다시 계산한다.
+	if (IsValid(TrackedQuest) && GetQuestState(TrackedQuest) == EQuestState::InProgress)
+	{
+		RefreshProgress(TrackedQuest);
+	}
+}
+
 void UQuestComponent::HandleItemAdded(const FInventoryItemStack& ItemStack, int32 AddedCount)
 {
 	if (!IsValid(TrackedQuest))
