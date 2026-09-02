@@ -850,11 +850,11 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 			{
 				Params.ItemIcon = DisplayedInventoryItems[Index].Icon;
 				Params.ItemCount = DisplayedInventoryItems[Index].Count;
-				SlotWidget->SetToolTipText(BuildInventoryItemToolTipText(DisplayedInventoryItems[Index]));
+				SlotWidget->SetToolTip(BuildInventoryItemToolTipWidget(DisplayedInventoryItems[Index], Index));
 			}
 			else
 			{
-				SlotWidget->SetToolTipText(FText::GetEmpty());
+				SlotWidget->SetToolTip(nullptr);
 			}
 			SlotWidget->ProcessEvent(SetSlotItemFunction, &Params);
 		}
@@ -1161,6 +1161,40 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 	}
 
 	return FText::FromString(ToolTip);
+}
+
+UWidget* UTinoPlayerWidget::BuildInventoryItemToolTipWidget(const FInventoryItemStack& Item, int32 SlotIndex)
+{
+	if (WidgetTree == nullptr)
+	{
+		return nullptr;
+	}
+
+	UBorder* ToolTipBorder = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass()
+	);
+	UTextBlock* ToolTipTextBlock = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass()
+	);
+
+	if (ToolTipBorder == nullptr || ToolTipTextBlock == nullptr)
+	{
+		return nullptr;
+	}
+
+	FSlateFontInfo ToolTipFont = ToolTipTextBlock->GetFont();
+	ToolTipFont.Size = 26;
+	ToolTipTextBlock->SetFont(ToolTipFont);
+	ToolTipTextBlock->SetText(BuildInventoryItemToolTipText(Item));
+	ToolTipTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	ToolTipTextBlock->SetAutoWrapText(true);
+	ToolTipTextBlock->SetMinDesiredWidth(280.0f);
+
+	ToolTipBorder->SetBrushColor(FLinearColor(0.02f, 0.018f, 0.014f, 0.96f));
+	ToolTipBorder->SetPadding(FMargin(18.0f, 14.0f));
+	ToolTipBorder->SetContent(ToolTipTextBlock);
+
+	return ToolTipBorder;
 }
 
 void UTinoPlayerWidget::HandleInventorySlotHovered(int32 SlotIndex)

@@ -293,16 +293,16 @@ void UCookingWidget::BroadcastSelectedIngredientsChanged()
 {
 	if (CookingComponent == nullptr)
 	{
+		OnSelectedIngredientsChanged(TArray<FInventoryItemStack>());
 		UpdateIngredientSlotTexts(TArray<FInventoryItemStack>());
 		UpdateIngredientSlotImages(TArray<FInventoryItemStack>());
-		OnSelectedIngredientsChanged(TArray<FInventoryItemStack>());
 		return;
 	}
 
 	const TArray<FInventoryItemStack>& SelectedIngredients = CookingComponent->GetSelectedIngredients();
+	OnSelectedIngredientsChanged(SelectedIngredients);
 	UpdateIngredientSlotTexts(SelectedIngredients);
 	UpdateIngredientSlotImages(SelectedIngredients);
-	OnSelectedIngredientsChanged(SelectedIngredients);
 	RefreshCookingActions();
 }
 
@@ -357,6 +357,8 @@ void UCookingWidget::SetIngredientSlotImage(int32 Index, UTexture2D* Icon)
 		return;
 	}
 
+	SetIngredientSlotButtonIcon(Index, Icon);
+
 	const FName CandidateNames[][4] =
 	{
 		{ TEXT("Image_0"), TEXT("Image_1"), TEXT("Image_2"), TEXT("Image_3") },
@@ -379,6 +381,57 @@ void UCookingWidget::SetIngredientSlotImage(int32 Index, UTexture2D* Icon)
 				SlotImage->SetVisibility(ESlateVisibility::Collapsed);
 			}
 		}
+	}
+}
+
+void UCookingWidget::SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon)
+{
+	if (Index < 0 || Index >= 4 || WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	const FName CandidateNames[][4] =
+	{
+		{ TEXT("Button_0"), TEXT("Button_1"), TEXT("Button_2"), TEXT("Button_3") },
+		{ TEXT("SlotButton_0"), TEXT("SlotButton_1"), TEXT("SlotButton_2"), TEXT("SlotButton_3") },
+		{ TEXT("IngredientButton_0"), TEXT("IngredientButton_1"), TEXT("IngredientButton_2"), TEXT("IngredientButton_3") },
+		{ TEXT("IngredientSlotButton_0"), TEXT("IngredientSlotButton_1"), TEXT("IngredientSlotButton_2"), TEXT("IngredientSlotButton_3") }
+	};
+
+	for (const auto& CandidateSet : CandidateNames)
+	{
+		const FName ButtonName = CandidateSet[Index];
+		UButton* SlotButton = WidgetTree->FindWidget<UButton>(ButtonName);
+		if (SlotButton == nullptr)
+		{
+			continue;
+		}
+
+		if (!OriginalIngredientSlotButtonStyles.Contains(ButtonName))
+		{
+			OriginalIngredientSlotButtonStyles.Add(ButtonName, SlotButton->GetStyle());
+		}
+
+		if (Icon == nullptr)
+		{
+			if (const FButtonStyle* OriginalStyle = OriginalIngredientSlotButtonStyles.Find(ButtonName))
+			{
+				SlotButton->SetStyle(*OriginalStyle);
+			}
+			continue;
+		}
+
+		FButtonStyle IconStyle = SlotButton->GetStyle();
+		FSlateBrush IconBrush;
+		IconBrush.SetResourceObject(Icon);
+		IconBrush.ImageSize = FVector2D(82.0f, 82.0f);
+		IconBrush.DrawAs = ESlateBrushDrawType::Image;
+
+		IconStyle.SetNormal(IconBrush);
+		IconStyle.SetHovered(IconBrush);
+		IconStyle.SetPressed(IconBrush);
+		SlotButton->SetStyle(IconStyle);
 	}
 }
 

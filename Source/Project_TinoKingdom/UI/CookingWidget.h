@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Styling/SlateTypes.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "CookingWidget.generated.h"
@@ -63,6 +64,7 @@ private:
 	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void SetIngredientSlotText(int32 Index, const FText& Text);
 	void SetIngredientSlotImage(int32 Index, UTexture2D* Icon);
+	void SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon);
 	void SetResultText(const FText& Text);
 	void ToggleIngredientList();
 	void SetIngredientListVisible(bool bVisible);
@@ -135,7 +137,7 @@ private:
 	TArray<FInventoryItemStack> IngredientOptions;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "0.0", ClampMax = "100.0"))
-	float DefaultCookingScore = 75.0f;
+	float DefaultCookingScore = 50.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking|Minigame")
 	TSubclassOf<UCookingMinigameWidget> CookingMinigameWidgetClass;
@@ -145,6 +147,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "1", ClampMax = "8"))
 	int32 MaxIngredientOptionCount = 8;
+
+	UPROPERTY(Transient)
+	TMap<FName, FButtonStyle> OriginalIngredientSlotButtonStyles;
 
 	bool bIngredientListVisible = false;
 };

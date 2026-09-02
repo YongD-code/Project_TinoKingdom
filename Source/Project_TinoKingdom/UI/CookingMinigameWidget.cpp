@@ -189,10 +189,10 @@ void UCookingMinigameWidget::BuildDefaultMinigameVisuals()
 
 	RootCanvas->SetVisibility(ESlateVisibility::Visible);
 	RootBorder->SetBrushColor(FLinearColor(0.018f, 0.018f, 0.022f, 0.94f));
-	RootBorder->SetPadding(FMargin(28.0f));
+	RootBorder->SetPadding(FMargin(42.0f));
 	RootBorder->SetContent(LayoutBox);
-	PanelSizeBox->SetWidthOverride(920.0f);
-	PanelSizeBox->SetHeightOverride(360.0f);
+	PanelSizeBox->SetWidthOverride(1120.0f);
+	PanelSizeBox->SetHeightOverride(520.0f);
 	PanelSizeBox->SetContent(RootBorder);
 
 	UCanvasPanelSlot* PanelSlot = RootCanvas->AddChildToCanvas(PanelSizeBox);
@@ -201,15 +201,27 @@ void UCookingMinigameWidget::BuildDefaultMinigameVisuals()
 		PanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		PanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
 		PanelSlot->SetPosition(FVector2D::ZeroVector);
-		PanelSlot->SetSize(FVector2D(920.0f, 360.0f));
+		PanelSlot->SetSize(FVector2D(1120.0f, 520.0f));
 	}
 
+	FSlateFontInfo TitleFont = InstructionTextBlock->GetFont();
+	TitleFont.Size = 34;
+	FSlateFontInfo ScoreFont = ScoreTextBlock->GetFont();
+	ScoreFont.Size = 28;
+	FSlateFontInfo LabelFont = TargetLabelTextBlock->GetFont();
+	LabelFont.Size = 26;
+
 	InstructionTextBlock->SetText(FText::FromString(TEXT("조리 타이밍")));
+	InstructionTextBlock->SetFont(TitleFont);
 	InstructionTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.86f, 0.45f, 1.0f)));
+	ScoreTextBlock->SetFont(ScoreFont);
 	ScoreTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	TargetLabelTextBlock->SetText(FText::FromString(TEXT("목표 바")));
 	PlayerLabelTextBlock->SetText(FText::FromString(TEXT("플레이어 바")));
 	TimeLabelTextBlock->SetText(FText::FromString(TEXT("남은 시간")));
+	TargetLabelTextBlock->SetFont(LabelFont);
+	PlayerLabelTextBlock->SetFont(LabelFont);
+	TimeLabelTextBlock->SetFont(LabelFont);
 	TargetLabelTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.72f, 0.20f, 1.0f)));
 	PlayerLabelTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.85f, 1.0f, 1.0f)));
 	TimeLabelTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.45f, 1.0f, 0.50f, 1.0f)));
@@ -218,14 +230,44 @@ void UCookingMinigameWidget::BuildDefaultMinigameVisuals()
 	PlayerProgressBar->SetFillColorAndOpacity(FLinearColor(0.2f, 0.8f, 1.0f, 1.0f));
 	TimeProgressBar->SetFillColorAndOpacity(FLinearColor(0.45f, 0.95f, 0.48f, 1.0f));
 
-	LayoutBox->AddChildToVerticalBox(InstructionTextBlock);
-	LayoutBox->AddChildToVerticalBox(ScoreTextBlock);
+	USizeBox* TargetBarSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("CookingMinigameTargetSize_Runtime"));
+	USizeBox* PlayerBarSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("CookingMinigamePlayerSize_Runtime"));
+	USizeBox* TimeBarSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("CookingMinigameTimeSize_Runtime"));
+	if (TargetBarSizeBox == nullptr || PlayerBarSizeBox == nullptr || TimeBarSizeBox == nullptr)
+	{
+		return;
+	}
+
+	TargetBarSizeBox->SetHeightOverride(48.0f);
+	PlayerBarSizeBox->SetHeightOverride(48.0f);
+	TimeBarSizeBox->SetHeightOverride(34.0f);
+	TargetBarSizeBox->SetContent(TargetProgressBar);
+	PlayerBarSizeBox->SetContent(PlayerProgressBar);
+	TimeBarSizeBox->SetContent(TimeProgressBar);
+
+	if (UVerticalBoxSlot* InstructionSlot = LayoutBox->AddChildToVerticalBox(InstructionTextBlock))
+	{
+		InstructionSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 10.0f));
+	}
+	if (UVerticalBoxSlot* ScoreSlot = LayoutBox->AddChildToVerticalBox(ScoreTextBlock))
+	{
+		ScoreSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 22.0f));
+	}
 	LayoutBox->AddChildToVerticalBox(TargetLabelTextBlock);
-	LayoutBox->AddChildToVerticalBox(TargetProgressBar);
+	if (UVerticalBoxSlot* TargetBarSlot = LayoutBox->AddChildToVerticalBox(TargetBarSizeBox))
+	{
+		TargetBarSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 22.0f));
+	}
 	LayoutBox->AddChildToVerticalBox(PlayerLabelTextBlock);
-	LayoutBox->AddChildToVerticalBox(PlayerProgressBar);
+	if (UVerticalBoxSlot* PlayerBarSlot = LayoutBox->AddChildToVerticalBox(PlayerBarSizeBox))
+	{
+		PlayerBarSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 22.0f));
+	}
 	LayoutBox->AddChildToVerticalBox(TimeLabelTextBlock);
-	LayoutBox->AddChildToVerticalBox(TimeProgressBar);
+	if (UVerticalBoxSlot* TimeBarSlot = LayoutBox->AddChildToVerticalBox(TimeBarSizeBox))
+	{
+		TimeBarSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
+	}
 
 	WidgetTree->RootWidget = RootCanvas;
 	RefreshDefaultMinigameVisuals();

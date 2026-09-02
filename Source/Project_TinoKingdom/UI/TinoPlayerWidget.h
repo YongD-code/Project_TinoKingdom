@@ -316,6 +316,7 @@ private:
 	void ShowInventoryItemPreview(const FInventoryItemStack& Item);
 	void HideInventoryItemPreview();
 	FText BuildInventoryItemToolTipText(const FInventoryItemStack& Item) const;
+	UWidget* BuildInventoryItemToolTipWidget(const FInventoryItemStack& Item, int32 SlotIndex);
 	void HandleInventorySlotHovered(int32 SlotIndex);
 	bool TryUseInventoryFoodAt(int32 SlotIndex);
 	bool ApplyFoodEffectsToAbilitySystem(const FCookingResultData& FoodData);
