@@ -141,6 +141,18 @@ void UCookingWidget::NativeOnInitialized()
 	SetIngredientListVisible(false);
 }
 
+void UCookingWidget::NativeDestruct()
+{
+	if (ActiveMinigameWidget != nullptr)
+	{
+		ActiveMinigameWidget->OnCookingMinigameFinished.RemoveDynamic(this, &UCookingWidget::HandleCookingMinigameFinished);
+		ActiveMinigameWidget->RemoveFromParent();
+		ActiveMinigameWidget = nullptr;
+	}
+
+	Super::NativeDestruct();
+}
+
 void UCookingWidget::InitializeCookingWidget(
 	UCookingComponent* InCookingComponent,
 	UInventoryComponent* InInventoryComponent

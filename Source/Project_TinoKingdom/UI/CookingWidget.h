@@ -49,6 +49,7 @@ public:
 
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Cooking")
 	void OnSelectedIngredientsChanged(const TArray<FInventoryItemStack>& SelectedIngredients);
