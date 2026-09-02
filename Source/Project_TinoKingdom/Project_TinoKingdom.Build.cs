@@ -14,6 +14,8 @@ public class Project_TinoKingdom : ModuleRules
 			"InputCore", 
 			"EnhancedInput",
 			"UMG",
+			"Slate",
+			"SlateCore",
 			"AIModule",
 			"NavigationSystem",
 			"GameplayTags",

@@ -9,6 +9,7 @@
 
 class UCookingComponent;
 class UButton;
+class UCookingMinigameWidget;
 class UEditableTextBox;
 class UTextBlock;
 class UVerticalBox;
@@ -64,12 +65,16 @@ private:
 	void RefreshIngredientList();
 	void SelectIngredientOption(int32 OptionIndex);
 	void CloseCookingWidget();
+	void OpenCookingMinigame();
 	bool CanStartCooking() const;
 	void RefreshCookingActions();
 	void RefreshLinkedInventoryPicker();
 
 	UFUNCTION()
 	void HandleStartCookingClicked();
+
+	UFUNCTION()
+	void HandleCookingMinigameFinished(float FinalScore);
 
 	UFUNCTION()
 	void HandleCloseCookingClicked();
@@ -127,6 +132,12 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "0.0", ClampMax = "100.0"))
 	float DefaultCookingScore = 75.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Cooking|Minigame")
+	TSubclassOf<UCookingMinigameWidget> CookingMinigameWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCookingMinigameWidget> ActiveMinigameWidget;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "1", ClampMax = "8"))
 	int32 MaxIngredientOptionCount = 8;

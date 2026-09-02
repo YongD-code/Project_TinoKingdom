@@ -9,6 +9,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
+#include "Project_TinoKingdom/UI/CookingMinigameWidget.h"
 
 namespace
 {
@@ -342,14 +343,56 @@ void UCookingWidget::HandleStartCookingClicked()
 		return;
 	}
 
+	OpenCookingMinigame();
+}
+
+void UCookingWidget::HandleCookingMinigameFinished(float FinalScore)
+{
+	if (ActiveMinigameWidget != nullptr)
+	{
+		ActiveMinigameWidget->OnCookingMinigameFinished.RemoveDynamic(this, &UCookingWidget::HandleCookingMinigameFinished);
+		ActiveMinigameWidget->RemoveFromParent();
+		ActiveMinigameWidget = nullptr;
+	}
+
 	FCookingResultData Result;
-	if (CompleteCooking(DefaultCookingScore, Result))
+	if (CompleteCooking(FinalScore, Result))
 	{
 		SetIngredientListVisible(false);
 		return;
 	}
 
 	SetResultText(FText::FromString(TEXT("재료가 부족합니다")));
+}
+
+void UCookingWidget::OpenCookingMinigame()
+{
+	if (ActiveMinigameWidget != nullptr)
+	{
+		return;
+	}
+
+	TSubclassOf<UCookingMinigameWidget> MinigameClass = CookingMinigameWidgetClass;
+	if (MinigameClass == nullptr)
+	{
+		MinigameClass = UCookingMinigameWidget::StaticClass();
+	}
+
+	ActiveMinigameWidget = CreateWidget<UCookingMinigameWidget>(GetOwningPlayer(), MinigameClass);
+	if (ActiveMinigameWidget == nullptr)
+	{
+		FCookingResultData Result;
+		if (!CompleteCooking(DefaultCookingScore, Result))
+		{
+			SetResultText(FText::FromString(TEXT("재료가 부족합니다")));
+		}
+		return;
+	}
+
+	ActiveMinigameWidget->OnCookingMinigameFinished.AddUniqueDynamic(this, &UCookingWidget::HandleCookingMinigameFinished);
+	ActiveMinigameWidget->AddToViewport(30);
+	ActiveMinigameWidget->StartCookingMinigame();
+	ActiveMinigameWidget->SetKeyboardFocus();
 }
 
 bool UCookingWidget::CanStartCooking() const
@@ -517,6 +560,13 @@ void UCookingWidget::HandleCloseCookingClicked()
 
 void UCookingWidget::CloseCookingWidget()
 {
+	if (ActiveMinigameWidget != nullptr)
+	{
+		ActiveMinigameWidget->OnCookingMinigameFinished.RemoveDynamic(this, &UCookingWidget::HandleCookingMinigameFinished);
+		ActiveMinigameWidget->RemoveFromParent();
+		ActiveMinigameWidget = nullptr;
+	}
+
 	if (ATinoPlayerController* TinoPlayerController = Cast<ATinoPlayerController>(GetOwningPlayer()))
 	{
 		TinoPlayerController->ToggleCookingMenu(nullptr, nullptr);

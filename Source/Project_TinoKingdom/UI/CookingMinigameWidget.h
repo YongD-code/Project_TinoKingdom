@@ -39,7 +39,12 @@ public:
 	FOnCookingMinigameFinished OnCookingMinigameFinished;
 
 protected:
+	virtual void NativeOnInitialized() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual FReply NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Cooking|Minigame")
 	void OnMinigameUpdated(
@@ -92,7 +97,24 @@ protected:
 	float ElapsedTime = 0.0f;
 
 private:
+	void BuildDefaultMinigameVisuals();
+	void RefreshDefaultMinigameVisuals();
 	bool IsPlayerBarInTargetZone() const;
 
 	bool bTargetMovingUp = true;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> InstructionTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> ScoreTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UProgressBar> TargetProgressBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UProgressBar> PlayerProgressBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UProgressBar> TimeProgressBar;
 };

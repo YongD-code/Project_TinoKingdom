@@ -306,24 +306,24 @@ FCookingPlacementBounds GetCookingPlacementBounds(
 	{
 	case ECookingResultType::Soup:
 		return bMainIngredient
-			? FCookingPlacementBounds{ 0.32f, 0.68f, 0.43f, 0.67f, 0.12f, 0.86f }
-			: FCookingPlacementBounds{ 0.35f, 0.65f, 0.39f, 0.62f, 0.14f, 0.72f };
+			? FCookingPlacementBounds{ 0.32f, 0.68f, 0.43f, 0.67f, 0.12f, 0.68f }
+			: FCookingPlacementBounds{ 0.35f, 0.65f, 0.39f, 0.62f, 0.14f, 0.56f };
 
 	case ECookingResultType::Jelly:
 		return bMainIngredient
-			? FCookingPlacementBounds{ 0.32f, 0.68f, 0.30f, 0.53f, 0.13f, 0.78f }
-			: FCookingPlacementBounds{ 0.35f, 0.65f, 0.24f, 0.43f, 0.15f, 0.62f };
+			? FCookingPlacementBounds{ 0.33f, 0.67f, 0.29f, 0.51f, 0.13f, 0.62f }
+			: FCookingPlacementBounds{ 0.37f, 0.63f, 0.24f, 0.42f, 0.15f, 0.50f };
 
 	case ECookingResultType::Grill:
 		return bMainIngredient
-			? FCookingPlacementBounds{ 0.29f, 0.71f, 0.42f, 0.68f, 0.13f, 0.92f }
-			: FCookingPlacementBounds{ 0.34f, 0.66f, 0.33f, 0.56f, 0.15f, 0.70f };
+			? FCookingPlacementBounds{ 0.30f, 0.70f, 0.42f, 0.68f, 0.13f, 0.74f }
+			: FCookingPlacementBounds{ 0.35f, 0.65f, 0.34f, 0.56f, 0.15f, 0.56f };
 
 	case ECookingResultType::Failed:
 	default:
 		return bMainIngredient
-			? FCookingPlacementBounds{ 0.34f, 0.66f, 0.40f, 0.65f, 0.13f, 0.82f }
-			: FCookingPlacementBounds{ 0.37f, 0.63f, 0.35f, 0.57f, 0.15f, 0.64f };
+			? FCookingPlacementBounds{ 0.34f, 0.66f, 0.40f, 0.65f, 0.13f, 0.64f }
+			: FCookingPlacementBounds{ 0.37f, 0.63f, 0.35f, 0.57f, 0.15f, 0.50f };
 	}
 }
 
@@ -417,14 +417,14 @@ void BlendIngredientPieces(
 	}
 
 	const int32 PieceCount = bMainIngredient
-		? FMath::Clamp(FMath::RoundToInt(2.0f + Ratio * 8.0f + FMath::FRandRange(-1.0f, 1.0f)), 3, 9)
-		: FMath::Clamp(FMath::RoundToInt(1.0f + Ratio * 6.0f + FMath::FRandRange(-0.75f, 0.75f)), 1, 5);
+		? FMath::Clamp(FMath::RoundToInt(1.5f + Ratio * 4.5f + FMath::FRandRange(-0.5f, 0.75f)), 2, 5)
+		: FMath::Clamp(FMath::RoundToInt(0.5f + Ratio * 3.5f + FMath::FRandRange(-0.35f, 0.55f)), 1, 3);
 	const float Opacity = bMainIngredient
 		? FMath::Clamp(0.66f + Ratio * 0.28f, 0.0f, 0.94f)
 		: FMath::Clamp(0.74f + Ratio * 0.22f, 0.0f, 0.96f);
 	const float BaseScale = bMainIngredient
-		? FMath::Lerp(0.20f, 0.34f, Ratio)
-		: FMath::Lerp(0.17f, 0.26f, Ratio);
+		? FMath::Lerp(0.17f, 0.27f, Ratio)
+		: FMath::Lerp(0.13f, 0.20f, Ratio);
 	const float PieceScaleMultiplier = GetCookingPieceScaleMultiplier(Tag, bMainIngredient);
 	const FCookingPlacementBounds Bounds = GetCookingPlacementBounds(ResultType, bMainIngredient);
 
@@ -470,8 +470,8 @@ void BlendIngredientPieces(
 
 		UsedPositions.Add(Position);
 
-		const float ScaleJitter = FMath::FRandRange(0.82f, 1.22f);
-		const float EdgeScale = bMainIngredient ? FMath::Lerp(1.10f, 0.82f, Index / static_cast<float>(FMath::Max(PieceCount - 1, 1))) : 1.0f;
+		const float ScaleJitter = FMath::FRandRange(0.86f, 1.12f);
+		const float EdgeScale = bMainIngredient ? FMath::Lerp(1.04f, 0.88f, Index / static_cast<float>(FMath::Max(PieceCount - 1, 1))) : 1.0f;
 		BlendCookingLayerAt(
 			Pixels,
 			PiecePath,
