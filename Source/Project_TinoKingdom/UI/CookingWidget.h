@@ -11,8 +11,10 @@
 class UCookingComponent;
 class UButton;
 class UCookingMinigameWidget;
+class UContentWidget;
 class UEditableTextBox;
 class UImage;
+class UPanelWidget;
 class UTextBlock;
 class UVerticalBox;
 
@@ -59,12 +61,14 @@ protected:
 	void OnCookingCompleted(const FCookingResultData& ResultData);
 
 private:
+	void NormalizeCookingWidgetLayering();
 	void BroadcastSelectedIngredientsChanged();
 	void UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void SetIngredientSlotText(int32 Index, const FText& Text);
 	void SetIngredientSlotImage(int32 Index, UTexture2D* Icon);
 	void SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon);
+	void SetIngredientSlotButtonContent(int32 Index, UTexture2D* Icon);
 	void SetResultText(const FText& Text);
 	void ToggleIngredientList();
 	void SetIngredientListVisible(bool bVisible);

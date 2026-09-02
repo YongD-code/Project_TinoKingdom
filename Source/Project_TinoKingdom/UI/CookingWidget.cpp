@@ -3,8 +3,13 @@
 #include "CookingWidget.h"
 
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/ContentWidget.h"
 #include "Components/EditableTextBox.h"
 #include "Components/Image.h"
+#include "Components/PanelWidget.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Blueprint/WidgetTree.h"
@@ -82,6 +87,8 @@ void UCookingWidget::NativeOnInitialized()
 		return;
 	}
 
+	NormalizeCookingWidgetLayering();
+
 	CloseCookingButton = WidgetTree->FindWidget<UButton>(TEXT("Button_CloseCooking_Static"));
 	if (CloseCookingButton != nullptr)
 	{
@@ -139,6 +146,95 @@ void UCookingWidget::NativeOnInitialized()
 	}
 
 	SetIngredientListVisible(false);
+}
+
+void UCookingWidget::NormalizeCookingWidgetLayering()
+{
+	if (WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	WidgetTree->ForEachWidget([](UWidget* Widget)
+	{
+		if (UImage* ImageWidget = Cast<UImage>(Widget))
+		{
+			const UObject* BrushResource = ImageWidget->GetBrush().GetResourceObject();
+			if (BrushResource != nullptr && BrushResource->GetName().Contains(TEXT("CookingPanelBackground_Medieval")))
+			{
+				ImageWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+				if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(ImageWidget->Slot))
+				{
+					CanvasSlot->SetZOrder(0);
+				}
+				if (UPanelWidget* ParentPanel = Cast<UPanelWidget>(ImageWidget->GetParent()))
+				{
+					ParentPanel->ShiftChild(0, ImageWidget);
+				}
+			}
+		}
+	});
+
+	auto CenterButtonContent = [this](const FName& ButtonName)
+	{
+		UContentWidget* ContentButton = WidgetTree->FindWidget<UContentWidget>(ButtonName);
+		if (ContentButton == nullptr)
+		{
+			return;
+		}
+
+		if (UWidget* ContentWidget = ContentButton->GetContent())
+		{
+			if (UButtonSlot* ButtonSlot = Cast<UButtonSlot>(ContentWidget->Slot))
+			{
+				ButtonSlot->SetPadding(FMargin(0.0f));
+				ButtonSlot->SetHorizontalAlignment(HAlign_Center);
+				ButtonSlot->SetVerticalAlignment(VAlign_Center);
+			}
+		}
+	};
+
+	const FName ForegroundWidgetNames[] =
+	{
+		TEXT("Button_0"),
+		TEXT("Button_1"),
+		TEXT("Button_2"),
+		TEXT("Button_3"),
+		TEXT("Button_4"),
+		TEXT("Button_5"),
+		TEXT("Button_6"),
+		TEXT("Button_7"),
+		TEXT("Button_Clear"),
+		TEXT("Button_StartCooking"),
+		TEXT("Button_CloseCooking_Static"),
+		TEXT("TextBlock_0"),
+		TEXT("TextBlock_1"),
+		TEXT("TextBlock_2"),
+		TEXT("TextBlock_3"),
+		TEXT("TextBlock_CloseCooking_Static"),
+		TEXT("TextBox_Result")
+	};
+
+	for (const FName& WidgetName : ForegroundWidgetNames)
+	{
+		UWidget* ForegroundWidget = WidgetTree->FindWidget(WidgetName);
+		if (ForegroundWidget == nullptr)
+		{
+			continue;
+		}
+
+		ForegroundWidget->SetRenderOpacity(1.0f);
+		if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(ForegroundWidget->Slot))
+		{
+			CanvasSlot->SetZOrder(20);
+		}
+		if (UPanelWidget* ParentPanel = Cast<UPanelWidget>(ForegroundWidget->GetParent()))
+		{
+			ParentPanel->ShiftChild(ParentPanel->GetChildrenCount() - 1, ForegroundWidget);
+		}
+
+		CenterButtonContent(WidgetName);
+	}
 }
 
 void UCookingWidget::NativeDestruct()
@@ -347,6 +443,7 @@ void UCookingWidget::SetIngredientSlotText(int32 Index, const FText& Text)
 	if (UTextBlock* SlotTextBlock = WidgetTree->FindWidget<UTextBlock>(SlotTextBlockNames[Index]))
 	{
 		SlotTextBlock->SetText(Text);
+		SlotTextBlock->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
@@ -357,6 +454,7 @@ void UCookingWidget::SetIngredientSlotImage(int32 Index, UTexture2D* Icon)
 		return;
 	}
 
+	SetIngredientSlotButtonContent(Index, Icon);
 	SetIngredientSlotButtonIcon(Index, Icon);
 
 	const FName CandidateNames[][4] =
@@ -385,6 +483,97 @@ void UCookingWidget::SetIngredientSlotImage(int32 Index, UTexture2D* Icon)
 
 }
 
+void UCookingWidget::SetIngredientSlotButtonContent(int32 Index, UTexture2D* Icon)
+{
+	if (Index < 0 || Index >= 4 || WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	const FName SlotButtonNames[][4] =
+	{
+		{ TEXT("Button_0"), TEXT("Button_1"), TEXT("Button_2"), TEXT("Button_3") },
+		{ TEXT("Button_4"), TEXT("Button_5"), TEXT("Button_6"), TEXT("Button_7") },
+		{ TEXT("SlotButton_0"), TEXT("SlotButton_1"), TEXT("SlotButton_2"), TEXT("SlotButton_3") },
+		{ TEXT("IngredientButton_0"), TEXT("IngredientButton_1"), TEXT("IngredientButton_2"), TEXT("IngredientButton_3") },
+		{ TEXT("IngredientSlotButton_0"), TEXT("IngredientSlotButton_1"), TEXT("IngredientSlotButton_2"), TEXT("IngredientSlotButton_3") }
+	};
+
+	for (const auto& CandidateSet : SlotButtonNames)
+	{
+		UContentWidget* SlotButton = WidgetTree->FindWidget<UContentWidget>(CandidateSet[Index]);
+		if (SlotButton == nullptr)
+		{
+			continue;
+		}
+
+		SlotButton->SetRenderOpacity(1.0f);
+		if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(SlotButton->Slot))
+		{
+			CanvasSlot->SetZOrder(80);
+		}
+		if (UPanelWidget* ParentPanel = Cast<UPanelWidget>(SlotButton->GetParent()))
+		{
+			ParentPanel->ShiftChild(ParentPanel->GetChildrenCount() - 1, SlotButton);
+		}
+
+		if (Icon != nullptr)
+		{
+			USizeBox* IconSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+			if (IconSizeBox == nullptr)
+			{
+				continue;
+			}
+
+			IconSizeBox->SetWidthOverride(86.0f);
+			IconSizeBox->SetHeightOverride(86.0f);
+			IconSizeBox->SetVisibility(ESlateVisibility::HitTestInvisible);
+
+			UImage* SlotIconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+			if (SlotIconImage == nullptr)
+			{
+				continue;
+			}
+
+			SlotIconImage->SetBrushFromTexture(Icon, true);
+			SlotIconImage->SetDesiredSizeOverride(FVector2D(86.0f, 86.0f));
+			SlotIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+			IconSizeBox->SetContent(SlotIconImage);
+			SlotButton->SetContent(IconSizeBox);
+
+			if (UButtonSlot* ButtonSlot = Cast<UButtonSlot>(IconSizeBox->Slot))
+			{
+				ButtonSlot->SetPadding(FMargin(0.0f));
+				ButtonSlot->SetHorizontalAlignment(HAlign_Center);
+				ButtonSlot->SetVerticalAlignment(VAlign_Center);
+			}
+			continue;
+		}
+
+		UTextBlock* PlusTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		if (PlusTextBlock == nullptr)
+		{
+			continue;
+		}
+
+		FSlateFontInfo PlusFont = PlusTextBlock->GetFont();
+		PlusFont.Size = 34;
+		PlusTextBlock->SetFont(PlusFont);
+		PlusTextBlock->SetText(FText::FromString(TEXT("+")));
+		PlusTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.84f, 0.45f, 1.0f)));
+		PlusTextBlock->SetJustification(ETextJustify::Center);
+		PlusTextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
+		SlotButton->SetContent(PlusTextBlock);
+
+		if (UButtonSlot* ButtonSlot = Cast<UButtonSlot>(PlusTextBlock->Slot))
+		{
+			ButtonSlot->SetPadding(FMargin(0.0f));
+			ButtonSlot->SetHorizontalAlignment(HAlign_Center);
+			ButtonSlot->SetVerticalAlignment(VAlign_Center);
+		}
+	}
+}
+
 void UCookingWidget::SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon)
 {
 	if (Index < 0 || Index >= 4 || WidgetTree == nullptr)
@@ -395,6 +584,7 @@ void UCookingWidget::SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon)
 	const FName CandidateNames[][4] =
 	{
 		{ TEXT("Button_0"), TEXT("Button_1"), TEXT("Button_2"), TEXT("Button_3") },
+		{ TEXT("Button_4"), TEXT("Button_5"), TEXT("Button_6"), TEXT("Button_7") },
 		{ TEXT("SlotButton_0"), TEXT("SlotButton_1"), TEXT("SlotButton_2"), TEXT("SlotButton_3") },
 		{ TEXT("IngredientButton_0"), TEXT("IngredientButton_1"), TEXT("IngredientButton_2"), TEXT("IngredientButton_3") },
 		{ TEXT("IngredientSlotButton_0"), TEXT("IngredientSlotButton_1"), TEXT("IngredientSlotButton_2"), TEXT("IngredientSlotButton_3") }
@@ -423,16 +613,10 @@ void UCookingWidget::SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon)
 			continue;
 		}
 
-		FButtonStyle IconStyle = SlotButton->GetStyle();
-		FSlateBrush IconBrush;
-		IconBrush.SetResourceObject(Icon);
-		IconBrush.ImageSize = FVector2D(82.0f, 82.0f);
-		IconBrush.DrawAs = ESlateBrushDrawType::Image;
-
-		IconStyle.SetNormal(IconBrush);
-		IconStyle.SetHovered(IconBrush);
-		IconStyle.SetPressed(IconBrush);
-		SlotButton->SetStyle(IconStyle);
+		if (const FButtonStyle* OriginalStyle = OriginalIngredientSlotButtonStyles.Find(ButtonName))
+		{
+			SlotButton->SetStyle(*OriginalStyle);
+		}
 	}
 
 }
