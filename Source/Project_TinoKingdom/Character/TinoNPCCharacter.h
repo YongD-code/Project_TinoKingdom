@@ -19,10 +19,30 @@ class UQuestComponent;
 class UQuestData;
 class USkeletalMeshComponent;
 
+// 한 NPC가 첫 퀘스트를 끝낸 뒤 순서대로 제공할 추가 퀘스트 한 단계.
+// 완료 대사는 다음 단계의 제안 대사로 자연스럽게 이어짐
+USTRUCT(BlueprintType)
+struct PROJECT_TINOKINGDOM_API FTinoNPCQuestStage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest")
+	TObjectPtr<UQuestData> Quest;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueData> OfferDialogueData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueData> InProgressDialogueData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
+	TObjectPtr<UDialogueData> ReadyToCompleteDialogueData;
+};
+
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoNPCCharacter :	public ACharacter,
-													public ITargetableInterface,
-													public IAbilitySystemInterface
+											public ITargetableInterface,
+											public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -51,6 +71,12 @@ public:
 	// 퀘스트 진행 상태에 맞는 대사를 고른다. 해당 상태의 대사가 없으면 기본 대사를 쓴다.
 	UDialogueData* SelectDialogueData(const UQuestComponent* PlayerQuest) const;
 
+	// 플레이어 진행도 기준으로 이번 대화에서 수락하거나 완료할 퀘스트를 반환한다.
+	// 첫 퀘스트가 끝났으면 AdditionalQuestStages에서 아직 완료하지 않은 첫 단계를 고른다.
+	UFUNCTION(BlueprintPure, Category = "Quest")
+	UQuestData* GetActiveQuest(const UQuestComponent* PlayerQuest) const;
+
+	// 기존 블루프린트 호환용 첫 퀘스트 접근자.
 	UFUNCTION(BlueprintPure, Category = "Quest")
 	UQuestData* GetQuestToGrant() const { return QuestToGrant; }
 
@@ -68,6 +94,9 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	const FTinoNPCQuestStage* FindActiveAdditionalQuestStage(const UQuestComponent* PlayerQuest) const;
+	bool HasAnyConfiguredQuest() const;
+
 	// 메타휴먼은 몸과 얼굴이 각각 다른 스켈레탈 메시라 이름으로 찾아 캐시한다.
 	void CacheAnimationMeshes();
 
@@ -108,25 +137,30 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ability System")
 	TSubclassOf<UGameplayEffect> DamageEffect;
 	
-	// 퀘스트를 받기 전에 할 대사.
+	// 첫 퀘스트를 받기 전에 할 대사.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> DialogueData;
 
-	// 퀘스트를 받았지만 아직 목표를 못 채웠을 때의 대사.
+	// 첫 퀘스트를 받았지만 아직 목표를 못 채웠을 때의 대사.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> InProgressDialogueData;
 
-	// 목표를 다 채워 보고하러 왔을 때의 대사. 예) 정말 고맙네!
+	// 첫 퀘스트 목표를 다 채워 보고하러 왔을 때의 대사. 예) 정말 고맙네!
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> ReadyToCompleteDialogueData;
 
-	// 퀘스트를 끝낸 뒤 다시 말을 걸었을 때의 대사.
+	// 이 NPC가 주는 모든 퀘스트를 끝낸 뒤 다시 말을 걸었을 때의 대사.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> CompletedDialogueData;
 
-	// 이 NPC가 건네줄 퀘스트. 대화가 끝나는 시점에 수령된다.
+	// 이 NPC가 처음 건네줄 퀘스트. 대화가 끝나는 시점에 수령된다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest")
 	TObjectPtr<UQuestData> QuestToGrant;
+
+	// 첫 퀘스트 완료 후 위에서 아래 순서로 제공할 추가 퀘스트들.
+	// 기존 NPC는 이 배열을 비워 두면 이전과 완전히 동일하게 동작한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest", meta = (TitleProperty = "Quest"))
+	TArray<FTinoNPCQuestStage> AdditionalQuestStages;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UCameraComponent> DialogueCamera;

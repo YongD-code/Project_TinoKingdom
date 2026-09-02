@@ -220,36 +220,132 @@ void ATinoNPCCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 UDialogueData* ATinoNPCCharacter::SelectDialogueData(const UQuestComponent* PlayerQuest) const
 {
 	// 퀘스트를 안 주는 NPC이거나 플레이어에게 퀘스트 컴포넌트가 없으면 기본 대사만 쓴다.
-	if (!IsValid(QuestToGrant) || PlayerQuest == nullptr)
+	if (!HasAnyConfiguredQuest() || PlayerQuest == nullptr)
 	{
 		return DialogueData;
 	}
 
-	UDialogueData* Selected = nullptr;
-
-	switch (PlayerQuest->GetQuestState(QuestToGrant))
+	// 기존 단일 퀘스트는 항상 체인의 첫 단계로 취급한다.
+	if (IsValid(QuestToGrant))
 	{
-	case EQuestState::InProgress:
-		Selected = InProgressDialogueData;
-		break;
-	case EQuestState::ReadyToComplete:
-		Selected = ReadyToCompleteDialogueData;
-		break;
-	case EQuestState::Completed:
-		Selected = CompletedDialogueData;
-		break;
-	default:
-		Selected = DialogueData;
-		break;
+		switch (PlayerQuest->GetQuestState(QuestToGrant))
+		{
+		case EQuestState::NotStarted:
+			return DialogueData;
+		case EQuestState::InProgress:
+			return IsValid(InProgressDialogueData) ? InProgressDialogueData.Get() : DialogueData.Get();
+		case EQuestState::ReadyToComplete:
+			return IsValid(ReadyToCompleteDialogueData) ? ReadyToCompleteDialogueData.Get() : DialogueData.Get();
+		case EQuestState::Completed:
+			// 첫 퀘스트를 끝냈으면 아래의 추가 단계 검색으로 이어진다.
+			break;
+		}
 	}
 
-	// 해당 상태의 대사를 지정하지 않았으면 기본 대사로 대체한다.
-	if (IsValid(Selected))
+	if (const FTinoNPCQuestStage* Stage = FindActiveAdditionalQuestStage(PlayerQuest))
 	{
-		return Selected;
+		UDialogueData* SelectedDialogue = nullptr;
+
+		switch (PlayerQuest->GetQuestState(Stage->Quest))
+		{
+		case EQuestState::InProgress:
+			SelectedDialogue = Stage->InProgressDialogueData;
+			break;
+		case EQuestState::ReadyToComplete:
+			SelectedDialogue = Stage->ReadyToCompleteDialogueData;
+			break;
+		case EQuestState::NotStarted:
+		default:
+			SelectedDialogue = Stage->OfferDialogueData;
+			break;
+		}
+
+		// 단계별 대사를 빠뜨려도 대화 자체가 막히지 않도록 제안 대사,
+		// NPC 기본 대사 순서로 대체한다.
+		if (IsValid(SelectedDialogue))
+		{
+			return SelectedDialogue;
+		}
+		if (IsValid(Stage->OfferDialogueData))
+		{
+			return Stage->OfferDialogueData;
+		}
+		return DialogueData;
 	}
 
-	return DialogueData.Get();
+	// 첫 퀘스트와 모든 추가 퀘스트를 끝낸 뒤에만 최종 완료 대사를 사용한다.
+	return IsValid(CompletedDialogueData) ? CompletedDialogueData.Get() : DialogueData.Get();
+}
+
+UQuestData* ATinoNPCCharacter::GetActiveQuest(const UQuestComponent* PlayerQuest) const
+{
+	// 진행 정보를 받을 수 없는 호출에서도 첫 퀘스트를 예측 가능하게 반환한다.
+	if (PlayerQuest == nullptr)
+	{
+		if (IsValid(QuestToGrant))
+		{
+			return QuestToGrant;
+		}
+
+		for (const FTinoNPCQuestStage& Stage : AdditionalQuestStages)
+		{
+			if (IsValid(Stage.Quest))
+			{
+				return Stage.Quest;
+			}
+		}
+
+		return nullptr;
+	}
+
+	if (IsValid(QuestToGrant) && PlayerQuest->GetQuestState(QuestToGrant) != EQuestState::Completed)
+	{
+		return QuestToGrant;
+	}
+
+	if (const FTinoNPCQuestStage* Stage = FindActiveAdditionalQuestStage(PlayerQuest))
+	{
+		return Stage->Quest;
+	}
+
+	return nullptr;
+}
+
+const FTinoNPCQuestStage* ATinoNPCCharacter::FindActiveAdditionalQuestStage(
+	const UQuestComponent* PlayerQuest) const
+{
+	for (const FTinoNPCQuestStage& Stage : AdditionalQuestStages)
+	{
+		if (!IsValid(Stage.Quest))
+		{
+			continue;
+		}
+
+		if (PlayerQuest == nullptr || PlayerQuest->GetQuestState(Stage.Quest) != EQuestState::Completed)
+		{
+			return &Stage;
+		}
+	}
+
+	return nullptr;
+}
+
+bool ATinoNPCCharacter::HasAnyConfiguredQuest() const
+{
+	if (IsValid(QuestToGrant))
+	{
+		return true;
+	}
+
+	for (const FTinoNPCQuestStage& Stage : AdditionalQuestStages)
+	{
+		if (IsValid(Stage.Quest))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void ATinoNPCCharacter::CacheAnimationMeshes()

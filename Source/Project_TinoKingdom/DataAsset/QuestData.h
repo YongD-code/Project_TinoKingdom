@@ -45,5 +45,5 @@ public:
 	FText TargetItemName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Objective", meta = (ClampMin = "1"))
-	int32 RequiredCount = 5;
+	int32 RequiredCount = 2;
 };
