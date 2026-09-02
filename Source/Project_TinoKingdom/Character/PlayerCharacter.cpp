@@ -39,6 +39,7 @@
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
+#include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 
@@ -145,6 +146,12 @@ void APlayerCharacter::BeginPlay()
 			AttributeSet->GetAttackPower(),
 			AttributeSet->GetDefense()
 		);
+	}
+
+	// OpenLevel 직전에 GameInstance에 저장한 상태가 있으면 기본 능력치 초기화 다음에 덮어쓴다.
+	if (UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance()))
+	{
+		TinoGameInstance->RestorePlayerState(this);
 	}
 	
 	DefaultCameraArmLength = CameraBoom->TargetArmLength;
@@ -300,11 +307,49 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 	EnhancedInputComponent->BindAction(TargetingAction, ETriggerEvent::Started, this, &APlayerCharacter::RequestTargeting);
 
+	// 새 Input Action이 아직 지정되지 않은 블루프린트도 안전하게 실행될 수 있게 선택적으로 바인딩한다.
+	if (OpenSecretPlaceAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(
+			OpenSecretPlaceAction,
+			ETriggerEvent::Started,
+			this,
+			&APlayerCharacter::OpenSecretPlace);
+	}
+
 	// 대화 시작은 기본 컨텍스트에, 진행과 취소는 대화 컨텍스트에 매핑되어 있다.
 	EnhancedInputComponent->BindAction(DialInteractAction, ETriggerEvent::Started, this, &APlayerCharacter::Interact);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueAdvancePressed);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Completed, this, &APlayerCharacter::DialogueAdvanceReleased);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Canceled, this, &APlayerCharacter::DialogueAdvanceReleased);
+}
+
+void APlayerCharacter::OpenSecretPlace()
+{
+	if (bLevelTravelInProgress || bDeathHandled || SecretPlaceLevelName.IsNone())
+	{
+		return;
+	}
+
+	if (IsValid(DialogueComponent) && DialogueComponent->IsInDialogue())
+	{
+		return;
+	}
+
+	UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance());
+	if (!ensureMsgf(TinoGameInstance != nullptr,
+		TEXT("Project Settings의 GameInstance Class가 TinoGameInstance로 지정되지 않았습니다.")))
+	{
+		return;
+	}
+
+	if (!TinoGameInstance->CapturePlayerState(this))
+	{
+		return;
+	}
+
+	bLevelTravelInProgress = true;
+	UGameplayStatics::OpenLevel(this, SecretPlaceLevelName);
 }
 
 void APlayerCharacter::Interact()
