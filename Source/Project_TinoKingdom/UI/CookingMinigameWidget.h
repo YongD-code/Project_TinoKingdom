@@ -61,7 +61,13 @@ protected:
 	float Duration = 10.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.0"))
-	float TargetMoveSpeed = 0.45f;
+	float TargetMoveSpeed = 0.55f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.1"))
+	float TargetDirectionChangeMinTime = 0.45f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.1"))
+	float TargetDirectionChangeMaxTime = 1.35f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.01", ClampMax = "1.0"))
 	float TargetZoneSize = 0.22f;
@@ -99,15 +105,23 @@ protected:
 private:
 	void BuildDefaultMinigameVisuals();
 	void RefreshDefaultMinigameVisuals();
+	void ResetTargetDirectionTimer();
 	bool IsPlayerBarInTargetZone() const;
-
-	bool bTargetMovingUp = true;
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UTextBlock> InstructionTextBlock;
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UTextBlock> ScoreTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> TargetLabelTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> PlayerLabelTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> TimeLabelTextBlock;
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UProgressBar> TargetProgressBar;
@@ -117,4 +131,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UProgressBar> TimeProgressBar;
+
+	float TargetDirection = 1.0f;
+	float TargetDirectionChangeTimer = 0.0f;
 };

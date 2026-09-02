@@ -4,7 +4,10 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/ProgressBar.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
@@ -22,7 +25,8 @@ void UCookingMinigameWidget::StartCookingMinigame()
 {
 	bMinigamePlaying = true;
 	bCookingInputHeld = false;
-	bTargetMovingUp = true;
+	TargetDirection = FMath::RandBool() ? 1.0f : -1.0f;
+	ResetTargetDirectionTimer();
 
 	ElapsedTime = 0.0f;
 	MinigameScore = 50.0f;
@@ -68,18 +72,26 @@ void UCookingMinigameWidget::NativeTick(const FGeometry& MyGeometry, float InDel
 
 	ElapsedTime += InDeltaTime;
 
-	const float TargetDirection = bTargetMovingUp ? 1.0f : -1.0f;
+	TargetDirectionChangeTimer -= InDeltaTime;
+	if (TargetDirectionChangeTimer <= 0.0f)
+	{
+		TargetDirection = FMath::RandBool() ? 1.0f : -1.0f;
+		ResetTargetDirectionTimer();
+	}
+
 	TargetPosition += TargetDirection * TargetMoveSpeed * InDeltaTime;
 
 	if (TargetPosition >= 1.0f)
 	{
 		TargetPosition = 1.0f;
-		bTargetMovingUp = false;
+		TargetDirection = -1.0f;
+		ResetTargetDirectionTimer();
 	}
 	else if (TargetPosition <= 0.0f)
 	{
 		TargetPosition = 0.0f;
-		bTargetMovingUp = true;
+		TargetDirection = 1.0f;
+		ResetTargetDirectionTimer();
 	}
 
 	const float PlayerDirection = bCookingInputHeld ? 1.0f : -1.0f;
@@ -149,33 +161,58 @@ void UCookingMinigameWidget::BuildDefaultMinigameVisuals()
 		return;
 	}
 
+	UCanvasPanel* RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("CookingMinigameCanvas_Runtime"));
 	UBorder* RootBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("CookingMinigameRoot_Runtime"));
+	USizeBox* PanelSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("CookingMinigameSize_Runtime"));
 	UVerticalBox* LayoutBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CookingMinigameLayout_Runtime"));
 
-	if (RootBorder == nullptr || LayoutBox == nullptr)
+	if (RootCanvas == nullptr || RootBorder == nullptr || PanelSizeBox == nullptr || LayoutBox == nullptr)
 	{
 		return;
 	}
 
 	InstructionTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CookingMinigameInstruction_Runtime"));
 	ScoreTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CookingMinigameScore_Runtime"));
+	TargetLabelTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CookingMinigameTargetLabel_Runtime"));
+	PlayerLabelTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CookingMinigamePlayerLabel_Runtime"));
+	TimeLabelTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CookingMinigameTimeLabel_Runtime"));
 	TargetProgressBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("CookingMinigameTarget_Runtime"));
 	PlayerProgressBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("CookingMinigamePlayer_Runtime"));
 	TimeProgressBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("CookingMinigameTime_Runtime"));
 
-	if (InstructionTextBlock == nullptr || ScoreTextBlock == nullptr || TargetProgressBar == nullptr ||
+	if (InstructionTextBlock == nullptr || ScoreTextBlock == nullptr || TargetLabelTextBlock == nullptr ||
+		PlayerLabelTextBlock == nullptr || TimeLabelTextBlock == nullptr || TargetProgressBar == nullptr ||
 		PlayerProgressBar == nullptr || TimeProgressBar == nullptr)
 	{
 		return;
 	}
 
-	RootBorder->SetBrushColor(FLinearColor(0.025f, 0.022f, 0.018f, 0.92f));
+	RootCanvas->SetVisibility(ESlateVisibility::Visible);
+	RootBorder->SetBrushColor(FLinearColor(0.018f, 0.018f, 0.022f, 0.94f));
 	RootBorder->SetPadding(FMargin(28.0f));
 	RootBorder->SetContent(LayoutBox);
+	PanelSizeBox->SetWidthOverride(920.0f);
+	PanelSizeBox->SetHeightOverride(360.0f);
+	PanelSizeBox->SetContent(RootBorder);
+
+	UCanvasPanelSlot* PanelSlot = RootCanvas->AddChildToCanvas(PanelSizeBox);
+	if (PanelSlot != nullptr)
+	{
+		PanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
+		PanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+		PanelSlot->SetPosition(FVector2D::ZeroVector);
+		PanelSlot->SetSize(FVector2D(920.0f, 360.0f));
+	}
 
 	InstructionTextBlock->SetText(FText::FromString(TEXT("조리 타이밍")));
 	InstructionTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.86f, 0.45f, 1.0f)));
 	ScoreTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	TargetLabelTextBlock->SetText(FText::FromString(TEXT("목표 바")));
+	PlayerLabelTextBlock->SetText(FText::FromString(TEXT("플레이어 바")));
+	TimeLabelTextBlock->SetText(FText::FromString(TEXT("남은 시간")));
+	TargetLabelTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.72f, 0.20f, 1.0f)));
+	PlayerLabelTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.85f, 1.0f, 1.0f)));
+	TimeLabelTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.45f, 1.0f, 0.50f, 1.0f)));
 
 	TargetProgressBar->SetFillColorAndOpacity(FLinearColor(1.0f, 0.66f, 0.16f, 1.0f));
 	PlayerProgressBar->SetFillColorAndOpacity(FLinearColor(0.2f, 0.8f, 1.0f, 1.0f));
@@ -183,11 +220,14 @@ void UCookingMinigameWidget::BuildDefaultMinigameVisuals()
 
 	LayoutBox->AddChildToVerticalBox(InstructionTextBlock);
 	LayoutBox->AddChildToVerticalBox(ScoreTextBlock);
+	LayoutBox->AddChildToVerticalBox(TargetLabelTextBlock);
 	LayoutBox->AddChildToVerticalBox(TargetProgressBar);
+	LayoutBox->AddChildToVerticalBox(PlayerLabelTextBlock);
 	LayoutBox->AddChildToVerticalBox(PlayerProgressBar);
+	LayoutBox->AddChildToVerticalBox(TimeLabelTextBlock);
 	LayoutBox->AddChildToVerticalBox(TimeProgressBar);
 
-	WidgetTree->RootWidget = RootBorder;
+	WidgetTree->RootWidget = RootCanvas;
 	RefreshDefaultMinigameVisuals();
 }
 
@@ -214,6 +254,13 @@ void UCookingMinigameWidget::RefreshDefaultMinigameVisuals()
 	{
 		TimeProgressBar->SetPercent(Duration > 0.0f ? GetRemainingTime() / Duration : 0.0f);
 	}
+}
+
+void UCookingMinigameWidget::ResetTargetDirectionTimer()
+{
+	const float MinTime = FMath::Max(0.1f, TargetDirectionChangeMinTime);
+	const float MaxTime = FMath::Max(MinTime, TargetDirectionChangeMaxTime);
+	TargetDirectionChangeTimer = FMath::FRandRange(MinTime, MaxTime);
 }
 
 bool UCookingMinigameWidget::IsPlayerBarInTargetZone() const

@@ -4,6 +4,7 @@
 
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
+#include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Blueprint/WidgetTree.h"
@@ -281,12 +282,14 @@ void UCookingWidget::BroadcastSelectedIngredientsChanged()
 	if (CookingComponent == nullptr)
 	{
 		UpdateIngredientSlotTexts(TArray<FInventoryItemStack>());
+		UpdateIngredientSlotImages(TArray<FInventoryItemStack>());
 		OnSelectedIngredientsChanged(TArray<FInventoryItemStack>());
 		return;
 	}
 
 	const TArray<FInventoryItemStack>& SelectedIngredients = CookingComponent->GetSelectedIngredients();
 	UpdateIngredientSlotTexts(SelectedIngredients);
+	UpdateIngredientSlotImages(SelectedIngredients);
 	OnSelectedIngredientsChanged(SelectedIngredients);
 	RefreshCookingActions();
 }
@@ -297,12 +300,20 @@ void UCookingWidget::UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>
 	{
 		if (SelectedIngredients.IsValidIndex(Index))
 		{
-			SetIngredientSlotText(Index, SelectedIngredients[Index].DisplayName);
+			SetIngredientSlotText(Index, FText::GetEmpty());
 		}
 		else
 		{
 			SetIngredientSlotText(Index, FText::FromString(TEXT("+")));
 		}
+	}
+}
+
+void UCookingWidget::UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients)
+{
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		SetIngredientSlotImage(Index, SelectedIngredients.IsValidIndex(Index) ? SelectedIngredients[Index].Icon : nullptr);
 	}
 }
 
@@ -324,6 +335,38 @@ void UCookingWidget::SetIngredientSlotText(int32 Index, const FText& Text)
 	if (UTextBlock* SlotTextBlock = WidgetTree->FindWidget<UTextBlock>(SlotTextBlockNames[Index]))
 	{
 		SlotTextBlock->SetText(Text);
+	}
+}
+
+void UCookingWidget::SetIngredientSlotImage(int32 Index, UTexture2D* Icon)
+{
+	if (Index < 0 || Index >= 4 || WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	const FName CandidateNames[][4] =
+	{
+		{ TEXT("Image_0"), TEXT("Image_1"), TEXT("Image_2"), TEXT("Image_3") },
+		{ TEXT("ImageSlot_0"), TEXT("ImageSlot_1"), TEXT("ImageSlot_2"), TEXT("ImageSlot_3") },
+		{ TEXT("IngredientImage_0"), TEXT("IngredientImage_1"), TEXT("IngredientImage_2"), TEXT("IngredientImage_3") },
+		{ TEXT("IngredientSlotImage_0"), TEXT("IngredientSlotImage_1"), TEXT("IngredientSlotImage_2"), TEXT("IngredientSlotImage_3") }
+	};
+
+	for (const auto& CandidateSet : CandidateNames)
+	{
+		if (UImage* SlotImage = WidgetTree->FindWidget<UImage>(CandidateSet[Index]))
+		{
+			if (Icon != nullptr)
+			{
+				SlotImage->SetBrushFromTexture(Icon, true);
+				SlotImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+			}
+			else
+			{
+				SlotImage->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
 	}
 }
 
