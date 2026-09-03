@@ -185,6 +185,14 @@ void ATinoNPCCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	InitialSpawnTransform = GetActorTransform();
+
+	// 대화 NPC는 제자리에서 동작한다. 월드 파티션의 지면 충돌이 늦게 로드되어도
+	// CharacterMovement 중력으로 맵 아래로 추락하지 않도록 이동을 비활성화한다.
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		MovementComponent->DisableMovement();
+	}
 	
 	CacheAnimationMeshes();
 	
@@ -512,7 +520,7 @@ void ATinoNPCCharacter::RespawnAtInitialTransform()
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
 	{
 		MovementComponent->StopMovementImmediately();
-		MovementComponent->SetMovementMode(MOVE_Walking);
+		MovementComponent->DisableMovement();
 	}
 
 	UE_LOG(
