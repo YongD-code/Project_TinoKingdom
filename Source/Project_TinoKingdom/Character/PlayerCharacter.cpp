@@ -912,6 +912,10 @@ void APlayerCharacter::RespawnAtInitialTransform()
 	RespawnSequenceActor = NewSequenceActor;
 	RespawnSequencePlayer->OnFinished.AddUniqueDynamic(
 		this, &APlayerCharacter::HandleRespawnSequenceFinished);
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetPlayerUIVisible(false);
+	}
 	RespawnSequencePlayer->Play();
 }
 
@@ -927,6 +931,10 @@ void APlayerCharacter::HandleRespawnSequenceFinished()
 		RespawnSequenceActor->Destroy();
 	}
 	RespawnSequenceActor = nullptr;
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetPlayerUIVisible(true);
+	}
 	FinishRespawn(true);
 }
 
@@ -978,6 +986,10 @@ void APlayerCharacter::ClearRespawnSequence()
 		RespawnSequenceActor->Destroy();
 	}
 	RespawnSequenceActor = nullptr;
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetPlayerUIVisible(true);
+	}
 }
 
 float APlayerCharacter::ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator,

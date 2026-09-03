@@ -14,6 +14,14 @@
 #include "Project_TinoKingdom/UI/TinoPlayerWidget.h"
 
 
+void ATinoPlayerController::SetPlayerUIVisible(bool bVisible)
+{
+	if (PlayerUIWidget != nullptr)
+	{
+		PlayerUIWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+}
+
 void ATinoPlayerController::SetCrosshairVisible(bool bVisible)
 {
 	if (PlayerUIWidget != nullptr)

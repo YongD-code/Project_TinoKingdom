@@ -18,6 +18,7 @@ class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
+	void SetPlayerUIVisible(bool bVisible);
 	void SetCrosshairVisible(bool bVisible);
 	void SetLockOnMarkerTarget(AActor* NewTarget);
 	
