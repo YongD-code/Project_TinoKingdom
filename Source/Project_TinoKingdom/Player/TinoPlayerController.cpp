@@ -81,6 +81,7 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 
 		if (CookingUIWidget != nullptr)
 		{
+			CookingUIWidget->ClearIngredients();
 			CookingUIWidget->RemoveFromParent();
 		}
 

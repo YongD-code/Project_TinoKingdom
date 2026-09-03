@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Styling/SlateTypes.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "CookingWidget.generated.h"
@@ -11,10 +10,8 @@
 class UCookingComponent;
 class UButton;
 class UCookingMinigameWidget;
-class UContentWidget;
 class UEditableTextBox;
 class UImage;
-class UPanelWidget;
 class UTextBlock;
 class UVerticalBox;
 
@@ -52,6 +49,7 @@ public:
 
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Cooking")
@@ -67,8 +65,7 @@ private:
 	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void SetIngredientSlotText(int32 Index, const FText& Text);
 	void SetIngredientSlotImage(int32 Index, UTexture2D* Icon);
-	void SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon);
-	void SetIngredientSlotButtonContent(int32 Index, UTexture2D* Icon);
+	UImage* FindOrCreateIngredientSlotImage(int32 Index, UTextBlock* SlotTextBlock);
 	void SetResultText(const FText& Text);
 	void ToggleIngredientList();
 	void SetIngredientListVisible(bool bVisible);
@@ -88,6 +85,18 @@ private:
 
 	UFUNCTION()
 	void HandleCloseCookingClicked();
+
+	UFUNCTION()
+	void HandleIngredientSlot0Clicked();
+
+	UFUNCTION()
+	void HandleIngredientSlot1Clicked();
+
+	UFUNCTION()
+	void HandleIngredientSlot2Clicked();
+
+	UFUNCTION()
+	void HandleIngredientSlot3Clicked();
 
 	UFUNCTION()
 	void HandleIngredientOption0Clicked();
@@ -151,9 +160,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "1", ClampMax = "8"))
 	int32 MaxIngredientOptionCount = 8;
-
-	UPROPERTY(Transient)
-	TMap<FName, FButtonStyle> OriginalIngredientSlotButtonStyles;
 
 	bool bIngredientListVisible = false;
 };
