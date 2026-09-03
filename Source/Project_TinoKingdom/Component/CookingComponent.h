@@ -48,6 +48,23 @@ public:
 		float MinigameScore,
 		FCookingResultData& OutResult
 	);
+
+	// 일반 요리 제작뿐 아니라 퀘스트의 요리 보상 생성에도 사용한다.
+	FText MakeResultName(
+		ECookingTag MainTag,
+		ECookingTag SubTag,
+		ECookingResultType ResultType,
+		ECookingQuality Quality
+	) const;
+
+	FName MakeResultItemId(
+		ECookingTag MainTag,
+		ECookingTag SubTag,
+		ECookingResultType ResultType,
+		ECookingQuality Quality
+	) const;
+
+	UTexture2D* CreateResultIconTexture(const FCookingResultData& ResultData) const;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -65,23 +82,8 @@ private:
 	ECookingResultType GetResultTypeByMainTag(ECookingTag MainTag) const;
 	FLinearColor GetBaseTintByMainTag(ECookingTag MainTag) const;
 
-	FText MakeResultName(
-		ECookingTag MainTag,
-		ECookingTag SubTag,
-		ECookingResultType ResultType,
-		ECookingQuality Quality
-	) const;
-
-	FName MakeResultItemId(
-		ECookingTag MainTag,
-		ECookingTag SubTag,
-		ECookingResultType ResultType,
-		ECookingQuality Quality
-	) const;
-
 	float GetQualityMultiplier(ECookingQuality Quality) const;
 	FText GetTagDisplayName(ECookingTag Tag) const;
 	FText GetResultTypeDisplayName(ECookingResultType ResultType) const;
-	UTexture2D* CreateResultIconTexture(const FCookingResultData& ResultData) const;
 };
 

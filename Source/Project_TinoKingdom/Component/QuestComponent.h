@@ -8,6 +8,8 @@
 #include "QuestComponent.generated.h"
 
 class UInventoryComponent;
+class UCookingComponent;
+class UPlayerProgressionComponent;
 struct FInventoryItemStack;
 
 // UI가 C++을 직접 참조하지 않고 퀘스트 상태에 반응할 수 있도록 델리게이트로 알린다.
@@ -81,6 +83,12 @@ private:
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCookingComponent> CookingComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UPlayerProgressionComponent> ProgressionComponent;
 
 	// 퀘스트별 상태. 수령한 적 없는 퀘스트는 아예 들어 있지 않다.
 	UPROPERTY(Transient)

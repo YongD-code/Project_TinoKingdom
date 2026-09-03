@@ -3,7 +3,9 @@
 
 #include "QuestComponent.h"
 
+#include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
+#include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoQuest, Log, All);
 
@@ -19,6 +21,8 @@ void UQuestComponent::BeginPlay()
 	if (AActor* Owner = GetOwner())
 	{
 		InventoryComponent = Owner->FindComponentByClass<UInventoryComponent>();
+		CookingComponent = Owner->FindComponentByClass<UCookingComponent>();
+		ProgressionComponent = Owner->FindComponentByClass<UPlayerProgressionComponent>();
 	}
 
 	if (IsValid(InventoryComponent))
@@ -125,6 +129,97 @@ bool UQuestComponent::CompleteQuest(UQuestData* Quest)
 	if (!IsValid(Quest) || GetQuestState(Quest) != EQuestState::ReadyToComplete)
 	{
 		return false;
+	}
+
+	if (Quest->RewardType == EQuestRewardType::Experience)
+	{
+		if (!IsValid(ProgressionComponent))
+		{
+			return false;
+		}
+
+		ProgressionComponent->AddExperience(Quest->RewardExperience);
+	}
+	else
+	{
+		if (!IsValid(InventoryComponent) || Quest->RewardItemCount <= 0)
+		{
+			return false;
+		}
+
+		if (Quest->RewardItemType == EQuestItemRewardType::InventoryItem)
+		{
+			if (Quest->RewardItemId.IsNone())
+			{
+				return false;
+			}
+
+			const EInventoryItemType ItemType = Quest->RewardItemCookingTag == ECookingTag::None
+				? EInventoryItemType::Etc
+				: EInventoryItemType::Material;
+
+			InventoryComponent->AddItem(
+				Quest->RewardItemId,
+				Quest->RewardItemName,
+				Quest->RewardItemCount,
+				Quest->RewardItemIcon,
+				ItemType,
+				Quest->RewardItemCookingTag);
+		}
+		else
+		{
+			const FCookingIconData& IconData = Quest->RewardCookingIconData;
+			if (!IsValid(CookingComponent)
+				|| IconData.MainTag == ECookingTag::None
+				|| Quest->RewardCookingResultType == ECookingResultType::None
+				|| Quest->RewardCookingResultType == ECookingResultType::Failed
+				|| Quest->RewardCookingQuality == ECookingQuality::Failed)
+			{
+				return false;
+			}
+
+			FCookingResultData CookingReward;
+			CookingReward.ResultType = Quest->RewardCookingResultType;
+			CookingReward.Quality = Quest->RewardCookingQuality;
+			CookingReward.HealAmount = Quest->RewardCookingHealAmount;
+			CookingReward.StaminaAmount = Quest->RewardCookingStaminaAmount;
+			CookingReward.AttackBuffAmount = Quest->RewardCookingAttackBuffAmount;
+			CookingReward.DefenseBuffAmount = Quest->RewardCookingDefenseBuffAmount;
+			CookingReward.IconData = IconData;
+			CookingReward.IconData.BaseType = CookingReward.ResultType;
+			CookingReward.ResultName = Quest->RewardCookingName.IsEmpty()
+				? CookingComponent->MakeResultName(
+					IconData.MainTag,
+					IconData.SubTag,
+					CookingReward.ResultType,
+					CookingReward.Quality)
+				: Quest->RewardCookingName;
+
+			const FName BaseItemId = CookingComponent->MakeResultItemId(
+				IconData.MainTag,
+				IconData.SubTag,
+				CookingReward.ResultType,
+				CookingReward.Quality);
+
+			for (int32 Index = 0; Index < Quest->RewardItemCount; ++Index)
+			{
+				CookingReward.ResultItemId = FName(*FString::Printf(
+					TEXT("%s_%s"),
+					*BaseItemId.ToString(),
+					*FGuid::NewGuid().ToString(EGuidFormats::Short)));
+
+				InventoryComponent->AddItem(
+					CookingReward.ResultItemId,
+					CookingReward.ResultName,
+					1,
+					CookingComponent->CreateResultIconTexture(CookingReward),
+					EInventoryItemType::Food,
+					ECookingTag::None,
+					EFoodEffectType::None,
+					1.0f,
+					CookingReward);
+			}
+		}
 	}
 
 	QuestStates.Add(Quest, EQuestState::Completed);

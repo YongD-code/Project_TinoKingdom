@@ -7,6 +7,8 @@
 #include "Project_TinoKingdom/Types/CookingTypes.h"
 #include "QuestData.generated.h"
 
+class UTexture2D;
+
 UENUM(BlueprintType)
 enum class EQuestState : uint8
 {
@@ -24,6 +26,20 @@ UENUM(BlueprintType)
 enum class EQuestObjectiveType : uint8
 {
 	Item UMETA(DisplayName = "Item"),
+	Cooking UMETA(DisplayName = "Cooking")
+};
+
+UENUM(BlueprintType)
+enum class EQuestRewardType : uint8
+{
+	Experience UMETA(DisplayName = "Experience"),
+	Item UMETA(DisplayName = "Item")
+};
+
+UENUM(BlueprintType)
+enum class EQuestItemRewardType : uint8
+{
+	InventoryItem UMETA(DisplayName = "Inventory Item"),
 	Cooking UMETA(DisplayName = "Cooking")
 };
 
@@ -72,4 +88,71 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Objective", meta = (ClampMin = "1"))
 	int32 RequiredCount = 2;
+
+	// 경험치와 아이템 중 하나만 보상으로 지급한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward")
+	EQuestRewardType RewardType = EQuestRewardType::Experience;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Experience", ClampMin = "0"))
+	int32 RewardExperience = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Item",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item"))
+	EQuestItemRewardType RewardItemType = EQuestItemRewardType::InventoryItem;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Item",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item", ClampMin = "1"))
+	int32 RewardItemCount = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Item",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::InventoryItem"))
+	FName RewardItemId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Item",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::InventoryItem"))
+	FText RewardItemName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Item",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::InventoryItem"))
+	TObjectPtr<UTexture2D> RewardItemIcon = nullptr;
+
+	// None이면 Etc, 태그가 있으면 요리 재료(Material)로 지급한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Item",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::InventoryItem"))
+	ECookingTag RewardItemCookingTag = ECookingTag::None;
+
+	// 요리 보상의 ItemId는 이 데이터로부터 자동 생성하므로 에디터에서 입력하지 않는다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking"))
+	FText RewardCookingName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking"))
+	ECookingResultType RewardCookingResultType = ECookingResultType::Soup;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking"))
+	ECookingQuality RewardCookingQuality = ECookingQuality::Normal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking"))
+	FCookingIconData RewardCookingIconData;
+
+	// 아래 수치는 품질 배율까지 반영된 최종 효과량이다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking", ClampMin = "0.0"))
+	float RewardCookingHealAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking", ClampMin = "0.0"))
+	float RewardCookingStaminaAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking", ClampMin = "0.0"))
+	float RewardCookingAttackBuffAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking", ClampMin = "0.0"))
+	float RewardCookingDefenseBuffAmount = 0.0f;
 };
