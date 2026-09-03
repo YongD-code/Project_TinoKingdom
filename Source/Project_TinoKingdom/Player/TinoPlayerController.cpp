@@ -161,7 +161,7 @@ void ATinoPlayerController::ShowCookingIngredientPicker(UCookingWidget* CookingW
 
 	PlayerUIWidget->ShowCookingIngredientPicker(CookingWidget, InventoryComponent);
 	PlayerUIWidget->RemoveFromParent();
-	PlayerUIWidget->AddToViewport(4);
+	PlayerUIWidget->AddToViewport(30);
 }
 
 void ATinoPlayerController::RefreshCookingIngredientPicker()

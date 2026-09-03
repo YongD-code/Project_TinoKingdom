@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
+#include "Styling/SlateTypes.h"
 #include "CookingWidget.generated.h"
 
 class UCookingComponent;
@@ -13,7 +14,6 @@ class UCookingMinigameWidget;
 class UEditableTextBox;
 class UImage;
 class UTextBlock;
-class UVerticalBox;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API UCookingWidget : public UUserWidget
@@ -26,9 +26,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	bool AddIngredientFromInventory(const FInventoryItemStack& Ingredient);
-
-	UFUNCTION(BlueprintCallable, Category = "Cooking")
-	bool AddFirstAvailableIngredientFromInventory();
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	void RemoveIngredientAt(int32 Index);
@@ -60,17 +57,19 @@ protected:
 
 private:
 	void NormalizeCookingWidgetLayering();
+	void ResetCookingSelection();
 	void BroadcastSelectedIngredientsChanged();
 	void UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void SetIngredientSlotText(int32 Index, const FText& Text);
 	void SetIngredientSlotImage(int32 Index, UTexture2D* Icon);
-	UImage* FindOrCreateIngredientSlotImage(int32 Index, UTextBlock* SlotTextBlock);
+	void CacheIngredientSlotButtonStyles();
+	UButton* FindIngredientSlotButton(int32 Index) const;
+	UTextBlock* FindIngredientSlotTextBlock(int32 Index) const;
+	void RestoreReservedIngredientAt(int32 Index);
+	void RestoreReservedIngredients();
 	void SetResultText(const FText& Text);
-	void ToggleIngredientList();
-	void SetIngredientListVisible(bool bVisible);
-	void RefreshIngredientList();
-	void SelectIngredientOption(int32 OptionIndex);
+	void OpenIngredientPicker();
 	void CloseCookingWidget();
 	void OpenCookingMinigame();
 	bool CanStartCooking() const;
@@ -86,42 +85,6 @@ private:
 	UFUNCTION()
 	void HandleCloseCookingClicked();
 
-	UFUNCTION()
-	void HandleIngredientSlot0Clicked();
-
-	UFUNCTION()
-	void HandleIngredientSlot1Clicked();
-
-	UFUNCTION()
-	void HandleIngredientSlot2Clicked();
-
-	UFUNCTION()
-	void HandleIngredientSlot3Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption0Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption1Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption2Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption3Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption4Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption5Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption6Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption7Clicked();
-
 	UPROPERTY(Transient)
 	TObjectPtr<UCookingComponent> CookingComponent;
 
@@ -131,23 +94,11 @@ private:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> Button_StartCooking;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UEditableTextBox> TextBox_Result;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UVerticalBox> IngredientListBox;
-
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> CloseCookingButton;
 
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UButton>> IngredientOptionButtons;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTextBlock>> IngredientOptionTexts;
-
-	UPROPERTY(Transient)
-	TArray<FInventoryItemStack> IngredientOptions;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UEditableTextBox> TextBox_Result;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "0.0", ClampMax = "100.0"))
 	float DefaultCookingScore = 50.0f;
@@ -158,8 +109,14 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UCookingMinigameWidget> ActiveMinigameWidget;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "1", ClampMax = "8"))
-	int32 MaxIngredientOptionCount = 8;
+	UPROPERTY(Transient)
+	TArray<FInventoryItemStack> ReservedIngredients;
 
-	bool bIngredientListVisible = false;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> IngredientSlotTextBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> IngredientSlotImages;
+
+	TArray<FButtonStyle> IngredientSlotButtonStyles;
 };

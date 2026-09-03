@@ -144,6 +144,12 @@ void UTinoPlayerWidget::CloseCookingIngredientPicker()
 			InventoryPanel->SetVisibility(ESlateVisibility::Collapsed);
 		}
 		HideInventoryItemPreview();
+
+		if (IsInViewport())
+		{
+			RemoveFromParent();
+			AddToViewport();
+		}
 	}
 }
 
@@ -790,26 +796,12 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 	{
 		for (const FInventoryItemStack& Item : DisplayedInventoryComponent->GetItems())
 		{
-			int32 DisplayCount = Item.Count;
-
-			if (bCookingIngredientPickerOpen && CookingIngredientTarget != nullptr)
-			{
-				for (const FInventoryItemStack& SelectedIngredient : CookingIngredientTarget->GetSelectedIngredients())
-				{
-					if (SelectedIngredient.ItemId == Item.ItemId)
-					{
-						--DisplayCount;
-					}
-				}
-			}
-
-			if (DisplayCount <= 0)
+			if (Item.Count <= 0)
 			{
 				continue;
 			}
 
 			FInventoryItemStack DisplayItem = Item;
-			DisplayItem.Count = DisplayCount;
 			DisplayedInventoryItems.Add(DisplayItem);
 			if (DisplayedInventoryItems.Num() >= MaxInventorySlotCount)
 			{
@@ -1058,6 +1050,7 @@ void UTinoPlayerWidget::HandleInventorySlotClicked(int32 SlotIndex)
 		if (CookingIngredientTarget->AddIngredientFromInventory(DisplayedInventoryItems[SlotIndex]))
 		{
 			RefreshInventorySlots();
+			CloseCookingIngredientPicker();
 		}
 		return;
 	}

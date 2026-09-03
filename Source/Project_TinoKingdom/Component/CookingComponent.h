@@ -46,7 +46,8 @@ public:
 	bool FinishCookingToInventory(
 		UInventoryComponent* InventoryComponent,
 		float MinigameScore,
-		FCookingResultData& OutResult
+		FCookingResultData& OutResult,
+		bool bConsumeIngredients = true
 	);
 	
 protected:
