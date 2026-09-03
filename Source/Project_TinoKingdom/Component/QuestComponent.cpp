@@ -57,10 +57,42 @@ int32 UQuestComponent::GetQuestProgress(const UQuestData* Quest) const
 	}
 
 	// 별도 카운터를 두지 않고 인벤토리를 직접 센다.
-	// 아이템을 버리거나 세이브를 불러와도 표시가 어긋나지 않는다.
-	const int32 Count = InventoryComponent->GetItemCount(Quest->TargetItemId);
+	// 요리는 각각 고유 ItemId를 가지므로 스택의 요리 결과 데이터로 판정한다.
+	int32 Count = 0;
+	for (const FInventoryItemStack& ItemStack : InventoryComponent->GetItems())
+	{
+		if (DoesItemMatchQuestObjective(ItemStack, Quest))
+		{
+			Count += ItemStack.Count;
+		}
+	}
 
 	return FMath::Min(Count, Quest->RequiredCount);
+}
+
+bool UQuestComponent::DoesItemMatchQuestObjective(
+	const FInventoryItemStack& ItemStack,
+	const UQuestData* Quest) const
+{
+	if (!IsValid(Quest) || ItemStack.Count <= 0)
+	{
+		return false;
+	}
+
+	if (Quest->ObjectiveType == EQuestObjectiveType::Item)
+	{
+		return !Quest->TargetItemId.IsNone() && ItemStack.ItemId == Quest->TargetItemId;
+	}
+
+	if (ItemStack.ItemType != EInventoryItemType::Food)
+	{
+		return false;
+	}
+
+	const FCookingResultData& FoodResult = ItemStack.FoodResultData;
+	return FoodResult.IconData.MainTag == Quest->RequiredCookingMainTag
+		&& FoodResult.ResultType == Quest->RequiredCookingResultType
+		&& FoodResult.Quality == Quest->RequiredCookingQuality;
 }
 
 bool UQuestComponent::AcceptQuest(UQuestData* Quest)
@@ -150,7 +182,7 @@ void UQuestComponent::HandleItemAdded(const FInventoryItemStack& ItemStack, int3
 	}
 
 	// 추적 중인 퀘스트와 무관한 아이템이면 계산할 필요가 없다.
-	if (ItemStack.ItemId != TrackedQuest->TargetItemId)
+	if (!DoesItemMatchQuestObjective(ItemStack, TrackedQuest))
 	{
 		return;
 	}
