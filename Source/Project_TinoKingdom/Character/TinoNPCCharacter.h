@@ -93,6 +93,9 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	// 이동 로직이 시작하고 끝날 때 C++에서만 호출한다. 블루프린트에는 직접 노출하지 않는다.
+	void SetNPCMovementEnabled(bool bEnabled);
+
 private:
 	const FTinoNPCQuestStage* FindActiveAdditionalQuestStage(const UQuestComponent* PlayerQuest) const;
 	bool HasAnyConfiguredQuest() const;
