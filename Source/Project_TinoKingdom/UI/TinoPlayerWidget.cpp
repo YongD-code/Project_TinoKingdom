@@ -87,6 +87,12 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 		}
 
 		RefreshInventorySlots();
+
+		// 레벨업 이벤트를 UI가 놓쳤더라도 메뉴를 열 때 실제 포인트와 버튼 상태를 다시 맞춘다.
+		if (const UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get())
+		{
+			HandleStatPointsChanged(ProgressionComponent->GetUnspentStatPoints());
+		}
 	}
 	else
 	{
