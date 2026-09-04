@@ -118,8 +118,8 @@ void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidge
 	{
 		InventoryPanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		InventoryPanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		InventoryPanelSlot->SetPosition(FVector2D(-455.0f, 0.0f));
-		InventoryPanelSlot->SetSize(FVector2D(460.0f, 460.0f));
+		InventoryPanelSlot->SetPosition(FVector2D(-600.0f, 0.0f));
+		InventoryPanelSlot->SetSize(FVector2D(360.0f, 360.0f));
 	}
 
 	RefreshInventorySlots();
@@ -144,6 +144,12 @@ void UTinoPlayerWidget::CloseCookingIngredientPicker()
 			InventoryPanel->SetVisibility(ESlateVisibility::Collapsed);
 		}
 		HideInventoryItemPreview();
+
+		if (IsInViewport())
+		{
+			RemoveFromParent();
+			AddToViewport();
+		}
 	}
 }
 
@@ -790,26 +796,17 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 	{
 		for (const FInventoryItemStack& Item : DisplayedInventoryComponent->GetItems())
 		{
-			int32 DisplayCount = Item.Count;
-
+			FInventoryItemStack DisplayItem = Item;
 			if (bCookingIngredientPickerOpen && CookingIngredientTarget != nullptr)
 			{
-				for (const FInventoryItemStack& SelectedIngredient : CookingIngredientTarget->GetSelectedIngredients())
-				{
-					if (SelectedIngredient.ItemId == Item.ItemId)
-					{
-						--DisplayCount;
-					}
-				}
+				DisplayItem.Count -= CookingIngredientTarget->GetSelectedIngredientCountForItem(DisplayItem.ItemId);
 			}
 
-			if (DisplayCount <= 0)
+			if (DisplayItem.Count <= 0)
 			{
 				continue;
 			}
 
-			FInventoryItemStack DisplayItem = Item;
-			DisplayItem.Count = DisplayCount;
 			DisplayedInventoryItems.Add(DisplayItem);
 			if (DisplayedInventoryItems.Num() >= MaxInventorySlotCount)
 			{
@@ -1053,11 +1050,21 @@ void UTinoPlayerWidget::HandleInventorySlotClicked(int32 SlotIndex)
 		return;
 	}
 
-	if (bCookingIngredientPickerOpen && CookingIngredientTarget != nullptr)
+	if (bCookingIngredientPickerOpen)
 	{
+		if (CookingIngredientTarget == nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Cooking ingredient picker is open, but CookingIngredientTarget is null."));
+			return;
+		}
+
 		if (CookingIngredientTarget->AddIngredientFromInventory(DisplayedInventoryItems[SlotIndex]))
 		{
 			RefreshInventorySlots();
+			if (CookingIngredientTarget != nullptr && CookingIngredientTarget->IsIngredientSelectionFull())
+			{
+				CloseCookingIngredientPicker();
+			}
 		}
 		return;
 	}
@@ -1141,6 +1148,13 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 	{
 		const FCookingResultData& FoodData = Item.FoodResultData;
 		ToolTip += FString::Printf(TEXT("\n품질: %s"), *GetCookingQualityDisplayString(FoodData.Quality));
+
+		if (FoodData.Quality == ECookingQuality::Failed || FoodData.ResultType == ECookingResultType::Failed)
+		{
+			ToolTip += TEXT("\n완전히 실패한 음식 .. 먹으면 배탈이 날것 같다");
+			ToolTip += TEXT("\n우클릭: 먹기");
+			return FText::FromString(ToolTip);
+		}
 
 		if (FoodData.HealAmount > 0.0f)
 		{
@@ -1261,7 +1275,7 @@ bool UTinoPlayerWidget::ApplyFoodEffectsToAbilitySystem(const FCookingResultData
 
 	bool bApplied = false;
 
-	if (FoodData.HealAmount > 0.0f)
+	if (!FMath::IsNearlyZero(FoodData.HealAmount))
 	{
 		const float MaxHealth = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetMaxHealthAttribute());
 		const float CurrentHealth = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetHealthAttribute());

@@ -3,20 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Styling/SlateTypes.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
+#include "Styling/SlateTypes.h"
 #include "CookingWidget.generated.h"
 
 class UCookingComponent;
 class UButton;
 class UCookingMinigameWidget;
-class UContentWidget;
 class UEditableTextBox;
 class UImage;
-class UPanelWidget;
 class UTextBlock;
-class UVerticalBox;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API UCookingWidget : public UUserWidget
@@ -29,9 +26,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	bool AddIngredientFromInventory(const FInventoryItemStack& Ingredient);
-
-	UFUNCTION(BlueprintCallable, Category = "Cooking")
-	bool AddFirstAvailableIngredientFromInventory();
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	void RemoveIngredientAt(int32 Index);
@@ -50,8 +44,14 @@ public:
 
 	const TArray<FInventoryItemStack>& GetSelectedIngredients() const;
 
+	UFUNCTION(BlueprintPure, Category = "Cooking")
+	bool IsIngredientSelectionFull() const;
+
+	int32 GetSelectedIngredientCountForItem(FName ItemId) const;
+
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Cooking")
@@ -62,18 +62,23 @@ protected:
 
 private:
 	void NormalizeCookingWidgetLayering();
+	void ResetCookingSelection();
 	void BroadcastSelectedIngredientsChanged();
+	TArray<FInventoryItemStack> GetCompactSelectedIngredients() const;
 	void UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void SetIngredientSlotText(int32 Index, const FText& Text);
 	void SetIngredientSlotImage(int32 Index, UTexture2D* Icon);
-	void SetIngredientSlotButtonIcon(int32 Index, UTexture2D* Icon);
-	void SetIngredientSlotButtonContent(int32 Index, UTexture2D* Icon);
+	void CacheIngredientSlotButtonStyles();
+	UButton* FindIngredientSlotButton(int32 Index) const;
+	UTextBlock* FindIngredientSlotTextBlock(int32 Index) const;
+	void HandleIngredientSlotClicked(int32 Index);
+	bool AddIngredientToSlot(const FInventoryItemStack& Ingredient, int32 SlotIndex);
+	bool HasIngredientInSlot(int32 SlotIndex) const;
+	int32 FindFirstEmptyIngredientSlot() const;
+	void SyncCookingComponentFromSlots();
 	void SetResultText(const FText& Text);
-	void ToggleIngredientList();
-	void SetIngredientListVisible(bool bVisible);
-	void RefreshIngredientList();
-	void SelectIngredientOption(int32 OptionIndex);
+	void OpenIngredientPicker();
 	void CloseCookingWidget();
 	void OpenCookingMinigame();
 	bool CanStartCooking() const;
@@ -90,28 +95,16 @@ private:
 	void HandleCloseCookingClicked();
 
 	UFUNCTION()
-	void HandleIngredientOption0Clicked();
+	void HandleIngredientSlot0Clicked();
 
 	UFUNCTION()
-	void HandleIngredientOption1Clicked();
+	void HandleIngredientSlot1Clicked();
 
 	UFUNCTION()
-	void HandleIngredientOption2Clicked();
+	void HandleIngredientSlot2Clicked();
 
 	UFUNCTION()
-	void HandleIngredientOption3Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption4Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption5Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption6Clicked();
-
-	UFUNCTION()
-	void HandleIngredientOption7Clicked();
+	void HandleIngredientSlot3Clicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCookingComponent> CookingComponent;
@@ -123,22 +116,22 @@ private:
 	TObjectPtr<UButton> Button_StartCooking;
 
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UEditableTextBox> TextBox_Result;
+	TObjectPtr<UButton> M1;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UVerticalBox> IngredientListBox;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> M2;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> M3;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> M4;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> CloseCookingButton;
 
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UButton>> IngredientOptionButtons;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTextBlock>> IngredientOptionTexts;
-
-	UPROPERTY(Transient)
-	TArray<FInventoryItemStack> IngredientOptions;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UEditableTextBox> TextBox_Result;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "0.0", ClampMax = "100.0"))
 	float DefaultCookingScore = 50.0f;
@@ -149,11 +142,18 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UCookingMinigameWidget> ActiveMinigameWidget;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Cooking", meta = (ClampMin = "1", ClampMax = "8"))
-	int32 MaxIngredientOptionCount = 8;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> IngredientSlotTextBlocks;
 
 	UPROPERTY(Transient)
-	TMap<FName, FButtonStyle> OriginalIngredientSlotButtonStyles;
+	TArray<TObjectPtr<UImage>> IngredientSlotImages;
 
-	bool bIngredientListVisible = false;
+	TArray<FButtonStyle> IngredientSlotButtonStyles;
+
+	UPROPERTY(Transient)
+	TArray<FInventoryItemStack> IngredientSlots;
+
+	uint64 LastIngredientSlotClickFrame = 0;
+	int32 LastIngredientSlotClickIndex = INDEX_NONE;
+	int32 PendingIngredientSlotIndex = INDEX_NONE;
 };
