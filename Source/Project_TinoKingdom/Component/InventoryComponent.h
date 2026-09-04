@@ -17,7 +17,8 @@ enum class EInventoryItemType : uint8
 	Etc UMETA(DisplayName = "Etc"),
 	Material UMETA(DisplayName = "Material"),
 	Food UMETA(DisplayName = "Food"),
-	Equipment UMETA(DisplayName = "Equipment")
+	Equipment UMETA(DisplayName = "Equipment"),
+	Usable UMETA(DisplayName = "Usable")
 };
 
 

@@ -154,9 +154,11 @@ bool UQuestComponent::CompleteQuest(UQuestData* Quest)
 				return false;
 			}
 
-			const EInventoryItemType ItemType = Quest->RewardItemCookingTag == ECookingTag::None
-				? EInventoryItemType::Etc
-				: EInventoryItemType::Material;
+			const EInventoryItemType ItemType = Quest->bRewardItemUsable
+				? EInventoryItemType::Usable
+				: (Quest->RewardItemCookingTag == ECookingTag::None
+					? EInventoryItemType::Etc
+					: EInventoryItemType::Material);
 
 			InventoryComponent->AddItem(
 				Quest->RewardItemId,

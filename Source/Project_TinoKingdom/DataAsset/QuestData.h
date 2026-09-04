@@ -122,6 +122,11 @@ public:
 		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::InventoryItem"))
 	ECookingTag RewardItemCookingTag = ECookingTag::None;
 
+	// 요리가 아닌 일반 보상 아이템을 우클릭으로 소비할 수 있게 한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Item",
+		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::InventoryItem"))
+	bool bRewardItemUsable = false;
+
 	// 요리 보상의 ItemId는 이 데이터로부터 자동 생성하므로 에디터에서 입력하지 않는다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Quest|Reward|Cooking",
 		meta = (EditCondition = "RewardType == EQuestRewardType::Item && RewardItemType == EQuestItemRewardType::Cooking"))

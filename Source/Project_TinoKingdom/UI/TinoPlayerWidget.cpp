@@ -214,7 +214,7 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 
 FReply UTinoPlayerWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && TryUseInventoryFoodAt(HoveredInventorySlotIndex))
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && TryUseInventoryItemAt(HoveredInventorySlotIndex))
 	{
 		return FReply::Handled();
 	}
@@ -1167,6 +1167,10 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 
 		ToolTip += TEXT("\n우클릭: 먹기");
 	}
+	else if (Item.ItemType == EInventoryItemType::Usable)
+	{
+		ToolTip += TEXT("\n우클릭: 사용");
+	}
 
 	return FText::FromString(ToolTip);
 }
@@ -1210,7 +1214,7 @@ void UTinoPlayerWidget::HandleInventorySlotHovered(int32 SlotIndex)
 	HoveredInventorySlotIndex = SlotIndex;
 }
 
-bool UTinoPlayerWidget::TryUseInventoryFoodAt(int32 SlotIndex)
+bool UTinoPlayerWidget::TryUseInventoryItemAt(int32 SlotIndex)
 {
 	if (bCookingIngredientPickerOpen || !DisplayedInventoryItems.IsValidIndex(SlotIndex))
 	{
@@ -1218,7 +1222,7 @@ bool UTinoPlayerWidget::TryUseInventoryFoodAt(int32 SlotIndex)
 	}
 
 	const FInventoryItemStack Item = DisplayedInventoryItems[SlotIndex];
-	if (Item.ItemType != EInventoryItemType::Food)
+	if (Item.ItemType != EInventoryItemType::Food && Item.ItemType != EInventoryItemType::Usable)
 	{
 		return false;
 	}
@@ -1233,17 +1237,28 @@ bool UTinoPlayerWidget::TryUseInventoryFoodAt(int32 SlotIndex)
 		return false;
 	}
 
-	bool bUsed = ApplyFoodEffectsToAbilitySystem(Item.FoodResultData);
-	if (!bUsed)
+	bool bUsed = false;
+	if (Item.ItemType == EInventoryItemType::Usable)
 	{
-		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
-		{
-			bUsed = InventoryComponent->UseFoodItem(Item.ItemId, PlayerCharacter->FindComponentByClass<UStatComponent>());
-		}
+		// 실제 사용 효과는 다음 단계에서 이 소비 직전에 실행한다.
+		bUsed = InventoryComponent->RemoveItem(Item.ItemId, 1);
 	}
 	else
 	{
-		bUsed = InventoryComponent->RemoveItem(Item.ItemId, 1);
+		bUsed = ApplyFoodEffectsToAbilitySystem(Item.FoodResultData);
+		if (!bUsed)
+		{
+			if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
+			{
+				bUsed = InventoryComponent->UseFoodItem(
+					Item.ItemId,
+					PlayerCharacter->FindComponentByClass<UStatComponent>());
+			}
+		}
+		else
+		{
+			bUsed = InventoryComponent->RemoveItem(Item.ItemId, 1);
+		}
 	}
 
 	if (bUsed)
