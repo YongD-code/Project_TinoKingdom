@@ -329,7 +329,7 @@ void UTinoCombatComponent::PerformAttackTrace()
 			TinoCollision::Action, FCollisionShape::MakeSphere(AttackSection.TraceRadius), QueryParams);
 		HitResults.Append(SampleHitResults);
 
-		const FColor DebugColor = SampleHitResults.IsEmpty() ? FColor::Green : FColor::Red;
+		/*const FColor DebugColor = SampleHitResults.IsEmpty() ? FColor::Green : FColor::Red;
 		TinoRuntimeDebugDraw::DrawSweptSphere(
 			World,
 			SweepStart,
@@ -337,7 +337,7 @@ void UTinoCombatComponent::PerformAttackTrace()
 			AttackSection.TraceRadius,
 			DebugColor,
 			0.75f
-		);
+		);*/
 	}
 	
 	PreviousTraceBaseLocation = CurrentTraceBaseLocation;
