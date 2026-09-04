@@ -317,7 +317,7 @@ private:
 	UInventoryComponent* ResolveInventoryComponent() const;
 	UCookingRecipeBookComponent* ResolveCookingRecipeBookComponent() const;
 	void EnsureInventoryPreviewWidget();
-	void ShowInventoryItemPreview(const FInventoryItemStack& Item);
+	void ShowInventoryItemPreview(const FInventoryItemStack& Item, int32 SlotIndex);
 	void HideInventoryItemPreview();
 	FText BuildInventoryItemToolTipText(const FInventoryItemStack& Item) const;
 	UWidget* BuildInventoryItemToolTipWidget(const FInventoryItemStack& Item, int32 SlotIndex);
@@ -427,6 +427,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> InventoryPreviewImage;
+
+	int32 PreviewedInventorySlotIndex = INDEX_NONE;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> RecipeBookPanel;

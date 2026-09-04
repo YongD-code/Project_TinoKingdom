@@ -1112,7 +1112,17 @@ void UTinoPlayerWidget::HandleInventorySlotClicked(int32 SlotIndex)
 		return;
 	}
 
-	ShowInventoryItemPreview(DisplayedInventoryItems[SlotIndex]);
+	const bool bClickedPreviewedSlot =
+		PreviewedInventorySlotIndex == SlotIndex &&
+		InventoryPreviewPanel != nullptr &&
+		InventoryPreviewPanel->GetVisibility() != ESlateVisibility::Collapsed;
+	if (bClickedPreviewedSlot)
+	{
+		HideInventoryItemPreview();
+		return;
+	}
+
+	ShowInventoryItemPreview(DisplayedInventoryItems[SlotIndex], SlotIndex);
 }
 
 UInventoryComponent* UTinoPlayerWidget::ResolveInventoryComponent() const
@@ -1160,15 +1170,15 @@ void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
 	UCanvasPanelSlot* PreviewSlot = RootCanvas->AddChildToCanvas(InventoryPreviewPanel);
 	if (PreviewSlot != nullptr)
 	{
-		PreviewSlot->SetAnchors(FAnchors(1.0f, 0.5f, 1.0f, 0.5f));
+		PreviewSlot->SetAnchors(FAnchors(0.0f, 0.5f, 0.0f, 0.5f));
 		PreviewSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		PreviewSlot->SetPosition(FVector2D(-210.0f, -2.0f));
+		PreviewSlot->SetPosition(FVector2D(180.0f, -2.0f));
 		PreviewSlot->SetSize(FVector2D(360.0f, 360.0f));
 		PreviewSlot->SetZOrder(20);
 	}
 }
 
-void UTinoPlayerWidget::ShowInventoryItemPreview(const FInventoryItemStack& Item)
+void UTinoPlayerWidget::ShowInventoryItemPreview(const FInventoryItemStack& Item, int32 SlotIndex)
 {
 	EnsureInventoryPreviewWidget();
 	if (InventoryPreviewPanel == nullptr || InventoryPreviewImage == nullptr || Item.Icon == nullptr)
@@ -1178,11 +1188,13 @@ void UTinoPlayerWidget::ShowInventoryItemPreview(const FInventoryItemStack& Item
 	}
 
 	InventoryPreviewImage->SetBrushFromTexture(Item.Icon, true);
+	PreviewedInventorySlotIndex = SlotIndex;
 	InventoryPreviewPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UTinoPlayerWidget::HideInventoryItemPreview()
 {
+	PreviewedInventorySlotIndex = INDEX_NONE;
 	if (InventoryPreviewPanel != nullptr)
 	{
 		InventoryPreviewPanel->SetVisibility(ESlateVisibility::Collapsed);
