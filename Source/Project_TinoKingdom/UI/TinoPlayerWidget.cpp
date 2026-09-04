@@ -1149,6 +1149,13 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 		const FCookingResultData& FoodData = Item.FoodResultData;
 		ToolTip += FString::Printf(TEXT("\n품질: %s"), *GetCookingQualityDisplayString(FoodData.Quality));
 
+		if (FoodData.Quality == ECookingQuality::Failed || FoodData.ResultType == ECookingResultType::Failed)
+		{
+			ToolTip += TEXT("\n완전히 실패한 음식 .. 먹으면 배탈이 날것 같다");
+			ToolTip += TEXT("\n우클릭: 먹기");
+			return FText::FromString(ToolTip);
+		}
+
 		if (FoodData.HealAmount > 0.0f)
 		{
 			ToolTip += FString::Printf(TEXT("\n체력 회복 +%d"), FMath::RoundToInt(FoodData.HealAmount));
@@ -1268,7 +1275,7 @@ bool UTinoPlayerWidget::ApplyFoodEffectsToAbilitySystem(const FCookingResultData
 
 	bool bApplied = false;
 
-	if (FoodData.HealAmount > 0.0f)
+	if (!FMath::IsNearlyZero(FoodData.HealAmount))
 	{
 		const float MaxHealth = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetMaxHealthAttribute());
 		const float CurrentHealth = AbilitySystemComponent->GetNumericAttribute(UTinoAttributeSet::GetHealthAttribute());

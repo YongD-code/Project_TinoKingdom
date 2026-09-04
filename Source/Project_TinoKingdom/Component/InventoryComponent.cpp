@@ -149,7 +149,7 @@ bool UInventoryComponent::UseFoodItem(FName ItemId, UStatComponent* TargetStatCo
 
 		const FCookingResultData& FoodData = ItemStack.FoodResultData;
 
-		if (FoodData.HealAmount > 0.0f)
+		if (!FMath::IsNearlyZero(FoodData.HealAmount))
 		{
 			TargetStatComponent->Heal(FoodData.HealAmount);
 		}

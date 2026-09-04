@@ -141,6 +141,12 @@ void UCookingMinigameWidget::NativeTick(const FGeometry& MyGeometry, float InDel
 	OnMinigameUpdated(PlayerBarPosition, TargetPosition, MinigameScore, GetRemainingTime());
 	RefreshDefaultMinigameVisuals();
 
+	if (MinigameScore <= 0.0f)
+	{
+		FinishCookingMinigame();
+		return;
+	}
+
 	if (ElapsedTime >= Duration)
 	{
 		FinishCookingMinigame();

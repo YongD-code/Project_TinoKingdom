@@ -270,7 +270,7 @@ const TCHAR* GetCookingChunkAssetPath(ECookingTag Tag)
 	case ECookingTag::Fish:
 		return TEXT("/Game/Cooking/Assets/Chunk_Fish.Chunk_Fish");
 	case ECookingTag::Slime:
-		return TEXT("/Game/Cooking/Assets/Chunk_SlimeBubble.Chunk_SlimeBubble");
+		return TEXT("/Game/Cooking/Assets/Topping_SlimeDrop.Topping_SlimeDrop");
 	case ECookingTag::Mushroom:
 		return TEXT("/Game/Cooking/Assets/Chunk_MushroomSlice.Chunk_MushroomSlice");
 	case ECookingTag::Meat:
@@ -441,9 +441,10 @@ void BlendIngredientPieces(
 	const float Opacity = bMainIngredient
 		? FMath::Clamp(0.66f + Ratio * 0.28f, 0.0f, 0.94f)
 		: FMath::Clamp(0.74f + Ratio * 0.22f, 0.0f, 0.96f);
-	const float BaseScale = bMainIngredient
+	const float RawBaseScale = bMainIngredient
 		? FMath::Lerp(0.17f, 0.27f, Ratio)
 		: FMath::Lerp(0.13f, 0.20f, Ratio);
+	const float BaseScale = bMainIngredient ? RawBaseScale : RawBaseScale * 1.5f;
 	const float PieceScaleMultiplier = GetCookingPieceScaleMultiplier(Tag, bMainIngredient);
 	const FCookingPlacementBounds Bounds = GetCookingPlacementBounds(ResultType, bMainIngredient);
 
@@ -489,7 +490,7 @@ void BlendIngredientPieces(
 
 		UsedPositions.Add(Position);
 
-		const float ScaleJitter = FMath::FRandRange(0.86f, 1.12f);
+		const float ScaleJitter = FMath::FRandRange(0.70f, 1.30f);
 		const float EdgeScale = bMainIngredient ? FMath::Lerp(1.04f, 0.88f, Index / static_cast<float>(FMath::Max(PieceCount - 1, 1))) : 1.0f;
 		const float RotationJitter = bMainIngredient
 			? FMath::FRandRange(-14.0f, 14.0f)
@@ -917,10 +918,31 @@ FCookingResultData UCookingComponent::FinishCooking(float MinigameScore)
 
 	if (Result.ResultType == ECookingResultType::Failed)
 	{
+		Result.Quality = ECookingQuality::Failed;
+		Result.ResultName = FText::FromString(TEXT("실패한 요리"));
+		Result.ResultItemId = FName(TEXT("Food_Failed"));
+		Result.HealAmount = -10.0f;
+		Result.StaminaAmount = 0.0f;
+		Result.AttackBuffAmount = 0.0f;
+		Result.DefenseBuffAmount = 0.0f;
+		Result.IconData.BaseType = ECookingResultType::Failed;
 		return Result;
 	}
 
 	Result.Quality = GetQualityByMinigameScore(MinigameScore);
+
+	if (Result.Quality == ECookingQuality::Failed)
+	{
+		Result.ResultType = ECookingResultType::Failed;
+		Result.ResultName = FText::FromString(TEXT("실패한 요리"));
+		Result.ResultItemId = FName(TEXT("Food_Failed"));
+		Result.HealAmount = -10.0f;
+		Result.StaminaAmount = 0.0f;
+		Result.AttackBuffAmount = 0.0f;
+		Result.DefenseBuffAmount = 0.0f;
+		Result.IconData.BaseType = ECookingResultType::Failed;
+		return Result;
+	}
 
 	const float QualityMultiplier = GetQualityMultiplier(Result.Quality);
 
@@ -985,10 +1007,6 @@ bool UCookingComponent::FinishCookingToInventory(
 	}
 
 	OutResult = FinishCooking(MinigameScore);
-	if (OutResult.ResultType == ECookingResultType::Failed || OutResult.Quality == ECookingQuality::Failed)
-	{
-		return false;
-	}
 
 	OutResult.ResultItemId = FName(*FString::Printf(
 		TEXT("%s_%s"),
