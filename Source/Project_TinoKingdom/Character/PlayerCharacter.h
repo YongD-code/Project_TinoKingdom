@@ -111,6 +111,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	void ToggleCookingMenu();
 
+	UFUNCTION(BlueprintPure, Category = "Cooking")
+	bool IsNearCookingPot() const;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
 	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;
@@ -255,6 +258,15 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking")
 	TObjectPtr<UCookingRecipeBookComponent> CookingRecipeBookComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cooking|Interaction", meta = (ClampMin = "0.0"))
+	float CookingPotInteractionRadius = 260.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cooking|Interaction")
+	FName CookingPotActorTag = TEXT("CookingPot");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cooking|Interaction")
+	FString CookingPotClassNameKeyword = TEXT("CookingPot");
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	TObjectPtr<UTinoStateComponent> CharacterStateComponent;
