@@ -45,6 +45,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Quest")
 	UQuestData* GetTrackedQuest() const { return TrackedQuest; }
 
+	// GameInstance가 OpenLevel 사이에서 퀘스트 진행 상태를 전달할 때 사용한다.
+	const TMap<TObjectPtr<UQuestData>, EQuestState>& GetQuestStatesForTravel() const { return QuestStates; }
+	void RestoreStateForTravel(
+		const TMap<TObjectPtr<UQuestData>, EQuestState>& SavedQuestStates,
+		UQuestData* SavedTrackedQuest);
+
 	UPROPERTY(BlueprintAssignable, Category = "Quest")
 	FOnQuestAccepted OnQuestAccepted;
 

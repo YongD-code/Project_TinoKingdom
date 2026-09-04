@@ -39,7 +39,12 @@ public:
 	FOnCookingMinigameFinished OnCookingMinigameFinished;
 
 protected:
+	virtual void NativeOnInitialized() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual FReply NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Cooking|Minigame")
 	void OnMinigameUpdated(
@@ -56,7 +61,13 @@ protected:
 	float Duration = 10.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.0"))
-	float TargetMoveSpeed = 0.45f;
+	float TargetMoveSpeed = 0.55f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.1"))
+	float TargetDirectionChangeMinTime = 0.45f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.1"))
+	float TargetDirectionChangeMaxTime = 1.35f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooking|Minigame", meta = (ClampMin = "0.01", ClampMax = "1.0"))
 	float TargetZoneSize = 0.22f;
@@ -92,7 +103,35 @@ protected:
 	float ElapsedTime = 0.0f;
 
 private:
+	void BuildDefaultMinigameVisuals();
+	void RefreshDefaultMinigameVisuals();
+	void ResetTargetDirectionTimer();
 	bool IsPlayerBarInTargetZone() const;
 
-	bool bTargetMovingUp = true;
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> InstructionTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> ScoreTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> TargetLabelTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> PlayerLabelTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> TimeLabelTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UProgressBar> TargetProgressBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UProgressBar> PlayerProgressBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UProgressBar> TimeProgressBar;
+
+	float TargetDirection = 1.0f;
+	float TargetDirectionChangeTimer = 0.0f;
 };

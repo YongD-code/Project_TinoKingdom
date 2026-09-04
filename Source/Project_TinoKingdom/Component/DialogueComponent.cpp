@@ -393,7 +393,8 @@ void UDialogueComponent::ResolveQuest(ATinoNPCCharacter* NPC)
 		return;
 	}
 
-	UQuestData* Quest = NPC->GetQuestToGrant();
+	// NPC가 가진 전체 퀘스트 체인 중 플레이어가 현재 진행해야 할 한 단계를 고른다.
+	UQuestData* Quest = NPC->GetActiveQuest(QuestComponent);
 
 	if (!IsValid(Quest))
 	{

@@ -20,6 +20,44 @@
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 
+namespace
+{
+ECookingTag InferCookingTagFromDrop(const FName ItemId, const FText& ItemName)
+{
+	const FString IdString = ItemId.ToString();
+	const FString NameString = ItemName.ToString();
+	const FString SearchText = IdString + TEXT(" ") + NameString;
+
+	if (SearchText.Contains(TEXT("Slime")) || SearchText.Contains(TEXT("슬라임")))
+	{
+		return ECookingTag::Slime;
+	}
+	if (SearchText.Contains(TEXT("WaterBest")) || SearchText.Contains(TEXT("Fish")) || SearchText.Contains(TEXT("Fin")) ||
+		SearchText.Contains(TEXT("물짱")) || SearchText.Contains(TEXT("생선")) || SearchText.Contains(TEXT("지느러미")))
+	{
+		return ECookingTag::Fish;
+	}
+	if (SearchText.Contains(TEXT("Mushroom")) || SearchText.Contains(TEXT("버섯")))
+	{
+		return ECookingTag::Mushroom;
+	}
+	if (SearchText.Contains(TEXT("Meat")) || SearchText.Contains(TEXT("고기")))
+	{
+		return ECookingTag::Meat;
+	}
+	if (SearchText.Contains(TEXT("Herb")) || SearchText.Contains(TEXT("약초")))
+	{
+		return ECookingTag::Herb;
+	}
+	if (SearchText.Contains(TEXT("Wood")) || SearchText.Contains(TEXT("나무")))
+	{
+		return ECookingTag::Wood;
+	}
+
+	return ECookingTag::None;
+}
+}
+
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -209,7 +247,18 @@ void AEnemyCharacter::HandleDead()
 		{
 			if (UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 			{
-				InventoryComponent->AddItem(DropItemId, DropItemName, DropItemCount, DropItemIcon	);
+				const ECookingTag DropCookingTag = InferCookingTagFromDrop(DropItemId, DropItemName);
+				const EInventoryItemType DropItemType =
+					DropCookingTag == ECookingTag::None ? EInventoryItemType::Etc : EInventoryItemType::Material;
+
+				InventoryComponent->AddItem(
+					DropItemId,
+					DropItemName,
+					DropItemCount,
+					DropItemIcon,
+					DropItemType,
+					DropCookingTag
+				);
 			}
 		}
 	}

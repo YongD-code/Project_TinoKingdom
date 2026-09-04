@@ -4,17 +4,24 @@
 #include "PlayerCharacter.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameplayEffect.h"
 #include "InputActionValue.h"
 #include "Kismet/GameplayStatics.h"
+#include "LevelSequence.h"
+#include "LevelSequenceActor.h"
+#include "LevelSequencePlayer.h"
 #include "Math/RotationMatrix.h"
+#include "MovieSceneSequencePlaybackSettings.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
+#include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
@@ -26,11 +33,13 @@
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "TinoNPCCharacter.h"
 #include "DrawDebugHelpers.h"
+#include "TimerManager.h"
 #include "Engine/OverlapResult.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
+#include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 
@@ -79,6 +88,7 @@ APlayerCharacter::APlayerCharacter()
 	EquipmentComponent = CreateDefaultSubobject<UTinoEquipmentComponent>(TEXT("EquipmentComponent"));
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	CookingComponent = CreateDefaultSubobject<UCookingComponent>(TEXT("CookingComponent"));
 	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
 	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
 	TargetingComponent = CreateDefaultSubobject<UTargetingComponent>(TEXT("TargetingComponent"));
@@ -108,6 +118,8 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitialSpawnTransform = GetActorTransform();
+	
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	const UTinoAttributeSet* RegisteredAttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
 
@@ -134,6 +146,12 @@ void APlayerCharacter::BeginPlay()
 			AttributeSet->GetAttackPower(),
 			AttributeSet->GetDefense()
 		);
+	}
+
+	// OpenLevel 직전에 GameInstance에 저장한 상태가 있으면 기본 능력치 초기화 다음에 덮어쓴다.
+	if (UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance()))
+	{
+		TinoGameInstance->RestorePlayerState(this);
 	}
 	
 	DefaultCameraArmLength = CameraBoom->TargetArmLength;
@@ -165,10 +183,22 @@ void APlayerCharacter::BeginPlay()
 	// 숨겨진 Driver Mesh의 포즈를 보이는 Body Mesh에 전달한다.
 	// Body Mesh는 별도로 포즈를 계산하지 않고 Leader Pose를 따라간다.
 	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (IsValid(PlayerController->PlayerCameraManager) && StartupFadeInDuration > 0.f)
+		{
+			PlayerController->PlayerCameraManager->SetManualCameraFade(1.f, FLinearColor::Black, false);
+			PlayerController->PlayerCameraManager->StartCameraFade(1.f, 0.f, StartupFadeInDuration, FLinearColor::Black, false, false);
+		}
+	}
 }
 
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	ClearRespawnSequence();
+	
 	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
 	StopSlowMotion();
 	StopAiming();
@@ -277,11 +307,49 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 	EnhancedInputComponent->BindAction(TargetingAction, ETriggerEvent::Started, this, &APlayerCharacter::RequestTargeting);
 
+	// 새 Input Action이 아직 지정되지 않은 블루프린트도 안전하게 실행될 수 있게 선택적으로 바인딩한다.
+	if (OpenSecretPlaceAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(
+			OpenSecretPlaceAction,
+			ETriggerEvent::Started,
+			this,
+			&APlayerCharacter::OpenSecretPlace);
+	}
+
 	// 대화 시작은 기본 컨텍스트에, 진행과 취소는 대화 컨텍스트에 매핑되어 있다.
 	EnhancedInputComponent->BindAction(DialInteractAction, ETriggerEvent::Started, this, &APlayerCharacter::Interact);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueAdvancePressed);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Completed, this, &APlayerCharacter::DialogueAdvanceReleased);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Canceled, this, &APlayerCharacter::DialogueAdvanceReleased);
+}
+
+void APlayerCharacter::OpenSecretPlace()
+{
+	if (bLevelTravelInProgress || bDeathHandled || SecretPlaceLevelName.IsNone())
+	{
+		return;
+	}
+
+	if (IsValid(DialogueComponent) && DialogueComponent->IsInDialogue())
+	{
+		return;
+	}
+
+	UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance());
+	if (!ensureMsgf(TinoGameInstance != nullptr,
+		TEXT("Project Settings의 GameInstance Class가 TinoGameInstance로 지정되지 않았습니다.")))
+	{
+		return;
+	}
+
+	if (!TinoGameInstance->CapturePlayerState(this))
+	{
+		return;
+	}
+
+	bLevelTravelInProgress = true;
+	UGameplayStatics::OpenLevel(this, SecretPlaceLevelName);
 }
 
 void APlayerCharacter::Interact()
@@ -358,6 +426,17 @@ void APlayerCharacter::ToggleCharacterMenu()
 {
 	ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController());
 	PlayerController->ToggleCharacterMenu();
+}
+
+void APlayerCharacter::ToggleCookingMenu()
+{
+	ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController());
+	if (PlayerController == nullptr)
+	{
+		return;
+	}
+
+	PlayerController->ToggleCookingMenu(CookingComponent, InventoryComponent);
 }
 
 void APlayerCharacter::StartRunning()
@@ -790,8 +869,131 @@ bool APlayerCharacter::InitializeDefaultAttributes()
 	return true;
 }
 
+void APlayerCharacter::RespawnAtInitialTransform()
+{
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	ClearRespawnSequence();
+	ReactionComponent->ResetDeathReaction();
+	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
+
+	if (AController* OwningController = GetController())
+	{
+		OwningController->SetControlRotation(InitialSpawnTransform.GetRotation().Rotator());
+	}
+
+	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
+
+	if (!IsValid(RespawnSequence))
+	{
+		FinishRespawn(false);
+		return;
+	}
+
+	FMovieSceneSequencePlaybackSettings PlaybackSettings;
+	PlaybackSettings.bDisableMovementInput = true;
+	PlaybackSettings.bDisableLookAtInput = true;
+	PlaybackSettings.FinishCompletionStateOverride = EMovieSceneCompletionModeOverride::ForceRestoreState;
+
+	ALevelSequenceActor* NewSequenceActor = nullptr;
+	ULevelSequencePlayer* NewSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
+		GetWorld(), RespawnSequence, PlaybackSettings, NewSequenceActor);
+	if (!IsValid(NewSequencePlayer) || !IsValid(NewSequenceActor))
+	{
+		if (IsValid(NewSequenceActor))
+		{
+			NewSequenceActor->Destroy();
+		}
+		FinishRespawn(false);
+		return;
+	}
+
+	RespawnSequencePlayer = NewSequencePlayer;
+	RespawnSequenceActor = NewSequenceActor;
+	RespawnSequencePlayer->OnFinished.AddUniqueDynamic(
+		this, &APlayerCharacter::HandleRespawnSequenceFinished);
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetPlayerUIVisible(false);
+	}
+	RespawnSequencePlayer->Play();
+}
+
+void APlayerCharacter::HandleRespawnSequenceFinished()
+{
+	if (RespawnSequencePlayer != nullptr)
+	{
+		RespawnSequencePlayer->OnFinished.RemoveDynamic(this, &APlayerCharacter::HandleRespawnSequenceFinished);
+		RespawnSequencePlayer = nullptr;
+	}
+	if (IsValid(RespawnSequenceActor))
+	{
+		RespawnSequenceActor->Destroy();
+	}
+	RespawnSequenceActor = nullptr;
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetPlayerUIVisible(true);
+	}
+	FinishRespawn(true);
+}
+
+void APlayerCharacter::FinishRespawn(bool bFadeInFromBlack)
+{
+	// 시퀀스의 Transform/Animation 트랙이 남긴 값을 제거하고 정확한 부활 위치를 보장한다.
+	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
+	CharacterStateComponent->RemoveStateTag(TinoGameplayTags::State_Dead);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		MovementComponent->SetMovementMode(MOVE_Walking);
+	}
+
+	ConsumeMovementInputVector();
+	bRunning = false;
+	StaminaDelayTime = 0.f;
+	bDeathHandled = false;
+	UpdateRotationMode();
+	UpdateMovementSpeed();
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (bFadeInFromBlack && IsValid(PlayerController->PlayerCameraManager) && RespawnFadeInDuration > 0.f)
+		{
+			PlayerController->PlayerCameraManager->SetManualCameraFade(1.f, FLinearColor::Black, false);
+			PlayerController->SetViewTarget(this);
+			PlayerController->PlayerCameraManager->StartCameraFade(1.f, 0.f, RespawnFadeInDuration, FLinearColor::Black, false, false);
+		}
+		else
+		{
+			PlayerController->SetViewTarget(this);
+		}
+	}
+}
+
+void APlayerCharacter::ClearRespawnSequence()
+{
+	if (RespawnSequencePlayer != nullptr)
+	{
+		RespawnSequencePlayer->OnFinished.RemoveDynamic(this, &APlayerCharacter::HandleRespawnSequenceFinished);
+		RespawnSequencePlayer->Stop();
+		RespawnSequencePlayer = nullptr;
+	}
+	if (IsValid(RespawnSequenceActor))
+	{
+		RespawnSequenceActor->Destroy();
+	}
+	RespawnSequenceActor = nullptr;
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetPlayerUIVisible(true);
+	}
+}
+
 float APlayerCharacter::ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator,
-	AActor* DamageCauser)
+                                                  AActor* DamageCauser)
 {
 	if (DamageAmount <= 0.f)
 	{
@@ -857,6 +1059,15 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ReactionComponent->PlayDeathReaction(DamageCauser);
+	
+	if (RespawnDelay <= 0.f)
+	{
+		RespawnAtInitialTransform();
+		return;
+	}
+	
+	GetWorldTimerManager().SetTimer(RespawnTimerHandle, this,
+		&APlayerCharacter::RespawnAtInitialTransform, RespawnDelay, false);
 }
 
 void APlayerCharacter::HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget)

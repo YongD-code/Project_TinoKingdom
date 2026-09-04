@@ -42,6 +42,8 @@ public:
 	bool IsReacting() const { return bIsReacting; }
 	
 	void SetReactionSet(const FEquipmentReactionSet& ReactionSet);
+	
+	void ResetDeathReaction();
 
 protected:
 	// Called when the game starts

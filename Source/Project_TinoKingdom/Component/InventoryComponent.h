@@ -99,6 +99,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	const TArray<FInventoryItemStack>& GetItems() const { return Items; }
 
+	// 맵 이동 직전 저장한 인벤토리 스택으로 교체한다.
+	void RestoreItemsForTravel(const TArray<FInventoryItemStack>& SavedItems);
+
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnInventoryItemAdded OnItemAdded;
 
