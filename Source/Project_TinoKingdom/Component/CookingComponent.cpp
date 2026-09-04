@@ -921,8 +921,7 @@ FCookingResultData UCookingComponent::FinishCooking(float MinigameScore)
 bool UCookingComponent::FinishCookingToInventory(
 	UInventoryComponent* InventoryComponent,
 	float MinigameScore,
-	FCookingResultData& OutResult,
-	bool bConsumeIngredients
+	FCookingResultData& OutResult
 )
 {
 	if (InventoryComponent == nullptr || !CanFinishCooking())
@@ -941,19 +940,16 @@ bool UCookingComponent::FinishCookingToInventory(
 		RequiredItemCounts.FindOrAdd(Ingredient.ItemId) += 1;
 	}
 
-	if (bConsumeIngredients)
+	for (const TPair<FName, int32>& RequiredItemCount : RequiredItemCounts)
 	{
-		for (const TPair<FName, int32>& RequiredItemCount : RequiredItemCounts)
+		if (!InventoryComponent->HasItem(RequiredItemCount.Key, RequiredItemCount.Value))
 		{
-			if (!InventoryComponent->HasItem(RequiredItemCount.Key, RequiredItemCount.Value))
-			{
-				OutResult = FCookingResultData();
-				OutResult.ResultType = ECookingResultType::Failed;
-				OutResult.Quality = ECookingQuality::Failed;
-				OutResult.ResultName = FText::FromString(TEXT("재료가 부족합니다"));
-				OutResult.ResultItemId = FName(TEXT("Food_NotEnoughIngredients"));
-				return false;
-			}
+			OutResult = FCookingResultData();
+			OutResult.ResultType = ECookingResultType::Failed;
+			OutResult.Quality = ECookingQuality::Failed;
+			OutResult.ResultName = FText::FromString(TEXT("재료가 부족합니다"));
+			OutResult.ResultItemId = FName(TEXT("Food_NotEnoughIngredients"));
+			return false;
 		}
 	}
 
@@ -971,12 +967,9 @@ bool UCookingComponent::FinishCookingToInventory(
 
 	UTexture2D* ResultIcon = CreateResultIconTexture(OutResult);
 
-	if (bConsumeIngredients)
+	for (const TPair<FName, int32>& RequiredItemCount : RequiredItemCounts)
 	{
-		for (const TPair<FName, int32>& RequiredItemCount : RequiredItemCounts)
-		{
-			InventoryComponent->RemoveItem(RequiredItemCount.Key, RequiredItemCount.Value);
-		}
+		InventoryComponent->RemoveItem(RequiredItemCount.Key, RequiredItemCount.Value);
 	}
 
 	InventoryComponent->AddItem(

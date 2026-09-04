@@ -1045,12 +1045,21 @@ void UTinoPlayerWidget::HandleInventorySlotClicked(int32 SlotIndex)
 		return;
 	}
 
-	if (bCookingIngredientPickerOpen && CookingIngredientTarget != nullptr)
+	if (bCookingIngredientPickerOpen)
 	{
+		if (CookingIngredientTarget == nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Cooking ingredient picker is open, but CookingIngredientTarget is null."));
+			return;
+		}
+
 		if (CookingIngredientTarget->AddIngredientFromInventory(DisplayedInventoryItems[SlotIndex]))
 		{
 			RefreshInventorySlots();
-			CloseCookingIngredientPicker();
+			if (CookingIngredientTarget != nullptr && CookingIngredientTarget->IsIngredientSelectionFull())
+			{
+				CloseCookingIngredientPicker();
+			}
 		}
 		return;
 	}

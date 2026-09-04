@@ -44,6 +44,9 @@ public:
 
 	const TArray<FInventoryItemStack>& GetSelectedIngredients() const;
 
+	UFUNCTION(BlueprintPure, Category = "Cooking")
+	bool IsIngredientSelectionFull() const;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
@@ -58,6 +61,7 @@ protected:
 private:
 	void NormalizeCookingWidgetLayering();
 	void ResetCookingSelection();
+	void ResetStaleUnreservedSelection();
 	void BroadcastSelectedIngredientsChanged();
 	void UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
@@ -66,8 +70,7 @@ private:
 	void CacheIngredientSlotButtonStyles();
 	UButton* FindIngredientSlotButton(int32 Index) const;
 	UTextBlock* FindIngredientSlotTextBlock(int32 Index) const;
-	void RestoreReservedIngredientAt(int32 Index);
-	void RestoreReservedIngredients();
+	void HandleIngredientSlotClicked(int32 Index);
 	void SetResultText(const FText& Text);
 	void OpenIngredientPicker();
 	void CloseCookingWidget();
@@ -85,6 +88,18 @@ private:
 	UFUNCTION()
 	void HandleCloseCookingClicked();
 
+	UFUNCTION()
+	void HandleIngredientSlot0Clicked();
+
+	UFUNCTION()
+	void HandleIngredientSlot1Clicked();
+
+	UFUNCTION()
+	void HandleIngredientSlot2Clicked();
+
+	UFUNCTION()
+	void HandleIngredientSlot3Clicked();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UCookingComponent> CookingComponent;
 
@@ -93,6 +108,18 @@ private:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> Button_StartCooking;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> M1;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> M2;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> M3;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> M4;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> CloseCookingButton;
@@ -110,13 +137,13 @@ private:
 	TObjectPtr<UCookingMinigameWidget> ActiveMinigameWidget;
 
 	UPROPERTY(Transient)
-	TArray<FInventoryItemStack> ReservedIngredients;
-
-	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> IngredientSlotTextBlocks;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UImage>> IngredientSlotImages;
 
 	TArray<FButtonStyle> IngredientSlotButtonStyles;
+
+	uint64 LastIngredientSlotClickFrame = 0;
+	int32 LastIngredientSlotClickIndex = INDEX_NONE;
 };
