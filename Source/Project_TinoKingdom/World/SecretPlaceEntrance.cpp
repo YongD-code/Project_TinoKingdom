@@ -36,7 +36,7 @@ ASecretPlaceEntrance::ASecretPlaceEntrance()
 	EntranceEffect->SetAutoActivate(false);
 
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> DefaultEntranceEffect(
-		TEXT("/Game/SplineEffect2/Niagara/NS_Spline3.NS_Spline3"));
+		TEXT("/Game/SplineEffect2/Niagara/NS_SecretPlaceBeam.NS_SecretPlaceBeam"));
 	if (DefaultEntranceEffect.Succeeded())
 	{
 		EntranceNiagaraSystem = DefaultEntranceEffect.Object;
