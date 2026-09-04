@@ -796,12 +796,17 @@ void UTinoPlayerWidget::RefreshInventorySlots()
 	{
 		for (const FInventoryItemStack& Item : DisplayedInventoryComponent->GetItems())
 		{
-			if (Item.Count <= 0)
+			FInventoryItemStack DisplayItem = Item;
+			if (bCookingIngredientPickerOpen && CookingIngredientTarget != nullptr)
+			{
+				DisplayItem.Count -= CookingIngredientTarget->GetSelectedIngredientCountForItem(DisplayItem.ItemId);
+			}
+
+			if (DisplayItem.Count <= 0)
 			{
 				continue;
 			}
 
-			FInventoryItemStack DisplayItem = Item;
 			DisplayedInventoryItems.Add(DisplayItem);
 			if (DisplayedInventoryItems.Num() >= MaxInventorySlotCount)
 			{

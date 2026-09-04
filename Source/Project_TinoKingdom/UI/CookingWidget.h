@@ -47,6 +47,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	bool IsIngredientSelectionFull() const;
 
+	int32 GetSelectedIngredientCountForItem(FName ItemId) const;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
@@ -61,8 +63,8 @@ protected:
 private:
 	void NormalizeCookingWidgetLayering();
 	void ResetCookingSelection();
-	void ResetStaleUnreservedSelection();
 	void BroadcastSelectedIngredientsChanged();
+	TArray<FInventoryItemStack> GetCompactSelectedIngredients() const;
 	void UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void UpdateIngredientSlotImages(const TArray<FInventoryItemStack>& SelectedIngredients);
 	void SetIngredientSlotText(int32 Index, const FText& Text);
@@ -71,6 +73,10 @@ private:
 	UButton* FindIngredientSlotButton(int32 Index) const;
 	UTextBlock* FindIngredientSlotTextBlock(int32 Index) const;
 	void HandleIngredientSlotClicked(int32 Index);
+	bool AddIngredientToSlot(const FInventoryItemStack& Ingredient, int32 SlotIndex);
+	bool HasIngredientInSlot(int32 SlotIndex) const;
+	int32 FindFirstEmptyIngredientSlot() const;
+	void SyncCookingComponentFromSlots();
 	void SetResultText(const FText& Text);
 	void OpenIngredientPicker();
 	void CloseCookingWidget();
@@ -144,6 +150,10 @@ private:
 
 	TArray<FButtonStyle> IngredientSlotButtonStyles;
 
+	UPROPERTY(Transient)
+	TArray<FInventoryItemStack> IngredientSlots;
+
 	uint64 LastIngredientSlotClickFrame = 0;
 	int32 LastIngredientSlotClickIndex = INDEX_NONE;
+	int32 PendingIngredientSlotIndex = INDEX_NONE;
 };

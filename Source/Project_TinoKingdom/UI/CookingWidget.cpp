@@ -178,27 +178,16 @@ void UCookingWidget::InitializeCookingWidget(
 
 void UCookingWidget::ResetCookingSelection()
 {
+	IngredientSlots.SetNum(4);
+	for (FInventoryItemStack& IngredientSlot : IngredientSlots)
+	{
+		IngredientSlot = FInventoryItemStack();
+	}
+	PendingIngredientSlotIndex = INDEX_NONE;
+
 	if (CookingComponent == nullptr)
 	{
 		BroadcastSelectedIngredientsChanged();
-		return;
-	}
-
-	CookingComponent->ClearCookingIngredients();
-	BroadcastSelectedIngredientsChanged();
-	RefreshLinkedInventoryPicker();
-	SetResultText(FText::GetEmpty());
-}
-
-void UCookingWidget::ResetStaleUnreservedSelection()
-{
-	if (CookingComponent == nullptr)
-	{
-		return;
-	}
-
-	if (CookingComponent->GetSelectedIngredients().Num() <= 0)
-	{
 		return;
 	}
 
@@ -214,8 +203,6 @@ bool UCookingWidget::AddIngredientFromInventory(const FInventoryItemStack& Ingre
 	{
 		return false;
 	}
-
-	ResetStaleUnreservedSelection();
 
 	FInventoryItemStack CookingIngredient;
 	if (!MakeCookingIngredient(Ingredient, CookingIngredient))
@@ -245,9 +232,13 @@ bool UCookingWidget::AddIngredientFromInventory(const FInventoryItemStack& Ingre
 		}
 	}
 
-	const bool bAdded = CookingComponent->AddCookingIngredient(CookingIngredient);
-	if (bAdded)
+	const int32 TargetSlotIndex = IngredientSlots.IsValidIndex(PendingIngredientSlotIndex) && !HasIngredientInSlot(PendingIngredientSlotIndex)
+		? PendingIngredientSlotIndex
+		: FindFirstEmptyIngredientSlot();
+
+	if (AddIngredientToSlot(CookingIngredient, TargetSlotIndex))
 	{
+		PendingIngredientSlotIndex = INDEX_NONE;
 		SetResultText(FText::GetEmpty());
 		BroadcastSelectedIngredientsChanged();
 		RefreshLinkedInventoryPicker();
@@ -274,13 +265,15 @@ void UCookingWidget::RemoveIngredientAt(int32 Index)
 	LastIngredientSlotClickFrame = GFrameCounter;
 	LastIngredientSlotClickIndex = Index;
 
-	if (!CookingComponent->GetSelectedIngredients().IsValidIndex(Index))
+	if (!HasIngredientInSlot(Index))
 	{
+		PendingIngredientSlotIndex = Index;
 		OpenIngredientPicker();
 		return;
 	}
 
-	CookingComponent->RemoveCookingIngredientAt(Index);
+	IngredientSlots[Index] = FInventoryItemStack();
+	SyncCookingComponentFromSlots();
 	BroadcastSelectedIngredientsChanged();
 	RefreshLinkedInventoryPicker();
 }
@@ -310,6 +303,12 @@ bool UCookingWidget::CompleteCooking(float MinigameScore, FCookingResultData& Ou
 
 	if (bCompleted)
 	{
+		IngredientSlots.SetNum(4);
+		for (FInventoryItemStack& IngredientSlot : IngredientSlots)
+		{
+			IngredientSlot = FInventoryItemStack();
+		}
+		PendingIngredientSlotIndex = INDEX_NONE;
 		SetResultText(OutResult.ResultName);
 		OnCookingCompleted(OutResult);
 		BroadcastSelectedIngredientsChanged();
@@ -330,29 +329,66 @@ bool UCookingWidget::IsIngredientSelectionFull() const
 	return CookingComponent != nullptr && CookingComponent->CanFinishCooking();
 }
 
+int32 UCookingWidget::GetSelectedIngredientCountForItem(FName ItemId) const
+{
+	if (ItemId.IsNone())
+	{
+		return 0;
+	}
+
+	int32 SelectedCount = 0;
+	for (const FInventoryItemStack& IngredientSlot : IngredientSlots)
+	{
+		if (IngredientSlot.ItemId == ItemId && IngredientSlot.Count > 0)
+		{
+			++SelectedCount;
+		}
+	}
+
+	return SelectedCount;
+}
+
 void UCookingWidget::BroadcastSelectedIngredientsChanged()
 {
+	IngredientSlots.SetNum(4);
+
 	if (CookingComponent == nullptr)
 	{
 		OnSelectedIngredientsChanged(TArray<FInventoryItemStack>());
-		UpdateIngredientSlotTexts(TArray<FInventoryItemStack>());
-		UpdateIngredientSlotImages(TArray<FInventoryItemStack>());
+		UpdateIngredientSlotTexts(IngredientSlots);
+		UpdateIngredientSlotImages(IngredientSlots);
 		return;
 	}
 
-	const TArray<FInventoryItemStack>& SelectedIngredients = CookingComponent->GetSelectedIngredients();
-	OnSelectedIngredientsChanged(SelectedIngredients);
-	UpdateIngredientSlotTexts(SelectedIngredients);
-	UpdateIngredientSlotImages(SelectedIngredients);
+	const TArray<FInventoryItemStack> CompactSelectedIngredients = GetCompactSelectedIngredients();
+	OnSelectedIngredientsChanged(CompactSelectedIngredients);
+	UpdateIngredientSlotTexts(IngredientSlots);
+	UpdateIngredientSlotImages(IngredientSlots);
 	RefreshCookingActions();
 	InvalidateLayoutAndVolatility();
+}
+
+TArray<FInventoryItemStack> UCookingWidget::GetCompactSelectedIngredients() const
+{
+	TArray<FInventoryItemStack> CompactIngredients;
+	CompactIngredients.Reserve(4);
+
+	for (const FInventoryItemStack& IngredientSlot : IngredientSlots)
+	{
+		if (IngredientSlot.Count > 0 && !IngredientSlot.ItemId.IsNone())
+		{
+			CompactIngredients.Add(IngredientSlot);
+		}
+	}
+
+	return CompactIngredients;
 }
 
 void UCookingWidget::UpdateIngredientSlotTexts(const TArray<FInventoryItemStack>& SelectedIngredients)
 {
 	for (int32 Index = 0; Index < 4; ++Index)
 	{
-		if (SelectedIngredients.IsValidIndex(Index))
+		if (SelectedIngredients.IsValidIndex(Index) && SelectedIngredients[Index].Count > 0 && !SelectedIngredients[Index].ItemId.IsNone())
 		{
 			SetIngredientSlotText(Index, FText::GetEmpty());
 		}
@@ -367,7 +403,8 @@ void UCookingWidget::UpdateIngredientSlotImages(const TArray<FInventoryItemStack
 {
 	for (int32 Index = 0; Index < 4; ++Index)
 	{
-		SetIngredientSlotImage(Index, SelectedIngredients.IsValidIndex(Index) ? SelectedIngredients[Index].Icon : nullptr);
+		const bool bHasIngredient = SelectedIngredients.IsValidIndex(Index) && SelectedIngredients[Index].Count > 0 && !SelectedIngredients[Index].ItemId.IsNone();
+		SetIngredientSlotImage(Index, bHasIngredient ? SelectedIngredients[Index].Icon : nullptr);
 	}
 }
 
@@ -495,6 +532,55 @@ UTextBlock* UCookingWidget::FindIngredientSlotTextBlock(int32 Index) const
 	return WidgetTree->FindWidget<UTextBlock>(SlotTextBlockNames[Index]);
 }
 
+bool UCookingWidget::AddIngredientToSlot(const FInventoryItemStack& Ingredient, int32 SlotIndex)
+{
+	IngredientSlots.SetNum(4);
+	if (!IngredientSlots.IsValidIndex(SlotIndex) || Ingredient.Count <= 0 || Ingredient.ItemId.IsNone())
+	{
+		return false;
+	}
+
+	IngredientSlots[SlotIndex] = Ingredient;
+	IngredientSlots[SlotIndex].Count = 1;
+	SyncCookingComponentFromSlots();
+	return true;
+}
+
+bool UCookingWidget::HasIngredientInSlot(int32 SlotIndex) const
+{
+	return IngredientSlots.IsValidIndex(SlotIndex) && IngredientSlots[SlotIndex].Count > 0 && !IngredientSlots[SlotIndex].ItemId.IsNone();
+}
+
+int32 UCookingWidget::FindFirstEmptyIngredientSlot() const
+{
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		if (!HasIngredientInSlot(Index))
+		{
+			return Index;
+		}
+	}
+
+	return INDEX_NONE;
+}
+
+void UCookingWidget::SyncCookingComponentFromSlots()
+{
+	if (CookingComponent == nullptr)
+	{
+		return;
+	}
+
+	CookingComponent->ClearCookingIngredients();
+	for (const FInventoryItemStack& IngredientSlot : IngredientSlots)
+	{
+		if (IngredientSlot.Count > 0 && !IngredientSlot.ItemId.IsNone())
+		{
+			CookingComponent->AddCookingIngredient(IngredientSlot);
+		}
+	}
+}
+
 void UCookingWidget::SetResultText(const FText& Text)
 {
 	if (TextBox_Result != nullptr)
@@ -585,8 +671,6 @@ void UCookingWidget::RefreshLinkedInventoryPicker()
 
 void UCookingWidget::OpenIngredientPicker()
 {
-	ResetStaleUnreservedSelection();
-
 	if (ATinoPlayerController* TinoPlayerController = Cast<ATinoPlayerController>(GetOwningPlayer()))
 	{
 		TinoPlayerController->ShowCookingIngredientPicker(this, InventoryComponent);
