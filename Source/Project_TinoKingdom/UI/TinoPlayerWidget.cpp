@@ -1443,6 +1443,10 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 
 		ToolTip += TEXT("\n우클릭: 먹기");
 	}
+	else if (Item.ItemType == EInventoryItemType::Key)
+	{
+		ToolTip += TEXT("\n어딘가의 잠긴 길을 여는 열쇠입니다.");
+	}
 
 	return FText::FromString(ToolTip);
 }
