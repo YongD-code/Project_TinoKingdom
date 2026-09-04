@@ -124,14 +124,35 @@ private:
 	TObjectPtr<class UTextBlock> TimeLabelTextBlock;
 
 	UPROPERTY(Transient)
-	TObjectPtr<class UProgressBar> TargetProgressBar;
+	TObjectPtr<class UTextBlock> QualityTextBlock;
 
 	UPROPERTY(Transient)
-	TObjectPtr<class UProgressBar> PlayerProgressBar;
+	TObjectPtr<class UCanvasPanel> GaugeCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UBorder> GaugeTrackBorder;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UBorder> GaugeSuccessFillBorder;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UBorder> TargetZoneBorder;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UBorder> PlayerNeedleBorder;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> TargetMarkerTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UTextBlock> PlayerMarkerTextBlock;
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UProgressBar> TimeProgressBar;
 
 	float TargetDirection = 1.0f;
 	float TargetDirectionChangeTimer = 0.0f;
+
+	static constexpr float GaugeWidth = 980.0f;
+	static constexpr float GaugeHeight = 74.0f;
 };
