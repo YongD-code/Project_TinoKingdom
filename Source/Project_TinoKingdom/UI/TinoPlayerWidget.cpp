@@ -11,15 +11,21 @@
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
+#include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Blueprint/WidgetTree.h"
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
+#include "Project_TinoKingdom/Component/CookingRecipeBookComponent.h"
 #include "Project_TinoKingdom/Component/StatComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
@@ -44,6 +50,40 @@ FString GetCookingQualityDisplayString(ECookingQuality Quality)
 		return TEXT("Special");
 	default:
 		return TEXT("Unknown");
+	}
+}
+
+FLinearColor GetCookingQualityDisplayColor(ECookingQuality Quality)
+{
+	switch (Quality)
+	{
+	case ECookingQuality::Failed:
+		return FLinearColor(0.82f, 0.28f, 0.22f, 1.0f);
+	case ECookingQuality::Normal:
+		return FLinearColor(0.86f, 0.80f, 0.68f, 1.0f);
+	case ECookingQuality::Good:
+		return FLinearColor(0.55f, 0.82f, 1.0f, 1.0f);
+	case ECookingQuality::Special:
+		return FLinearColor(1.0f, 0.78f, 0.28f, 1.0f);
+	default:
+		return FLinearColor::White;
+	}
+}
+
+FString GetCookingResultTypeDisplayString(ECookingResultType ResultType)
+{
+	switch (ResultType)
+	{
+	case ECookingResultType::Jelly:
+		return TEXT("젤리");
+	case ECookingResultType::Soup:
+		return TEXT("수프");
+	case ECookingResultType::Grill:
+		return TEXT("구이");
+	case ECookingResultType::Failed:
+		return TEXT("실패");
+	default:
+		return TEXT("요리");
 	}
 }
 }
@@ -87,11 +127,14 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 		}
 
 		RefreshInventorySlots();
+		EnsureRecipeBookWidget();
+		RefreshRecipeBookPanel();
 	}
 	else
 	{
 		CloseCookingIngredientPicker();
 		HideInventoryItemPreview();
+		HideRecipeBookPanel();
 	}
 
 	const ESlateVisibility MenuVisibility = bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
@@ -1069,13 +1112,29 @@ void UTinoPlayerWidget::HandleInventorySlotClicked(int32 SlotIndex)
 		return;
 	}
 
-	ShowInventoryItemPreview(DisplayedInventoryItems[SlotIndex]);
+	const bool bClickedPreviewedSlot =
+		PreviewedInventorySlotIndex == SlotIndex &&
+		InventoryPreviewPanel != nullptr &&
+		InventoryPreviewPanel->GetVisibility() != ESlateVisibility::Collapsed;
+	if (bClickedPreviewedSlot)
+	{
+		HideInventoryItemPreview();
+		return;
+	}
+
+	ShowInventoryItemPreview(DisplayedInventoryItems[SlotIndex], SlotIndex);
 }
 
 UInventoryComponent* UTinoPlayerWidget::ResolveInventoryComponent() const
 {
 	const APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn());
 	return PlayerCharacter != nullptr ? PlayerCharacter->GetInventoryComponent() : nullptr;
+}
+
+UCookingRecipeBookComponent* UTinoPlayerWidget::ResolveCookingRecipeBookComponent() const
+{
+	const APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn());
+	return PlayerCharacter != nullptr ? PlayerCharacter->GetCookingRecipeBookComponent() : nullptr;
 }
 
 void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
@@ -1111,15 +1170,15 @@ void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
 	UCanvasPanelSlot* PreviewSlot = RootCanvas->AddChildToCanvas(InventoryPreviewPanel);
 	if (PreviewSlot != nullptr)
 	{
-		PreviewSlot->SetAnchors(FAnchors(1.0f, 0.5f, 1.0f, 0.5f));
+		PreviewSlot->SetAnchors(FAnchors(0.0f, 0.5f, 0.0f, 0.5f));
 		PreviewSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		PreviewSlot->SetPosition(FVector2D(-210.0f, -2.0f));
+		PreviewSlot->SetPosition(FVector2D(180.0f, -2.0f));
 		PreviewSlot->SetSize(FVector2D(360.0f, 360.0f));
 		PreviewSlot->SetZOrder(20);
 	}
 }
 
-void UTinoPlayerWidget::ShowInventoryItemPreview(const FInventoryItemStack& Item)
+void UTinoPlayerWidget::ShowInventoryItemPreview(const FInventoryItemStack& Item, int32 SlotIndex)
 {
 	EnsureInventoryPreviewWidget();
 	if (InventoryPreviewPanel == nullptr || InventoryPreviewImage == nullptr || Item.Icon == nullptr)
@@ -1129,15 +1188,236 @@ void UTinoPlayerWidget::ShowInventoryItemPreview(const FInventoryItemStack& Item
 	}
 
 	InventoryPreviewImage->SetBrushFromTexture(Item.Icon, true);
+	PreviewedInventorySlotIndex = SlotIndex;
 	InventoryPreviewPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UTinoPlayerWidget::HideInventoryItemPreview()
 {
+	PreviewedInventorySlotIndex = INDEX_NONE;
 	if (InventoryPreviewPanel != nullptr)
 	{
 		InventoryPreviewPanel->SetVisibility(ESlateVisibility::Collapsed);
 	}
+}
+
+void UTinoPlayerWidget::EnsureRecipeBookWidget()
+{
+	if (RecipeBookPanel != nullptr && RecipeBookListBox != nullptr && RecipeBookCountTextBlock != nullptr)
+	{
+		return;
+	}
+
+	if (WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	UCanvasPanel* RootCanvas = Cast<UCanvasPanel>(GetRootWidget());
+	if (RootCanvas == nullptr)
+	{
+		return;
+	}
+
+	RecipeBookPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RecipeBookPanel_Runtime"));
+	UVerticalBox* RootBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("RecipeBookRoot_Runtime"));
+	UTextBlock* TitleTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RecipeBookTitle_Runtime"));
+	RecipeBookCountTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RecipeBookCount_Runtime"));
+	RecipeBookScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("RecipeBookScroll_Runtime"));
+	RecipeBookListBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("RecipeBookList_Runtime"));
+
+	if (RecipeBookPanel == nullptr || RootBox == nullptr || TitleTextBlock == nullptr ||
+		RecipeBookCountTextBlock == nullptr || RecipeBookScrollBox == nullptr || RecipeBookListBox == nullptr)
+	{
+		return;
+	}
+
+	FSlateFontInfo TitleFont = TitleTextBlock->GetFont();
+	TitleFont.Size = 30;
+	TitleTextBlock->SetFont(TitleFont);
+	TitleTextBlock->SetText(FText::FromString(TEXT("요리 도감")));
+	TitleTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.86f, 0.56f, 1.0f)));
+
+	FSlateFontInfo CountFont = RecipeBookCountTextBlock->GetFont();
+	CountFont.Size = 18;
+	RecipeBookCountTextBlock->SetFont(CountFont);
+	RecipeBookCountTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.76f, 0.72f, 0.64f, 1.0f)));
+
+	RecipeBookPanel->SetBrushColor(FLinearColor(0.025f, 0.021f, 0.016f, 0.92f));
+	RecipeBookPanel->SetPadding(FMargin(18.0f, 16.0f));
+	RecipeBookPanel->SetContent(RootBox);
+	RecipeBookPanel->SetVisibility(ESlateVisibility::Collapsed);
+
+	UVerticalBoxSlot* TitleSlot = RootBox->AddChildToVerticalBox(TitleTextBlock);
+	if (TitleSlot != nullptr)
+	{
+		TitleSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
+	}
+
+	UVerticalBoxSlot* CountSlot = RootBox->AddChildToVerticalBox(RecipeBookCountTextBlock);
+	if (CountSlot != nullptr)
+	{
+		CountSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 14.0f));
+	}
+
+	RecipeBookScrollBox->AddChild(RecipeBookListBox);
+	UVerticalBoxSlot* ScrollSlot = RootBox->AddChildToVerticalBox(RecipeBookScrollBox);
+	if (ScrollSlot != nullptr)
+	{
+		ScrollSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	}
+
+	UCanvasPanelSlot* RecipeBookSlot = RootCanvas->AddChildToCanvas(RecipeBookPanel);
+	if (RecipeBookSlot != nullptr)
+	{
+		RecipeBookSlot->SetAnchors(FAnchors(1.0f, 0.5f, 1.0f, 0.5f));
+		RecipeBookSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+		RecipeBookSlot->SetPosition(FVector2D(-245.0f, -2.0f));
+		RecipeBookSlot->SetSize(FVector2D(430.0f, 620.0f));
+		RecipeBookSlot->SetZOrder(18);
+	}
+}
+
+void UTinoPlayerWidget::RefreshRecipeBookPanel()
+{
+	EnsureRecipeBookWidget();
+	if (RecipeBookPanel == nullptr || RecipeBookListBox == nullptr || RecipeBookCountTextBlock == nullptr)
+	{
+		return;
+	}
+
+	RecipeBookListBox->ClearChildren();
+
+	const UCookingRecipeBookComponent* RecipeBookComponent = ResolveCookingRecipeBookComponent();
+	const TArray<FDiscoveredCookingRecipe>& Recipes =
+		RecipeBookComponent != nullptr ? RecipeBookComponent->GetDiscoveredRecipes() : TArray<FDiscoveredCookingRecipe>();
+
+	RecipeBookCountTextBlock->SetText(FText::Format(
+		FText::FromString(TEXT("발견한 요리 {0}개")),
+		FText::AsNumber(Recipes.Num())
+	));
+
+	if (Recipes.IsEmpty())
+	{
+		UTextBlock* EmptyTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RecipeBookEmpty_Runtime"));
+		if (EmptyTextBlock != nullptr)
+		{
+			FSlateFontInfo EmptyFont = EmptyTextBlock->GetFont();
+			EmptyFont.Size = 22;
+			EmptyTextBlock->SetFont(EmptyFont);
+			EmptyTextBlock->SetText(FText::FromString(TEXT("아직 발견한 요리가 없습니다.")));
+			EmptyTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.82f, 0.78f, 0.68f, 1.0f)));
+			EmptyTextBlock->SetAutoWrapText(true);
+			RecipeBookListBox->AddChildToVerticalBox(EmptyTextBlock);
+		}
+		RecipeBookPanel->SetVisibility(ESlateVisibility::Visible);
+		return;
+	}
+
+	for (const FDiscoveredCookingRecipe& Recipe : Recipes)
+	{
+		if (UWidget* RowWidget = BuildRecipeBookRow(Recipe))
+		{
+			UVerticalBoxSlot* RowSlot = RecipeBookListBox->AddChildToVerticalBox(RowWidget);
+			if (RowSlot != nullptr)
+			{
+				RowSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 10.0f));
+			}
+		}
+	}
+
+	RecipeBookPanel->SetVisibility(ESlateVisibility::Visible);
+}
+
+void UTinoPlayerWidget::HideRecipeBookPanel()
+{
+	if (RecipeBookPanel != nullptr)
+	{
+		RecipeBookPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+UWidget* UTinoPlayerWidget::BuildRecipeBookRow(const FDiscoveredCookingRecipe& Recipe)
+{
+	if (WidgetTree == nullptr)
+	{
+		return nullptr;
+	}
+
+	UBorder* RowBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+	UHorizontalBox* RowBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	USizeBox* IconSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+	UImage* IconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+	UTextBlock* RowTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+	if (RowBorder == nullptr || RowBox == nullptr || IconSizeBox == nullptr || IconImage == nullptr || RowTextBlock == nullptr)
+	{
+		return nullptr;
+	}
+
+	RowBorder->SetBrushColor(FLinearColor(0.095f, 0.075f, 0.045f, 0.74f));
+	RowBorder->SetPadding(FMargin(10.0f));
+	RowBorder->SetContent(RowBox);
+
+	IconSizeBox->SetWidthOverride(72.0f);
+	IconSizeBox->SetHeightOverride(72.0f);
+	if (Recipe.Icon != nullptr)
+	{
+		IconImage->SetBrushFromTexture(Recipe.Icon, true);
+	}
+	IconSizeBox->AddChild(IconImage);
+
+	UHorizontalBoxSlot* IconSlot = RowBox->AddChildToHorizontalBox(IconSizeBox);
+	if (IconSlot != nullptr)
+	{
+		IconSlot->SetPadding(FMargin(0.0f, 0.0f, 12.0f, 0.0f));
+		IconSlot->SetVerticalAlignment(VAlign_Center);
+	}
+
+	FSlateFontInfo RowFont = RowTextBlock->GetFont();
+	RowFont.Size = 19;
+	RowTextBlock->SetFont(RowFont);
+	RowTextBlock->SetText(BuildRecipeBookRowText(Recipe));
+	RowTextBlock->SetColorAndOpacity(FSlateColor(GetCookingQualityDisplayColor(Recipe.BestQuality)));
+	RowTextBlock->SetAutoWrapText(true);
+
+	UHorizontalBoxSlot* TextSlot = RowBox->AddChildToHorizontalBox(RowTextBlock);
+	if (TextSlot != nullptr)
+	{
+		TextSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		TextSlot->SetVerticalAlignment(VAlign_Center);
+	}
+
+	return RowBorder;
+}
+
+FText UTinoPlayerWidget::BuildRecipeBookRowText(const FDiscoveredCookingRecipe& Recipe) const
+{
+	FString Text = FString::Printf(
+		TEXT("%s\n%s / 최고 %s / %d회"),
+		*Recipe.ResultName.ToString(),
+		*GetCookingResultTypeDisplayString(Recipe.ResultType),
+		*GetCookingQualityDisplayString(Recipe.BestQuality),
+		Recipe.TimesCooked
+	);
+
+	if (!FMath::IsNearlyZero(Recipe.BestHealAmount))
+	{
+		Text += FString::Printf(TEXT("\n체력 %+d"), FMath::RoundToInt(Recipe.BestHealAmount));
+	}
+	if (Recipe.BestStaminaAmount > 0.0f)
+	{
+		Text += FString::Printf(TEXT("  스태미나 +%d"), FMath::RoundToInt(Recipe.BestStaminaAmount));
+	}
+	if (Recipe.BestAttackBuffAmount > 0.0f)
+	{
+		Text += FString::Printf(TEXT("  공격 +%d"), FMath::RoundToInt(Recipe.BestAttackBuffAmount));
+	}
+	if (Recipe.BestDefenseBuffAmount > 0.0f)
+	{
+		Text += FString::Printf(TEXT("  방어 +%d"), FMath::RoundToInt(Recipe.BestDefenseBuffAmount));
+	}
+
+	return FText::FromString(Text);
 }
 
 FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack& Item) const
@@ -1174,6 +1454,10 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 		}
 
 		ToolTip += TEXT("\n우클릭: 먹기");
+	}
+	else if (Item.ItemType == EInventoryItemType::Key)
+	{
+		ToolTip += TEXT("\n어딘가의 잠긴 길을 여는 열쇠입니다.");
 	}
 
 	return FText::FromString(ToolTip);

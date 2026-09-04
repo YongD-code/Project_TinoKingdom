@@ -17,7 +17,8 @@ enum class EInventoryItemType : uint8
 	Etc UMETA(DisplayName = "Etc"),
 	Material UMETA(DisplayName = "Material"),
 	Food UMETA(DisplayName = "Food"),
-	Equipment UMETA(DisplayName = "Equipment")
+	Equipment UMETA(DisplayName = "Equipment"),
+	Key UMETA(DisplayName = "Key")
 };
 
 
@@ -95,6 +96,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Inventory|Food")
 	bool UseFoodItem(FName ItemId, UStatComponent* TargetStatComponent);
+
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Story")
+	void AddMonkeyKey(UTexture2D* Icon = nullptr);
+
+	UFUNCTION(BlueprintPure, Category = "Inventory|Story")
+	bool HasMonkeyKey() const;
+
+	UFUNCTION(BlueprintPure, Category = "Inventory|Story")
+	static FName GetMonkeyKeyItemId();
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	const TArray<FInventoryItemStack>& GetItems() const { return Items; }

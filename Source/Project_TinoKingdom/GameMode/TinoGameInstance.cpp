@@ -4,6 +4,7 @@
 #include "TinoGameInstance.h"
 
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
+#include "Project_TinoKingdom/Component/CookingRecipeBookComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
@@ -22,11 +23,12 @@ bool UTinoGameInstance::CapturePlayerState(APlayerCharacter* PlayerCharacter)
 	const UPlayerProgressionComponent* ProgressionComponent = PlayerCharacter->GetProgressionComponent();
 	const UTinoAttributeSet* AttributeSet = PlayerCharacter->GetAttributeSet();
 	const UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent();
+	const UCookingRecipeBookComponent* CookingRecipeBookComponent = PlayerCharacter->GetCookingRecipeBookComponent();
 	const UQuestComponent* QuestComponent = PlayerCharacter->GetQuestComponent();
 	const UTinoEquipmentComponent* EquipmentComponent = PlayerCharacter->GetEquipmentComponent();
 
 	if (!IsValid(ProgressionComponent) || !IsValid(AttributeSet) || !IsValid(InventoryComponent)
-		|| !IsValid(QuestComponent) || !IsValid(EquipmentComponent))
+		|| !IsValid(CookingRecipeBookComponent) || !IsValid(QuestComponent) || !IsValid(EquipmentComponent))
 	{
 		UE_LOG(LogTinoGameInstance, Error,
 			TEXT("플레이어 이동 상태 저장 실패: 필요한 플레이어 컴포넌트가 없습니다."));
@@ -46,6 +48,7 @@ bool UTinoGameInstance::CapturePlayerState(APlayerCharacter* PlayerCharacter)
 	NewState.Defense = AttributeSet->GetDefense();
 
 	NewState.InventoryItems = InventoryComponent->GetItems();
+	NewState.DiscoveredCookingRecipes = CookingRecipeBookComponent->GetDiscoveredRecipes();
 	NewState.QuestStates = QuestComponent->GetQuestStatesForTravel();
 	NewState.TrackedQuest = QuestComponent->GetTrackedQuest();
 	NewState.EquipmentLoadout = EquipmentComponent->GetCurrentLoadout();
@@ -74,11 +77,12 @@ bool UTinoGameInstance::RestorePlayerState(APlayerCharacter* PlayerCharacter)
 	UPlayerProgressionComponent* ProgressionComponent = PlayerCharacter->GetProgressionComponent();
 	UTinoAttributeSet* AttributeSet = PlayerCharacter->GetMutableAttributeSet();
 	UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent();
+	UCookingRecipeBookComponent* CookingRecipeBookComponent = PlayerCharacter->GetCookingRecipeBookComponent();
 	UQuestComponent* QuestComponent = PlayerCharacter->GetQuestComponent();
 	UTinoEquipmentComponent* EquipmentComponent = PlayerCharacter->GetEquipmentComponent();
 
 	if (!IsValid(ProgressionComponent) || !IsValid(AttributeSet) || !IsValid(InventoryComponent)
-		|| !IsValid(QuestComponent) || !IsValid(EquipmentComponent))
+		|| !IsValid(CookingRecipeBookComponent) || !IsValid(QuestComponent) || !IsValid(EquipmentComponent))
 	{
 		UE_LOG(LogTinoGameInstance, Error,
 			TEXT("플레이어 이동 상태 복원 실패: 필요한 플레이어 컴포넌트가 없습니다."));
@@ -100,6 +104,7 @@ bool UTinoGameInstance::RestorePlayerState(APlayerCharacter* PlayerCharacter)
 
 	// 퀘스트 진행도는 인벤토리 개수를 참조하므로 인벤토리를 먼저 복원한다.
 	InventoryComponent->RestoreItemsForTravel(PendingPlayerState.InventoryItems);
+	CookingRecipeBookComponent->RestoreRecipesForTravel(PendingPlayerState.DiscoveredCookingRecipes);
 	QuestComponent->RestoreStateForTravel(
 		PendingPlayerState.QuestStates,
 		PendingPlayerState.TrackedQuest.Get());

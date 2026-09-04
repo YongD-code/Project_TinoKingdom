@@ -22,6 +22,7 @@
 #include "MovieSceneSequencePlaybackSettings.h"
 #include "Project_TinoKingdom/Component/ReactionComponent.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
+#include "Project_TinoKingdom/Component/CookingRecipeBookComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/TinoCombatComponent.h"
 #include "Project_TinoKingdom/Component/TinoEquipmentComponent.h"
@@ -89,6 +90,7 @@ APlayerCharacter::APlayerCharacter()
 	ReactionComponent = CreateDefaultSubobject<UReactionComponent>(TEXT("ReactionComponent"));
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
 	CookingComponent = CreateDefaultSubobject<UCookingComponent>(TEXT("CookingComponent"));
+	CookingRecipeBookComponent = CreateDefaultSubobject<UCookingRecipeBookComponent>(TEXT("CookingRecipeBookComponent"));
 	CharacterStateComponent = CreateDefaultSubobject<UTinoStateComponent>(TEXT("CharacterStateComponent"));
 	DodgeComponent = CreateDefaultSubobject<UDodgeComponent>(TEXT("DodgeComponent"));
 	TargetingComponent = CreateDefaultSubobject<UTargetingComponent>(TEXT("TargetingComponent"));
