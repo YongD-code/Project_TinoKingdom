@@ -4,6 +4,7 @@
 #include "DrawDebugHelpers.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
+#include "BrainComponent.h"
 #include "GameFramework/Controller.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
@@ -91,6 +92,16 @@ void AEnemyCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	LastSafeTransform = GetActorTransform();
+	SetEnemyAIActive(false);
+
+	GetWorldTimerManager().SetTimer(
+		AIActivationTimerHandle,
+		this,
+		&AEnemyCharacter::UpdateAIActivation,
+		FMath::Max(AIActivationCheckInterval, 0.05f),
+		true);
+	UpdateAIActivation();
 
 	if (StatComponent != nullptr)
 	{
@@ -102,6 +113,7 @@ void AEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
 	GetWorldTimerManager().ClearTimer(HitReactionResetTimerHandle);
+	GetWorldTimerManager().ClearTimer(AIActivationTimerHandle);
 	
 	if (IsValid(StatComponent))
 	{
@@ -151,7 +163,7 @@ float AEnemyCharacter::TakeDamage(
 
 bool AEnemyCharacter::CanAttack() const
 {
-	if (bAttacking || bHitReacting || bDead)
+	if (!bAIActive || bAttacking || bHitReacting || bDead)
 	{
 		return false;
 	}
@@ -233,6 +245,7 @@ void AEnemyCharacter::HandleDead()
 	}
 
 	bDead = true;
+	bAIActive = false;
 	bAttacking = false;
 	bHitReacting = false;
 	CombatTarget = nullptr;
@@ -467,7 +480,12 @@ void AEnemyCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (CombatTarget == nullptr || bDead)
+	if (bAIActive && GetCharacterMovement()->IsMovingOnGround())
+	{
+		LastSafeTransform = GetActorTransform();
+	}
+
+	if (!bAIActive || CombatTarget == nullptr || bDead)
 	{
 		return;
 	}
@@ -572,4 +590,107 @@ void AEnemyCharacter::SetAggroTarget(AActor* NewTarget)
 		AEnemyAIController::TargetPlayer,
 		NewTarget
 	);
+}
+
+void AEnemyCharacter::UpdateAIActivation()
+{
+	if (bDead)
+	{
+		return;
+	}
+
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	const bool bPlayerIsNear = IsValid(PlayerPawn)
+		&& FVector::DistSquared(PlayerPawn->GetActorLocation(), LastSafeTransform.GetLocation())
+		<= FMath::Square(AIActivationDistance);
+
+	if (bAIActive)
+	{
+		if (!bPlayerIsNear)
+		{
+			SetEnemyAIActive(false);
+			return;
+		}
+
+		if (GetActorLocation().Z < LastSafeTransform.GetLocation().Z - MaxStreamingFallDistance)
+		{
+			SetActorTransform(LastSafeTransform, false, nullptr, ETeleportType::TeleportPhysics);
+			SetEnemyAIActive(false);
+		}
+		return;
+	}
+
+	if (!bPlayerIsNear || !HasGroundBelow(LastSafeTransform.GetLocation()))
+	{
+		SetEnemyAIActive(false);
+		return;
+	}
+
+	SetActorTransform(LastSafeTransform, false, nullptr, ETeleportType::TeleportPhysics);
+	SetEnemyAIActive(true);
+}
+
+void AEnemyCharacter::SetEnemyAIActive(bool bEnabled)
+{
+	bAIActive = bEnabled;
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		if (bEnabled)
+		{
+			MovementComponent->SetMovementMode(MOVE_Walking);
+			MovementComponent->MaxWalkSpeed = WalkSpeed;
+		}
+		else
+		{
+			MovementComponent->DisableMovement();
+		}
+	}
+
+	AAIController* AIController = Cast<AAIController>(GetController());
+	if (AIController == nullptr)
+	{
+		return;
+	}
+
+	if (!bEnabled)
+	{
+		AIController->StopMovement();
+	}
+
+	if (UBrainComponent* BrainComponent = AIController->GetBrainComponent())
+	{
+		if (bEnabled)
+		{
+			BrainComponent->ResumeLogic(TEXT("Enemy entered active range"));
+		}
+		else
+		{
+			BrainComponent->PauseLogic(TEXT("Enemy outside active range or waiting for streamed ground"));
+		}
+	}
+}
+
+bool AEnemyCharacter::HasGroundBelow(const FVector& Location) const
+{
+	const UWorld* World = GetWorld();
+	const UCapsuleComponent* EnemyCapsule = GetCapsuleComponent();
+	if (World == nullptr || EnemyCapsule == nullptr)
+	{
+		return false;
+	}
+
+	const FVector TraceStart = Location + FVector::UpVector * 10.0f;
+	const FVector TraceEnd = Location - FVector::UpVector
+		* (EnemyCapsule->GetScaledCapsuleHalfHeight() + GroundProbeDistance);
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(EnemyStreamedGroundProbe), false, this);
+	return World->LineTraceSingleByChannel(
+		HitResult,
+		TraceStart,
+		TraceEnd,
+		ECC_WorldStatic,
+		QueryParams);
 }
