@@ -3,6 +3,8 @@
 
 #include "QuestComponent.h"
 
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/Character.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoQuest, Log, All);
@@ -104,9 +106,34 @@ bool UQuestComponent::CompleteQuest(UQuestData* Quest)
 
 	OnQuestCompleted.Broadcast(Quest);
 
+	PlayCompletedEffect();
+
 	UE_LOG(LogTinoQuest, Log, TEXT("퀘스트 완료: %s"), *Quest->Title.ToString());
 
 	return true;
+}
+
+void UQuestComponent::PlayCompletedEffect() const
+{
+	const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+
+	if (CompletedEffect == nullptr || !IsValid(OwnerCharacter))
+	{
+		return;
+	}
+
+	// GetActorLocation은 캡슐 중심이므로 절반 높이만큼 내려야 발밑이 된다.
+	const float CapsuleHalfHeight = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const FVector FeetLocation = OwnerCharacter->GetActorLocation() - FVector(0.0f, 0.0f, CapsuleHalfHeight);
+
+	// 파티클이 월드 공간에서 한 번에 뿌려지므로 캐릭터에 붙여도 따라오지 않는다.
+	// 스폰한 자리에 그대로 남긴다.
+	AActor* SpawnedEffect = GetWorld()->SpawnActor<AActor>(CompletedEffect, FeetLocation, FRotator::ZeroRotator);
+
+	if (IsValid(SpawnedEffect))
+	{
+		SpawnedEffect->SetLifeSpan(CompletedEffectLifeSpan);
+	}
 }
 
 void UQuestComponent::RestoreStateForTravel(

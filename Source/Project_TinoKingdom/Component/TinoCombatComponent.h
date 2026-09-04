@@ -15,6 +15,7 @@ class USkeletalMeshComponent;
 class UAttackComboData;
 class ATinoEquipmentActor;
 class UTinoStateComponent;
+class UNiagaraSystem;
 
 enum class EAttackSource : uint8;
 
@@ -90,6 +91,10 @@ private:
 
 	float CalculateAttackDamage(float ComboDamage) const;
 private:
+	//공격이 적중했을때 적중지점에서 재생할 히트 이펙트
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category = "Combat|Effect", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem>HitEffect;
+	
 	// 장착 공격 데이터가 없을 때 사용할 캐릭터의 기본 공격 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAttackComboData> DefaultAttackData;

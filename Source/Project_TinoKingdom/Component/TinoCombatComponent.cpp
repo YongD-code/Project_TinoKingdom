@@ -19,6 +19,7 @@
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAttributeSet.h"
+#include "NiagaraFunctionLibrary.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoCombat, Log, All);
 
@@ -375,6 +376,11 @@ void UTinoCombatComponent::PerformAttackTrace()
 		}
 		UGameplayStatics::ApplyPointDamage(HitActor, FinalDamage, HitDirection, HitResult, 
 			OwnerCharacter->GetController(), OwnerCharacter, UDamageType::StaticClass());
+		
+		if (IsValid(HitEffect))
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, HitEffect, HitResult.ImpactPoint);	
+		}
 		
 		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
 		{
