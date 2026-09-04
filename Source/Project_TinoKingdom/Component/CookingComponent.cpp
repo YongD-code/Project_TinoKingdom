@@ -7,6 +7,7 @@
 #include "Engine/Texture2D.h"
 #include "Math/UnrealMathUtility.h"
 #include "Misc/Guid.h"
+#include "Project_TinoKingdom/Component/CookingRecipeBookComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 
 namespace
@@ -1032,6 +1033,11 @@ bool UCookingComponent::FinishCookingToInventory(
 		1.0f,
 		OutResult
 	);
+
+	if (UCookingRecipeBookComponent* RecipeBookComponent = GetOwner()->FindComponentByClass<UCookingRecipeBookComponent>())
+	{
+		RecipeBookComponent->RegisterCookingResult(OutResult, ResultIcon);
+	}
 
 	ClearCookingIngredients();
 	return true;
