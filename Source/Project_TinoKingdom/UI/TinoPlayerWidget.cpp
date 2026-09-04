@@ -1240,8 +1240,11 @@ bool UTinoPlayerWidget::TryUseInventoryItemAt(int32 SlotIndex)
 	bool bUsed = false;
 	if (Item.ItemType == EInventoryItemType::Usable)
 	{
-		// 실제 사용 효과는 다음 단계에서 이 소비 직전에 실행한다.
-		bUsed = InventoryComponent->RemoveItem(Item.ItemId, 1);
+		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
+		{
+			// 사용 조건 확인과 아이템 소모는 실제 효과를 소유한 게임플레이 코드가 처리한다.
+			bUsed = PlayerCharacter->TryUseUsableItem(Item.ItemId);
+		}
 	}
 	else
 	{
