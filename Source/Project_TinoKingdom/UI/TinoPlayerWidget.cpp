@@ -164,7 +164,7 @@ void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidge
 	{
 		InventoryPanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		InventoryPanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		InventoryPanelSlot->SetPosition(FVector2D(-600.0f, 0.0f));
+		InventoryPanelSlot->SetPosition(FVector2D(-430.0f, 0.0f));
 		InventoryPanelSlot->SetSize(FVector2D(360.0f, 360.0f));
 	}
 
@@ -1317,8 +1317,8 @@ void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
 	{
 		PreviewSlot->SetAnchors(FAnchors(0.0f, 0.5f, 0.0f, 0.5f));
 		PreviewSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		PreviewSlot->SetPosition(FVector2D(180.0f, -2.0f));
-		PreviewSlot->SetSize(FVector2D(360.0f, 360.0f));
+		PreviewSlot->SetPosition(FVector2D(170.0f, -2.0f));
+		PreviewSlot->SetSize(FVector2D(300.0f, 300.0f));
 		PreviewSlot->SetZOrder(20);
 	}
 }
@@ -1378,13 +1378,13 @@ void UTinoPlayerWidget::EnsureRecipeBookWidget()
 	}
 
 	FSlateFontInfo TitleFont = TitleTextBlock->GetFont();
-	TitleFont.Size = 30;
+	TitleFont.Size = 25;
 	TitleTextBlock->SetFont(TitleFont);
 	TitleTextBlock->SetText(FText::FromString(TEXT("요리 도감")));
 	TitleTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.86f, 0.56f, 1.0f)));
 
 	FSlateFontInfo CountFont = RecipeBookCountTextBlock->GetFont();
-	CountFont.Size = 18;
+	CountFont.Size = 15;
 	RecipeBookCountTextBlock->SetFont(CountFont);
 	RecipeBookCountTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.76f, 0.72f, 0.64f, 1.0f)));
 
@@ -1417,8 +1417,8 @@ void UTinoPlayerWidget::EnsureRecipeBookWidget()
 	{
 		RecipeBookSlot->SetAnchors(FAnchors(1.0f, 0.5f, 1.0f, 0.5f));
 		RecipeBookSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		RecipeBookSlot->SetPosition(FVector2D(-245.0f, -2.0f));
-		RecipeBookSlot->SetSize(FVector2D(430.0f, 620.0f));
+		RecipeBookSlot->SetPosition(FVector2D(-110.0f, -2.0f));
+		RecipeBookSlot->SetSize(FVector2D(200.0f, 500.0f));
 		RecipeBookSlot->SetZOrder(18);
 	}
 }
@@ -1503,8 +1503,8 @@ UWidget* UTinoPlayerWidget::BuildRecipeBookRow(const FDiscoveredCookingRecipe& R
 	RowBorder->SetPadding(FMargin(10.0f));
 	RowBorder->SetContent(RowBox);
 
-	IconSizeBox->SetWidthOverride(72.0f);
-	IconSizeBox->SetHeightOverride(72.0f);
+	IconSizeBox->SetWidthOverride(48.0f);
+	IconSizeBox->SetHeightOverride(48.0f);
 	if (Recipe.Icon != nullptr)
 	{
 		IconImage->SetBrushFromTexture(Recipe.Icon, true);
@@ -1514,12 +1514,12 @@ UWidget* UTinoPlayerWidget::BuildRecipeBookRow(const FDiscoveredCookingRecipe& R
 	UHorizontalBoxSlot* IconSlot = RowBox->AddChildToHorizontalBox(IconSizeBox);
 	if (IconSlot != nullptr)
 	{
-		IconSlot->SetPadding(FMargin(0.0f, 0.0f, 12.0f, 0.0f));
+		IconSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
 		IconSlot->SetVerticalAlignment(VAlign_Center);
 	}
 
 	FSlateFontInfo RowFont = RowTextBlock->GetFont();
-	RowFont.Size = 19;
+	RowFont.Size = 15;
 	RowTextBlock->SetFont(RowFont);
 	RowTextBlock->SetText(BuildRecipeBookRowText(Recipe));
 	RowTextBlock->SetColorAndOpacity(FSlateColor(GetCookingQualityDisplayColor(Recipe.BestQuality)));
