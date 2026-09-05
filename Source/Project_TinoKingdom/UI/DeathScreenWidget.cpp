@@ -9,6 +9,7 @@
 #include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
 #include "HAL/PlatformTime.h"
+#include "Sound/SoundBase.h"
 
 void UDeathScreenWidget::NativeOnInitialized()
 {
@@ -65,6 +66,11 @@ void UDeathScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTi
 void UDeathScreenWidget::ShowDeathMessage(AActor* DamageCauser)
 {
 	BuildDefaultVisuals();
+	if (IsValid(DeathFadeSound))
+	{
+		PlaySound(DeathFadeSound);
+	}
+	
 	if (DeathMessageText != nullptr)
 	{
 		DeathMessageText->SetText(MakeDeathMessage(DamageCauser));

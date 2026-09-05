@@ -8,6 +8,7 @@
 
 class UTextBlock;
 class UBorder;
+class USoundBase;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API UDeathScreenWidget : public UUserWidget
@@ -31,6 +32,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Death Screen", meta = (ClampMin = "0.0"))
 	float TextFadeInDuration = 0.45f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> DeathFadeSound;
 
 private:
 	void BuildDefaultVisuals();
