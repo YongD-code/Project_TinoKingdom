@@ -189,6 +189,12 @@ void UDialogueComponent::BroadcastCurrentLine()
 
 	const FDialogueLine& Line = CurrentDialogueData->Lines[CurrentLineIndex];
 
+	// 매 대사마다 울면 시끄러우므로 홀수 번째(첫 대사 포함)에서만 반응 소리를 낸다.
+	if (IsValid(CurrentNPC) && CurrentLineIndex % 2 == 0)
+	{
+		CurrentNPC->PlayReactionSound();
+	}
+
 	// 플레이어 대사는 NPC 이름표를 쓰지 않는다.
 	const FText SpeakerName = (Line.Speaker == EDialogueSpeaker::NPC)
 		? CurrentDialogueData->SpeakerDisplayName
