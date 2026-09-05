@@ -434,6 +434,7 @@ void ATinoNPCCharacter::StopTalkAnimation()
 
 void ATinoNPCCharacter::OnDialogueCompleted_Implementation(APlayerCharacter* PlayerCharacter)
 {
+	OnNPCDialogueCompleted.Broadcast(this, PlayerCharacter);
 }
 
 void ATinoNPCCharacter::PlayHitReaction()

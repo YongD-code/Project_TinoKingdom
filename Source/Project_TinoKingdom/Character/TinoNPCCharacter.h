@@ -10,6 +10,7 @@
 
 class UAbilitySystemComponent;
 class APlayerCharacter;
+class ATinoNPCCharacter;
 class UGameplayEffect;
 class UTinoAbilitySystemComponent;
 class UTinoAttributeSet;
@@ -20,6 +21,11 @@ class UQuestComponent;
 class UQuestData;
 class USkeletalMeshComponent;
 class USoundBase;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
+	FOnTinoNPCDialogueCompleted,
+	ATinoNPCCharacter*, NPC,
+	APlayerCharacter*, PlayerCharacter);
 
 // 한 NPC가 첫 퀘스트를 끝낸 뒤 순서대로 제공할 추가 퀘스트 한 단계.
 // 완료 대사는 다음 단계의 제안 대사로 자연스럽게 이어짐
@@ -98,6 +104,9 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Dialogue")
 	void OnDialogueCompleted(APlayerCharacter* PlayerCharacter);
 	virtual void OnDialogueCompleted_Implementation(APlayerCharacter* PlayerCharacter);
+
+	UPROPERTY(BlueprintAssignable, Category = "Dialogue")
+	FOnTinoNPCDialogueCompleted OnNPCDialogueCompleted;
 
 protected:
 	virtual void BeginPlay() override;
