@@ -19,6 +19,7 @@ class UDialogueData;
 class UQuestComponent;
 class UQuestData;
 class USkeletalMeshComponent;
+class USoundBase;
 
 // 한 NPC가 첫 퀘스트를 끝낸 뒤 순서대로 제공할 추가 퀘스트 한 단계.
 // 완료 대사는 다음 단계의 제안 대사로 자연스럽게 이어짐
@@ -68,6 +69,9 @@ public:
 	// 이 NPC가 사용할 대사 묶음. 대화 진행은 플레이어의 DialogueComponent가 담당한다.
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	UDialogueData* GetDialogueData() const { return DialogueData; }
+
+	// 대화 중 홀수 번째 대사에서 재생할 반응 소리.
+	void PlayReactionSound() const;
 
 	// 퀘스트 진행 상태에 맞는 대사를 고른다. 해당 상태의 대사가 없으면 기본 대사를 쓴다.
 	UDialogueData* SelectDialogueData(const UQuestComponent* PlayerQuest) const;
@@ -146,6 +150,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ability System")
 	TSubclassOf<UGameplayEffect> DamageEffect;
 	
+	// 대화 중 홀수 번째 대사에서 재생할 반응 소리.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Dialogue|Sound")
+	TObjectPtr<USoundBase> ReactionSound;
+
 	// 첫 퀘스트를 받기 전에 할 대사.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	TObjectPtr<UDialogueData> DialogueData;

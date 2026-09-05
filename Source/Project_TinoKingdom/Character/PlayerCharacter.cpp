@@ -1223,6 +1223,11 @@ float APlayerCharacter::TakeDamage(
 		CombatComponent->CancelAttack();
 		DodgeComponent->CancelDodge();
 		ReactionComponent->PlayHitReaction(DamageCauser);
+
+		if (IsValid(DamagedSound))
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, DamagedSound, GetActorLocation());
+		}
 	}
 
 	return AppliedDamage;

@@ -16,6 +16,7 @@ class UPlayerProgressionComponent;
 class UTargetingComponent;
 class UDodgeComponent;
 class UQuestComponent;
+class USoundBase;
 class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
@@ -114,7 +115,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	bool IsNearCookingPot() const;
 	// 인벤토리 UI에서 Usable 아이템의 실제 효과를 요청한다.
-	// SecretPlaceMap/SecretPlaceKey의 소모 여부는 SecretPlaceEntrance가 결정한다.
+	// SecretPlaceMap/Monkey 키의 소모 여부는 SecretPlaceEntrance가 결정한다.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	bool TryUseUsableItem(FName ItemId);
 
@@ -236,6 +237,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
 	float InteractionRadius = 300.f;
+
+	// 플레이어가 피해를 입었을 때 재생할 소리.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> DamagedSound;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction|Debug")
 	bool bDrawInteractionDebug = false;

@@ -372,6 +372,16 @@ bool ATinoNPCCharacter::HasAnyConfiguredQuest() const
 	return false;
 }
 
+void ATinoNPCCharacter::PlayReactionSound() const
+{
+	if (!IsValid(ReactionSound))
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(this, ReactionSound, GetActorLocation());
+}
+
 void ATinoNPCCharacter::CacheAnimationMeshes()
 {
 	// 메타휴먼 블루프린트는 Character 기본 메시를 비워두고 Body/Face를 따로 붙이는 구조라
