@@ -56,6 +56,12 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StartSlowMotion();
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StopSlowMotion();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -305,12 +311,6 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void CancelEquipmentWheel();
 
-	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
-	void StartSlowMotion();
-
-	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
-	void StopSlowMotion();
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Time")
 	float TimeDilation = 0.2f;
 
@@ -356,6 +356,8 @@ private:
 	UPROPERTY(Transient)
 	bool bEquipmentWheelSlowMotionActive = false;
 
+	int32 SlowMotionRequestCount = 0;
+
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
 
@@ -388,6 +390,7 @@ private:
 	void RespawnAtInitialTransform();
 	void FinishRespawn(bool bFadeInFromBlack);
 	void ClearRespawnSequence();
+	void ForceStopSlowMotion();
 
 	UFUNCTION()
 	void HandleRespawnSequenceFinished();

@@ -11,6 +11,7 @@ class UTinoPlayerWidget;
 class UCookingComponent;
 class UCookingWidget;
 class UInventoryComponent;
+class UUserWidget;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
@@ -18,9 +19,13 @@ class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
+	ATinoPlayerController();
+
 	void SetPlayerUIVisible(bool bVisible);
 	void SetCrosshairVisible(bool bVisible);
 	void SetLockOnMarkerTarget(AActor* NewTarget);
+	void SetMenuBackgroundVisible(bool bVisible);
+	void CloseAllMenus();
 	
 	void ToggleCharacterMenu();
 
@@ -49,8 +54,16 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UCookingWidget> CookingUIWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Menu")
+	TSoftClassPtr<UUserWidget> MenuBackgroundClass;
+
+	UPROPERTY()
+	TObjectPtr<UUserWidget> MenuBackgroundWidget;
 	
 private:
+	void EnsureMenuBackgroundWidget();
+
 	bool bCharacterMenuOpen = false;
 	bool bCookingMenuOpen = false;
 };

@@ -203,8 +203,8 @@ void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
 	ClearRespawnSequence();
 	
-	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
-	StopSlowMotion();
+	// 메뉴가 열린 채 종료돼도 전역 시간을 원래대로 복구한다.
+	ForceStopSlowMotion();
 	StopAiming();
 
 	TargetingComponent->ClearTarget();
@@ -873,6 +873,7 @@ void APlayerCharacter::UpdateLockOnCamera(float DeltaTime)
 
 void APlayerCharacter::StartSlowMotion()
 {
+	++SlowMotionRequestCount;
 	if (bEquipmentWheelSlowMotionActive)
 	{
 		return;
@@ -881,18 +882,43 @@ void APlayerCharacter::StartSlowMotion()
 	UGameplayStatics::SetGlobalTimeDilation(this, TimeDilation);
 
 	bEquipmentWheelSlowMotionActive = true;
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetMenuBackgroundVisible(true);
+	}
 }
 
 void APlayerCharacter::StopSlowMotion()
 {
-	if (!bEquipmentWheelSlowMotionActive)
+	if (SlowMotionRequestCount <= 0)
 	{
 		return;
 	}
-	UGameplayStatics::SetGlobalTimeDilation(this, SavedGlobalTimeDilation);
+
+	--SlowMotionRequestCount;
+	if (SlowMotionRequestCount > 0)
+	{
+		return;
+	}
+
+	ForceStopSlowMotion();
+}
+
+void APlayerCharacter::ForceStopSlowMotion()
+{
+	SlowMotionRequestCount = 0;
+	if (bEquipmentWheelSlowMotionActive)
+	{
+		UGameplayStatics::SetGlobalTimeDilation(this, SavedGlobalTimeDilation);
+	}
 
 	bEquipmentWheelSlowMotionActive = false;
 	SavedGlobalTimeDilation = 1.f;
+
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetMenuBackgroundVisible(false);
+	}
 }
 
 bool APlayerCharacter::InitializeDefaultAttributes()
@@ -1118,9 +1144,13 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	StopAiming();
 	TargetingComponent->ClearTarget();
 	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);
-	// 마찬가지로 사망해도 장비창을 안전하게 닫기
+	// 사망 시 열려 있던 장비 휠과 다른 메뉴를 모두 안전하게 닫는다.
 	CancelEquipmentWheel();
-	StopSlowMotion();
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->CloseAllMenus();
+	}
+	ForceStopSlowMotion();
 
 	StopRunning();
 	CombatComponent->CancelAttack();
