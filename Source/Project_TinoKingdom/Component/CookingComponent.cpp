@@ -7,6 +7,7 @@
 #include "Engine/Texture2D.h"
 #include "Math/UnrealMathUtility.h"
 #include "Misc/Guid.h"
+#include "Project_TinoKingdom/Component/CookingRecipeBookComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 
 namespace
@@ -143,7 +144,8 @@ void BlendTextureLayerAt(
 	float CenterX,
 	float CenterY,
 	float Scale,
-	float Opacity
+	float Opacity,
+	float RotationDegrees = 0.0f
 )
 {
 	if (!SourcePixels.IsValid() || TargetPixels.Num() != CookingIconTextureSize * CookingIconTextureSize || Scale <= 0.0f || Opacity <= 0.0f)
@@ -157,13 +159,30 @@ void BlendTextureLayerAt(
 	const int32 MinY = FMath::RoundToInt(CenterY * CookingIconTextureSize) - DrawHeight / 2;
 	const int32 MaxX = MinX + DrawWidth;
 	const int32 MaxY = MinY + DrawHeight;
+	const float RotationRadians = FMath::DegreesToRadians(RotationDegrees);
+	const float CosAngle = FMath::Cos(RotationRadians);
+	const float SinAngle = FMath::Sin(RotationRadians);
+	const float SourceCenterX = (SourcePixels.Width - 1) * 0.5f;
+	const float SourceCenterY = (SourcePixels.Height - 1) * 0.5f;
+	const float SourceScaleX = SourcePixels.Width / static_cast<float>(DrawWidth);
+	const float SourceScaleY = SourcePixels.Height / static_cast<float>(DrawHeight);
 
 	for (int32 Y = FMath::Max(0, MinY); Y < FMath::Min(CookingIconTextureSize, MaxY); ++Y)
 	{
-		const int32 SourceY = FMath::Clamp(((Y - MinY) * SourcePixels.Height) / DrawHeight, 0, SourcePixels.Height - 1);
 		for (int32 X = FMath::Max(0, MinX); X < FMath::Min(CookingIconTextureSize, MaxX); ++X)
 		{
-			const int32 SourceX = FMath::Clamp(((X - MinX) * SourcePixels.Width) / DrawWidth, 0, SourcePixels.Width - 1);
+			const float LocalX = (X - MinX - DrawWidth * 0.5f) * SourceScaleX;
+			const float LocalY = (Y - MinY - DrawHeight * 0.5f) * SourceScaleY;
+			const float SourceSampleX = LocalX * CosAngle + LocalY * SinAngle + SourceCenterX;
+			const float SourceSampleY = -LocalX * SinAngle + LocalY * CosAngle + SourceCenterY;
+
+			if (SourceSampleX < 0.0f || SourceSampleX > SourcePixels.Width - 1 || SourceSampleY < 0.0f || SourceSampleY > SourcePixels.Height - 1)
+			{
+				continue;
+			}
+
+			const int32 SourceX = FMath::Clamp(FMath::RoundToInt(SourceSampleX), 0, SourcePixels.Width - 1);
+			const int32 SourceY = FMath::Clamp(FMath::RoundToInt(SourceSampleY), 0, SourcePixels.Height - 1);
 			AlphaBlendPixel(TargetPixels[Y * CookingIconTextureSize + X], SourcePixels.Pixels[SourceY * SourcePixels.Width + SourceX], Opacity);
 		}
 	}
@@ -175,13 +194,14 @@ void BlendCookingLayerAt(
 	float CenterX,
 	float CenterY,
 	float Scale,
-	float Opacity
+	float Opacity,
+	float RotationDegrees = 0.0f
 )
 {
 	FCookingTexturePixels LayerPixels;
 	if (ReadTextureSourcePixels(LoadCookingLayerTexture(AssetPath), LayerPixels))
 	{
-		BlendTextureLayerAt(TargetPixels, LayerPixels, CenterX, CenterY, Scale, Opacity);
+		BlendTextureLayerAt(TargetPixels, LayerPixels, CenterX, CenterY, Scale, Opacity, RotationDegrees);
 	}
 }
 
@@ -251,7 +271,7 @@ const TCHAR* GetCookingChunkAssetPath(ECookingTag Tag)
 	case ECookingTag::Fish:
 		return TEXT("/Game/Cooking/Assets/Chunk_Fish.Chunk_Fish");
 	case ECookingTag::Slime:
-		return TEXT("/Game/Cooking/Assets/Chunk_SlimeBubble.Chunk_SlimeBubble");
+		return TEXT("/Game/Cooking/Assets/Topping_SlimeDrop.Topping_SlimeDrop");
 	case ECookingTag::Mushroom:
 		return TEXT("/Game/Cooking/Assets/Chunk_MushroomSlice.Chunk_MushroomSlice");
 	case ECookingTag::Meat:
@@ -422,9 +442,10 @@ void BlendIngredientPieces(
 	const float Opacity = bMainIngredient
 		? FMath::Clamp(0.66f + Ratio * 0.28f, 0.0f, 0.94f)
 		: FMath::Clamp(0.74f + Ratio * 0.22f, 0.0f, 0.96f);
-	const float BaseScale = bMainIngredient
+	const float RawBaseScale = bMainIngredient
 		? FMath::Lerp(0.17f, 0.27f, Ratio)
 		: FMath::Lerp(0.13f, 0.20f, Ratio);
+	const float BaseScale = bMainIngredient ? RawBaseScale : RawBaseScale * 1.5f;
 	const float PieceScaleMultiplier = GetCookingPieceScaleMultiplier(Tag, bMainIngredient);
 	const FCookingPlacementBounds Bounds = GetCookingPlacementBounds(ResultType, bMainIngredient);
 
@@ -470,15 +491,19 @@ void BlendIngredientPieces(
 
 		UsedPositions.Add(Position);
 
-		const float ScaleJitter = FMath::FRandRange(0.86f, 1.12f);
+		const float ScaleJitter = FMath::FRandRange(0.70f, 1.30f);
 		const float EdgeScale = bMainIngredient ? FMath::Lerp(1.04f, 0.88f, Index / static_cast<float>(FMath::Max(PieceCount - 1, 1))) : 1.0f;
+		const float RotationJitter = bMainIngredient
+			? FMath::FRandRange(-14.0f, 14.0f)
+			: FMath::FRandRange(-32.0f, 32.0f);
 		BlendCookingLayerAt(
 			Pixels,
 			PiecePath,
 			Position.X,
 			Position.Y,
 			BaseScale * Bounds.ScaleMultiplier * PieceScaleMultiplier * ScaleJitter * EdgeScale,
-			Opacity * FMath::FRandRange(0.88f, 1.0f)
+			Opacity * FMath::FRandRange(0.88f, 1.0f),
+			RotationJitter
 		);
 	}
 
@@ -488,7 +513,15 @@ void BlendIngredientPieces(
 		{
 			const float AccentX = FMath::FRandRange(Bounds.MinX, Bounds.MaxX);
 			const float AccentY = FMath::FRandRange(Bounds.MinY, Bounds.MaxY);
-			BlendCookingLayerAt(Pixels, ToppingPath, AccentX, AccentY, BaseScale * Bounds.ScaleMultiplier * FMath::FRandRange(0.42f, 0.66f), Opacity * 0.82f);
+			BlendCookingLayerAt(
+				Pixels,
+				ToppingPath,
+				AccentX,
+				AccentY,
+				BaseScale * Bounds.ScaleMultiplier * FMath::FRandRange(0.42f, 0.66f),
+				Opacity * 0.82f,
+				FMath::FRandRange(-45.0f, 45.0f)
+			);
 		}
 	}
 }
@@ -886,10 +919,31 @@ FCookingResultData UCookingComponent::FinishCooking(float MinigameScore)
 
 	if (Result.ResultType == ECookingResultType::Failed)
 	{
+		Result.Quality = ECookingQuality::Failed;
+		Result.ResultName = FText::FromString(TEXT("실패한 요리"));
+		Result.ResultItemId = FName(TEXT("Food_Failed"));
+		Result.HealAmount = -10.0f;
+		Result.StaminaAmount = 0.0f;
+		Result.AttackBuffAmount = 0.0f;
+		Result.DefenseBuffAmount = 0.0f;
+		Result.IconData.BaseType = ECookingResultType::Failed;
 		return Result;
 	}
 
 	Result.Quality = GetQualityByMinigameScore(MinigameScore);
+
+	if (Result.Quality == ECookingQuality::Failed)
+	{
+		Result.ResultType = ECookingResultType::Failed;
+		Result.ResultName = FText::FromString(TEXT("실패한 요리"));
+		Result.ResultItemId = FName(TEXT("Food_Failed"));
+		Result.HealAmount = -10.0f;
+		Result.StaminaAmount = 0.0f;
+		Result.AttackBuffAmount = 0.0f;
+		Result.DefenseBuffAmount = 0.0f;
+		Result.IconData.BaseType = ECookingResultType::Failed;
+		return Result;
+	}
 
 	const float QualityMultiplier = GetQualityMultiplier(Result.Quality);
 
@@ -954,10 +1008,6 @@ bool UCookingComponent::FinishCookingToInventory(
 	}
 
 	OutResult = FinishCooking(MinigameScore);
-	if (OutResult.ResultType == ECookingResultType::Failed || OutResult.Quality == ECookingQuality::Failed)
-	{
-		return false;
-	}
 
 	OutResult.ResultItemId = FName(*FString::Printf(
 		TEXT("%s_%s"),
@@ -983,6 +1033,11 @@ bool UCookingComponent::FinishCookingToInventory(
 		1.0f,
 		OutResult
 	);
+
+	if (UCookingRecipeBookComponent* RecipeBookComponent = GetOwner()->FindComponentByClass<UCookingRecipeBookComponent>())
+	{
+		RecipeBookComponent->RegisterCookingResult(OutResult, ResultIcon);
+	}
 
 	ClearCookingIngredients();
 	return true;

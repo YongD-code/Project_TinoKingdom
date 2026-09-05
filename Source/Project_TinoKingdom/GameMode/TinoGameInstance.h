@@ -49,6 +49,9 @@ struct PROJECT_TINOKINGDOM_API FTinoPlayerTravelState
 	TArray<FInventoryItemStack> InventoryItems;
 
 	UPROPERTY()
+	TArray<FDiscoveredCookingRecipe> DiscoveredCookingRecipes;
+
+	UPROPERTY()
 	TMap<TObjectPtr<UQuestData>, EQuestState> QuestStates;
 
 	UPROPERTY()

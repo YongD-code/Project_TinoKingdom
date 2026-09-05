@@ -8,6 +8,7 @@
 #include "PlayerCharacter.generated.h"
 
 class UDialogueComponent;
+class UCookingRecipeBookComponent;
 class UGameplayEffect;
 class UTinoAttributeSet;
 class UAbilitySystemComponent;
@@ -103,6 +104,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	UCookingComponent* GetCookingComponent() const { return CookingComponent; }
+
+	UFUNCTION(BlueprintPure, Category = "Cooking")
+	UCookingRecipeBookComponent* GetCookingRecipeBookComponent() const { return CookingRecipeBookComponent; }
 
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	void ToggleCookingMenu();
@@ -257,6 +261,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking")
 	TObjectPtr<UCookingComponent> CookingComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cooking")
+	TObjectPtr<UCookingRecipeBookComponent> CookingRecipeBookComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	TObjectPtr<UTinoStateComponent> CharacterStateComponent;

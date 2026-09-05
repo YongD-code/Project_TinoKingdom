@@ -65,6 +65,15 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Quest")
 	FOnQuestCompleted OnQuestCompleted;
 
+	// 퀘스트를 완료한 자리에 스폰할 이펙트 액터. 비워 두면 아무것도 스폰하지 않는다.
+	// 스플라인으로 모양을 잡는 이펙트라 시스템이 아닌 액터를 받는다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Quest|Effect")
+	TSubclassOf<AActor> CompletedEffect;
+
+	// 이펙트 액터가 스스로 사라지지 않으므로 이 시간이 지나면 지운다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Quest|Effect", meta = (ClampMin = "0.1"))
+	float CompletedEffectLifeSpan = 5.0f;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -79,6 +88,10 @@ private:
 
 	// 진행도를 다시 세고, 목표를 채웠으면 완료 가능 상태로 올린다.
 	void RefreshProgress(UQuestData* Quest);
+
+	// 완료 지점(플레이어 발밑)에 CompletedEffect를 스폰한다.
+	void PlayCompletedEffect() const;
+
 
 private:
 	UPROPERTY(Transient)

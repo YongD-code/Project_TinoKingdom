@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "CookingTypes.generated.h"
 
+class UTexture2D;
+
 UENUM(BlueprintType)
 enum class ECookingTag : uint8
 {
@@ -142,4 +144,43 @@ struct FCookingResultData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking")
 	FCookingIconData IconData;
+};
+
+USTRUCT(BlueprintType)
+struct FDiscoveredCookingRecipe
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	FName RecipeKey = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	FText ResultName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	ECookingResultType ResultType = ECookingResultType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	ECookingQuality BestQuality = ECookingQuality::Failed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	int32 TimesCooked = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	float BestHealAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	float BestStaminaAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	float BestAttackBuffAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	float BestDefenseBuffAmount = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	FCookingIconData IconData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cooking Recipe Book")
+	TObjectPtr<UTexture2D> Icon = nullptr;
 };

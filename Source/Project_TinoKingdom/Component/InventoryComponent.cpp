@@ -5,6 +5,12 @@
 
 #include "Project_TinoKingdom/Component/StatComponent.h"
 
+namespace
+{
+const FName MonkeyKeyItemId(TEXT("Key_Monkey"));
+const FText MonkeyKeyDisplayName = FText::FromString(TEXT("원숭이 열쇠"));
+}
+
 // Sets default values for this component's properties
 UInventoryComponent::UInventoryComponent()
 {
@@ -149,7 +155,7 @@ bool UInventoryComponent::UseFoodItem(FName ItemId, UStatComponent* TargetStatCo
 
 		const FCookingResultData& FoodData = ItemStack.FoodResultData;
 
-		if (FoodData.HealAmount > 0.0f)
+		if (!FMath::IsNearlyZero(FoodData.HealAmount))
 		{
 			TargetStatComponent->Heal(FoodData.HealAmount);
 		}
@@ -169,6 +175,27 @@ bool UInventoryComponent::UseFoodItem(FName ItemId, UStatComponent* TargetStatCo
 	}
 
 	return false;
+}
+
+void UInventoryComponent::AddMonkeyKey(UTexture2D* Icon)
+{
+	AddItem(
+		MonkeyKeyItemId,
+		MonkeyKeyDisplayName,
+		1,
+		Icon,
+		EInventoryItemType::Key
+	);
+}
+
+bool UInventoryComponent::HasMonkeyKey() const
+{
+	return HasItem(MonkeyKeyItemId);
+}
+
+FName UInventoryComponent::GetMonkeyKeyItemId()
+{
+	return MonkeyKeyItemId;
 }
 
 void UInventoryComponent::RestoreItemsForTravel(const TArray<FInventoryItemStack>& SavedItems)

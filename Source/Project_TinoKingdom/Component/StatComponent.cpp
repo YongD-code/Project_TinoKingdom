@@ -48,6 +48,12 @@ void UStatComponent::Heal(float HealAmount)
 
 	CurrentHP = FMath::Clamp(CurrentHP + HealAmount, 0.f, MaxHP);
 	OnHPChanged.Broadcast(CurrentHP, MaxHP);
+
+	if (CurrentHP <= 0.0f)
+	{
+		bDead = true;
+		OnDead.Broadcast();
+	}
 }
 
 bool UStatComponent::ConsumeStamina(float StaminaAmount)

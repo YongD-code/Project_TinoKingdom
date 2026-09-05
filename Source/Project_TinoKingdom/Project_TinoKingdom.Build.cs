@@ -23,7 +23,8 @@ public class Project_TinoKingdom : ModuleRules
 			"GameplayTasks",
 			"Niagara",
 			"LevelSequence",
-			"MovieScene"
+			"MovieScene",
+			"Niagara"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

@@ -23,13 +23,16 @@ class UBorder;
 class UButton;
 class UCanvasPanelSlot;
 class UImage;
+class UScrollBox;
 class UProgressBar;
 class UPlayerProgressionComponent;
 class USizeBox;
 class UTextBlock;
 class UUniformGridPanel;
 class UUserWidget;
+class UVerticalBox;
 class UWidget;
+class UCookingRecipeBookComponent;
 class UCookingWidget;
 
 struct FOnAttributeChangeData;
@@ -312,14 +315,20 @@ private:
 	void RefreshInventorySlots();
 	void HandleInventorySlotClicked(int32 SlotIndex);
 	UInventoryComponent* ResolveInventoryComponent() const;
+	UCookingRecipeBookComponent* ResolveCookingRecipeBookComponent() const;
 	void EnsureInventoryPreviewWidget();
-	void ShowInventoryItemPreview(const FInventoryItemStack& Item);
+	void ShowInventoryItemPreview(const FInventoryItemStack& Item, int32 SlotIndex);
 	void HideInventoryItemPreview();
 	FText BuildInventoryItemToolTipText(const FInventoryItemStack& Item) const;
 	UWidget* BuildInventoryItemToolTipWidget(const FInventoryItemStack& Item, int32 SlotIndex);
 	void HandleInventorySlotHovered(int32 SlotIndex);
 	bool TryUseInventoryItemAt(int32 SlotIndex);
 	bool ApplyFoodEffectsToAbilitySystem(const FCookingResultData& FoodData);
+	void EnsureRecipeBookWidget();
+	void RefreshRecipeBookPanel();
+	void HideRecipeBookPanel();
+	UWidget* BuildRecipeBookRow(const FDiscoveredCookingRecipe& Recipe);
+	FText BuildRecipeBookRowText(const FDiscoveredCookingRecipe& Recipe) const;
 	
 	void SetDisplayedLevel(int32 NewLevel);
 	
@@ -418,6 +427,20 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> InventoryPreviewImage;
+
+	int32 PreviewedInventorySlotIndex = INDEX_NONE;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> RecipeBookPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RecipeBookCountTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UScrollBox> RecipeBookScrollBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> RecipeBookListBox;
 
 	int32 HoveredInventorySlotIndex = INDEX_NONE;
 
