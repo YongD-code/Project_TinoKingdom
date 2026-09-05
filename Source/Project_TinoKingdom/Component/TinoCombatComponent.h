@@ -16,6 +16,7 @@ class UAttackComboData;
 class ATinoEquipmentActor;
 class UTinoStateComponent;
 class UNiagaraSystem;
+class USoundBase;
 
 enum class EAttackSource : uint8;
 
@@ -94,6 +95,22 @@ private:
 	//공격이 적중했을때 적중지점에서 재생할 히트 이펙트
 	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category = "Combat|Effect", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraSystem>HitEffect;
+
+	// 공격이 적중했을 때 적중 지점에서 재생할 소리.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Sound", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> HitSound;
+
+	// 공격 판정이 시작될 때마다 재생할 휘두르는 소리.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Sound", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> SwingSound;
+
+	// 마지막 콤보에서만 재생할 기합 소리.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Sound", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> SwingVoiceSound;
+
+	// SwingVoiceSound를 재생할 콤보 섹션 번호. 0부터 세므로 3타는 2.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Sound", meta = (AllowPrivateAccess = "true", ClampMin = "0"))
+	int32 SwingVoiceComboIndex = 2;
 
 	// 장착 공격 데이터가 없을 때 사용할 캐릭터의 기본 공격 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))

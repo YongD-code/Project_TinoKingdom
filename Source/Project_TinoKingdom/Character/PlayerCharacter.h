@@ -16,6 +16,7 @@ class UPlayerProgressionComponent;
 class UTargetingComponent;
 class UDodgeComponent;
 class UQuestComponent;
+class USoundBase;
 class UReactionComponent;
 class UCameraComponent;
 class USpringArmComponent;
@@ -236,6 +237,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
 	float InteractionRadius = 300.f;
+
+	// 플레이어가 피해를 입었을 때 재생할 소리.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> DamagedSound;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction|Debug")
 	bool bDrawInteractionDebug = false;

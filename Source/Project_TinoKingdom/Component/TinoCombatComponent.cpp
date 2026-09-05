@@ -115,6 +115,18 @@ void UTinoCombatComponent::BeginAttackHitWindow()
 	}
 
 	ActiveAttackSectionIndex = FoundSectionIndex;
+
+	if (IsValid(SwingSound))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, SwingSound, OwnerCharacter->GetActorLocation());
+	}
+
+	// 마지막 콤보에서만 기합을 넣어 타격감을 준다.
+	if (IsValid(SwingVoiceSound) && ActiveAttackSectionIndex == SwingVoiceComboIndex)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, SwingVoiceSound, OwnerCharacter->GetActorLocation());
+	}
+
 	const FComboAttackSectionData& AttackSection = ActiveAttackData->ComboSection[ActiveAttackSectionIndex];
 	GetAttackTracePoints(AttackSection.AttackSource, PreviousTraceBaseLocation, PreviousTraceTipLocation);
 	
@@ -380,6 +392,11 @@ void UTinoCombatComponent::PerformAttackTrace()
 		if (IsValid(HitEffect))
 		{
 			UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, HitEffect, HitResult.ImpactPoint);
+		}
+
+		if (IsValid(HitSound))
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, HitSound, HitResult.ImpactPoint);
 		}
 
 		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
