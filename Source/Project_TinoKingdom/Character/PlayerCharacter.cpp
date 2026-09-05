@@ -201,10 +201,16 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	GetWorldTimerManager().ClearTimer(DeathScreenShowTimerHandle);
+	GetWorldTimerManager().ClearTimer(DeathScreenFadeTimerHandle);
 	ClearRespawnSequence();
 	
-	// 장비창이 열린 채 사망해도 전역 시간을 원래대로 복구
-	StopSlowMotion();
+	// 메뉴가 열린 채 종료돼도 전역 시간을 원래대로 복구한다.
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->HideDeathScreen();
+	}
+	ForceStopSlowMotion();
 	StopAiming();
 
 	TargetingComponent->ClearTarget();
@@ -903,6 +909,7 @@ void APlayerCharacter::UpdateLockOnCamera(float DeltaTime)
 
 void APlayerCharacter::StartSlowMotion()
 {
+	++SlowMotionRequestCount;
 	if (bEquipmentWheelSlowMotionActive)
 	{
 		return;
@@ -911,18 +918,43 @@ void APlayerCharacter::StartSlowMotion()
 	UGameplayStatics::SetGlobalTimeDilation(this, TimeDilation);
 
 	bEquipmentWheelSlowMotionActive = true;
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetMenuBackgroundVisible(true);
+	}
 }
 
 void APlayerCharacter::StopSlowMotion()
 {
-	if (!bEquipmentWheelSlowMotionActive)
+	if (SlowMotionRequestCount <= 0)
 	{
 		return;
 	}
-	UGameplayStatics::SetGlobalTimeDilation(this, SavedGlobalTimeDilation);
+
+	--SlowMotionRequestCount;
+	if (SlowMotionRequestCount > 0)
+	{
+		return;
+	}
+
+	ForceStopSlowMotion();
+}
+
+void APlayerCharacter::ForceStopSlowMotion()
+{
+	SlowMotionRequestCount = 0;
+	if (bEquipmentWheelSlowMotionActive)
+	{
+		UGameplayStatics::SetGlobalTimeDilation(this, SavedGlobalTimeDilation);
+	}
 
 	bEquipmentWheelSlowMotionActive = false;
 	SavedGlobalTimeDilation = 1.f;
+
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetMenuBackgroundVisible(false);
+	}
 }
 
 bool APlayerCharacter::InitializeDefaultAttributes()
@@ -972,6 +1004,15 @@ bool APlayerCharacter::InitializeDefaultAttributes()
 void APlayerCharacter::RespawnAtInitialTransform()
 {
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
+	GetWorldTimerManager().ClearTimer(DeathScreenShowTimerHandle);
+	GetWorldTimerManager().ClearTimer(DeathScreenFadeTimerHandle);
+	PendingDeathDamageCauser.Reset();
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		// 리스폰 시퀀스의 0프레임 Fade 1에 넘기기 전에 완전한 검정을 보장한다.
+		PlayerController->FadeDeathScreenToBlack(0.0f);
+	}
+	ForceStopSlowMotion();
 	ClearRespawnSequence();
 	ReactionComponent->ResetDeathReaction();
 	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
@@ -986,6 +1027,10 @@ void APlayerCharacter::RespawnAtInitialTransform()
 
 	if (!IsValid(RespawnSequence))
 	{
+		if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+		{
+			PlayerController->HideDeathScreen();
+		}
 		FinishRespawn(false);
 		return;
 	}
@@ -1004,6 +1049,10 @@ void APlayerCharacter::RespawnAtInitialTransform()
 		{
 			NewSequenceActor->Destroy();
 		}
+		if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+		{
+			PlayerController->HideDeathScreen();
+		}
 		FinishRespawn(false);
 		return;
 	}
@@ -1017,6 +1066,11 @@ void APlayerCharacter::RespawnAtInitialTransform()
 		PlayerController->SetPlayerUIVisible(false);
 	}
 	RespawnSequencePlayer->Play();
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		// Play가 0프레임 Fade 1을 적용한 뒤 사망 화면을 제거해 검정을 끊김 없이 넘긴다.
+		PlayerController->HideDeathScreen();
+	}
 }
 
 void APlayerCharacter::HandleRespawnSequenceFinished()
@@ -1035,7 +1089,8 @@ void APlayerCharacter::HandleRespawnSequenceFinished()
 	{
 		PlayerController->SetPlayerUIVisible(true);
 	}
-	FinishRespawn(true);
+	// 시퀀스가 0프레임 Fade 1 -> 15프레임 Fade 0을 담당하므로 추가 페이드는 하지 않는다.
+	FinishRespawn(false);
 }
 
 void APlayerCharacter::FinishRespawn(bool bFadeInFromBlack)
@@ -1148,10 +1203,19 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	StopAiming();
 	TargetingComponent->ClearTarget();
 	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);
-	// 마찬가지로 사망해도 장비창을 안전하게 닫기
+	// 사망 시 열려 있던 장비 휠과 다른 메뉴를 모두 안전하게 닫는다.
 	CancelEquipmentWheel();
-	StopSlowMotion();
-
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->CloseAllMenus();
+		PlayerController->SetPlayerUIVisible(false);
+	}
+	ForceStopSlowMotion();
+	PendingDeathDamageCauser = DamageCauser;
+	if (IsValid(DamageCauser) && IsValid(DamageCauser->GetInstigator()))
+	{
+		PendingDeathDamageCauser = DamageCauser->GetInstigator();
+	}
 	StopRunning();
 	CombatComponent->CancelAttack();
 	DodgeComponent->CancelDodge();
@@ -1166,8 +1230,66 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 		return;
 	}
 	
+	// Slow/블러/어두운 배경/문구를 같은 시점에 시작한다.
+	const float CurrentGlobalTimeDilation = FMath::Max(
+		UGameplayStatics::GetGlobalTimeDilation(this), KINDA_SMALL_NUMBER);
+	const float ClampedShowDelay = FMath::Clamp(DeathScreenShowDelay, 0.0f, RespawnDelay);
+	if (ClampedShowDelay <= 0.0f)
+	{
+		HandleDeathScreenShowDelayElapsed();
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(DeathScreenShowTimerHandle, this,
+			&APlayerCharacter::HandleDeathScreenShowDelayElapsed,
+			ClampedShowDelay * CurrentGlobalTimeDilation, false);
+	}
+}
+
+void APlayerCharacter::HandleDeathScreenShowDelayElapsed()
+{
+	StartSlowMotion();
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->ShowDeathScreen(PendingDeathDamageCauser.Get());
+	}
+
+	const float EffectiveShowDelay = FMath::Clamp(DeathScreenShowDelay, 0.0f, RespawnDelay);
+	const float RemainingUntilRespawn = RespawnDelay - EffectiveShowDelay;
+	if (RemainingUntilRespawn <= 0.0f)
+	{
+		RespawnAtInitialTransform();
+		return;
+	}
+
+	// Slow Motion이 시작된 뒤에도 남은 시간은 실제 시간 기준으로 유지한다.
+	const float CurrentGlobalTimeDilation = FMath::Max(
+		UGameplayStatics::GetGlobalTimeDilation(this), KINDA_SMALL_NUMBER);
+	const float ClampedFadeDuration = FMath::Clamp(
+		DeathScreenFadeToBlackDuration, 0.0f, RemainingUntilRespawn);
+	const float FadeStartDelay = RemainingUntilRespawn - ClampedFadeDuration;
+	if (FadeStartDelay <= 0.0f)
+	{
+		HandleDeathScreenFadeDelayElapsed();
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(DeathScreenFadeTimerHandle, this,
+			&APlayerCharacter::HandleDeathScreenFadeDelayElapsed,
+			FadeStartDelay * CurrentGlobalTimeDilation, false);
+	}
+
 	GetWorldTimerManager().SetTimer(RespawnTimerHandle, this,
-		&APlayerCharacter::RespawnAtInitialTransform, RespawnDelay, false);
+		&APlayerCharacter::RespawnAtInitialTransform,
+		RemainingUntilRespawn * CurrentGlobalTimeDilation, false);
+}
+
+void APlayerCharacter::HandleDeathScreenFadeDelayElapsed()
+{
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->FadeDeathScreenToBlack(DeathScreenFadeToBlackDuration);
+	}
 }
 
 void APlayerCharacter::HandleLockOnTargetChanged(AActor* PreviousTarget, AActor* NewTarget)
