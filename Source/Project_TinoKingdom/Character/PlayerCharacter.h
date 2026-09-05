@@ -334,7 +334,13 @@ protected:
 	float StartupFadeInDuration = 3.f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn")
-	float RespawnDelay = 4.f;
+	float RespawnDelay = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Death Screen", meta = (ClampMin = "0.0"))
+	float DeathScreenShowDelay = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Death Screen", meta = (ClampMin = "0.0"))
+	float DeathScreenFadeToBlackDuration = 1.0f;
 
 	// 런타임에 직접 재생할 부활 카메라/사운드 시퀀스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic")
@@ -362,6 +368,10 @@ private:
 	float StaminaDelayTime = 0.0f;
 
 	FTimerHandle RespawnTimerHandle;
+	FTimerHandle DeathScreenShowTimerHandle;
+	FTimerHandle DeathScreenFadeTimerHandle;
+
+	TWeakObjectPtr<AActor> PendingDeathDamageCauser;
 
 	UPROPERTY(Transient)
 	TObjectPtr<ULevelSequencePlayer> RespawnSequencePlayer;
@@ -394,6 +404,9 @@ private:
 
 	UFUNCTION()
 	void HandleRespawnSequenceFinished();
+
+	void HandleDeathScreenShowDelayElapsed();
+	void HandleDeathScreenFadeDelayElapsed();
 	
 	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
 	
