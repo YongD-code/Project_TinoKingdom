@@ -110,7 +110,7 @@ bool ASecretPlaceEntrance::TryUseItem(APlayerCharacter* PlayerCharacter, const F
 		return true;
 	}
 
-	if (ItemId != RequiredItemId)
+	if (ItemId != UInventoryComponent::GetMonkeyKeyItemId())
 	{
 		return false;
 	}
