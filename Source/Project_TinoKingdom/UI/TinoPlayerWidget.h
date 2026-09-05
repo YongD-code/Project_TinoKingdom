@@ -50,6 +50,8 @@ public:
 	void ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent);
 	void RefreshCookingIngredientPicker();
 	void CloseCookingIngredientPicker();
+	void SetCookingMenuOpen(bool bOpen);
+	void ShowCookingUnavailableMessage();
 	
 protected:
 	virtual void NativeOnInitialized() override;
@@ -329,6 +331,10 @@ private:
 	void HideRecipeBookPanel();
 	UWidget* BuildRecipeBookRow(const FDiscoveredCookingRecipe& Recipe);
 	FText BuildRecipeBookRowText(const FDiscoveredCookingRecipe& Recipe) const;
+	void EnsureCookingInteractionWidgets();
+	void UpdateCookingInteractionPrompt();
+	void HideCookingInteractionPrompt();
+	void UpdateCookingNotice(float DeltaTime);
 	
 	void SetDisplayedLevel(int32 NewLevel);
 	
@@ -442,6 +448,18 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> RecipeBookListBox;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> CookingInteractionPromptPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CookingInteractionPromptTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> CookingNoticePanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CookingNoticeTextBlock;
+
 	int32 HoveredInventorySlotIndex = INDEX_NONE;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Inventory")
@@ -450,5 +468,12 @@ private:
 	static constexpr int32 InventoryColumnCount = 5;
 	static constexpr int32 MaxInventorySlotCount = 25;
 
+	float CookingNoticeRemainingTime = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Cooking", meta = (ClampMin = "0.0"))
+	float CookingNoticeDuration = 1.8f;
+
 	bool bCookingIngredientPickerOpen = false;
+	bool bCharacterMenuVisible = false;
+	bool bCookingMenuVisible = false;
 };

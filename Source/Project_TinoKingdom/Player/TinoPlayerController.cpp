@@ -87,6 +87,7 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 	{
 		if (PlayerUIWidget != nullptr)
 		{
+			PlayerUIWidget->SetCookingMenuOpen(false);
 			PlayerUIWidget->CloseCookingIngredientPicker();
 		}
 
@@ -106,6 +107,10 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CookingUIClass가 지정되지 않았습니다."));
 		bCookingMenuOpen = false;
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->SetCookingMenuOpen(false);
+		}
 		return;
 	}
 
@@ -113,6 +118,10 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Cooking UI를 열 수 없습니다. CookingComponent 또는 InventoryComponent가 없습니다."));
 		bCookingMenuOpen = false;
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->SetCookingMenuOpen(false);
+		}
 		return;
 	}
 
@@ -124,7 +133,16 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 	if (CookingUIWidget == nullptr)
 	{
 		bCookingMenuOpen = false;
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->SetCookingMenuOpen(false);
+		}
 		return;
+	}
+
+	if (PlayerUIWidget != nullptr)
+	{
+		PlayerUIWidget->SetCookingMenuOpen(true);
 	}
 
 	CookingUIWidget->InitializeCookingWidget(CookingComponent, InventoryComponent);
@@ -152,6 +170,15 @@ bool ATinoPlayerController::InputKey(const FInputKeyEventArgs& Params)
 
 		if (APlayerCharacter* TinoPlayerCharacter = Cast<APlayerCharacter>(GetPawn()))
 		{
+			if (!TinoPlayerCharacter->IsNearCookingPot())
+			{
+				if (PlayerUIWidget != nullptr)
+				{
+					PlayerUIWidget->ShowCookingUnavailableMessage();
+				}
+				return true;
+			}
+
 			ToggleCookingMenu(
 				TinoPlayerCharacter->GetCookingComponent(),
 				TinoPlayerCharacter->GetInventoryComponent()

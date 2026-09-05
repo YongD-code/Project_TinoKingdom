@@ -111,6 +111,8 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 		return;
 	}
 
+	bCharacterMenuVisible = bVisible;
+
 	if (bVisible)
 	{
 		bCookingIngredientPickerOpen = false;
@@ -146,6 +148,7 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 	const ESlateVisibility MenuVisibility = bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
 	InventoryPanel->SetVisibility(MenuVisibility);
 	StatusPanel->SetVisibility(MenuVisibility);
+	UpdateCookingInteractionPrompt();
 }
 
 void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidget, UInventoryComponent* InventoryComponent)
@@ -167,7 +170,7 @@ void UTinoPlayerWidget::ShowCookingIngredientPicker(UCookingWidget* CookingWidge
 	{
 		InventoryPanelSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		InventoryPanelSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		InventoryPanelSlot->SetPosition(FVector2D(-600.0f, 0.0f));
+		InventoryPanelSlot->SetPosition(FVector2D(-430.0f, 0.0f));
 		InventoryPanelSlot->SetSize(FVector2D(360.0f, 360.0f));
 	}
 
@@ -200,6 +203,25 @@ void UTinoPlayerWidget::CloseCookingIngredientPicker()
 			AddToViewport();
 		}
 	}
+}
+
+void UTinoPlayerWidget::SetCookingMenuOpen(bool bOpen)
+{
+	bCookingMenuVisible = bOpen;
+	UpdateCookingInteractionPrompt();
+}
+
+void UTinoPlayerWidget::ShowCookingUnavailableMessage()
+{
+	EnsureCookingInteractionWidgets();
+	if (CookingNoticePanel == nullptr || CookingNoticeTextBlock == nullptr)
+	{
+		return;
+	}
+
+	CookingNoticeTextBlock->SetText(FText::FromString(TEXT("요리는 냄비 근처에서만 할 수 있습니다.")));
+	CookingNoticeRemainingTime = CookingNoticeDuration;
+	CookingNoticePanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UTinoPlayerWidget::NativeOnInitialized()
@@ -252,6 +274,8 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 	}
 
 	UpdateExperienceBar(InDeltaTime);
+	UpdateCookingInteractionPrompt();
+	UpdateCookingNotice(InDeltaTime);
 	
 	if (!LockOnTarget.IsValid())
 	{
@@ -1143,6 +1167,127 @@ UCookingRecipeBookComponent* UTinoPlayerWidget::ResolveCookingRecipeBookComponen
 	return PlayerCharacter != nullptr ? PlayerCharacter->GetCookingRecipeBookComponent() : nullptr;
 }
 
+void UTinoPlayerWidget::EnsureCookingInteractionWidgets()
+{
+	if (CookingInteractionPromptPanel != nullptr && CookingInteractionPromptTextBlock != nullptr &&
+		CookingNoticePanel != nullptr && CookingNoticeTextBlock != nullptr)
+	{
+		return;
+	}
+
+	if (WidgetTree == nullptr)
+	{
+		return;
+	}
+
+	UCanvasPanel* RootCanvas = Cast<UCanvasPanel>(GetRootWidget());
+	if (RootCanvas == nullptr)
+	{
+		return;
+	}
+
+	CookingInteractionPromptPanel = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("CookingInteractionPromptPanel_Runtime"));
+	CookingInteractionPromptTextBlock = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(), TEXT("CookingInteractionPromptText_Runtime"));
+	CookingNoticePanel = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("CookingNoticePanel_Runtime"));
+	CookingNoticeTextBlock = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(), TEXT("CookingNoticeText_Runtime"));
+
+	if (CookingInteractionPromptPanel == nullptr || CookingInteractionPromptTextBlock == nullptr ||
+		CookingNoticePanel == nullptr || CookingNoticeTextBlock == nullptr)
+	{
+		return;
+	}
+
+	FSlateFontInfo PromptFont = CookingInteractionPromptTextBlock->GetFont();
+	PromptFont.Size = 24;
+	CookingInteractionPromptTextBlock->SetFont(PromptFont);
+	CookingInteractionPromptTextBlock->SetText(FText::FromString(TEXT("C  요리하기")));
+	CookingInteractionPromptTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.88f, 0.58f, 1.0f)));
+	CookingInteractionPromptTextBlock->SetJustification(ETextJustify::Center);
+
+	CookingInteractionPromptPanel->SetBrushColor(FLinearColor(0.025f, 0.021f, 0.016f, 0.86f));
+	CookingInteractionPromptPanel->SetPadding(FMargin(22.0f, 10.0f));
+	CookingInteractionPromptPanel->SetContent(CookingInteractionPromptTextBlock);
+	CookingInteractionPromptPanel->SetVisibility(ESlateVisibility::Collapsed);
+
+	UCanvasPanelSlot* PromptSlot = RootCanvas->AddChildToCanvas(CookingInteractionPromptPanel);
+	if (PromptSlot != nullptr)
+	{
+		PromptSlot->SetAnchors(FAnchors(0.5f, 0.82f, 0.5f, 0.82f));
+		PromptSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+		PromptSlot->SetPosition(FVector2D::ZeroVector);
+		PromptSlot->SetSize(FVector2D(220.0f, 58.0f));
+		PromptSlot->SetZOrder(12);
+	}
+
+	FSlateFontInfo NoticeFont = CookingNoticeTextBlock->GetFont();
+	NoticeFont.Size = 22;
+	CookingNoticeTextBlock->SetFont(NoticeFont);
+	CookingNoticeTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.82f, 0.58f, 1.0f)));
+	CookingNoticeTextBlock->SetJustification(ETextJustify::Center);
+	CookingNoticeTextBlock->SetAutoWrapText(true);
+
+	CookingNoticePanel->SetBrushColor(FLinearColor(0.06f, 0.027f, 0.02f, 0.9f));
+	CookingNoticePanel->SetPadding(FMargin(22.0f, 10.0f));
+	CookingNoticePanel->SetContent(CookingNoticeTextBlock);
+	CookingNoticePanel->SetVisibility(ESlateVisibility::Collapsed);
+
+	UCanvasPanelSlot* NoticeSlot = RootCanvas->AddChildToCanvas(CookingNoticePanel);
+	if (NoticeSlot != nullptr)
+	{
+		NoticeSlot->SetAnchors(FAnchors(0.5f, 0.72f, 0.5f, 0.72f));
+		NoticeSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+		NoticeSlot->SetPosition(FVector2D::ZeroVector);
+		NoticeSlot->SetSize(FVector2D(520.0f, 62.0f));
+		NoticeSlot->SetZOrder(13);
+	}
+}
+
+void UTinoPlayerWidget::UpdateCookingInteractionPrompt()
+{
+	EnsureCookingInteractionWidgets();
+	if (CookingInteractionPromptPanel == nullptr)
+	{
+		return;
+	}
+
+	const APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn());
+	const bool bCanShowPrompt =
+		PlayerCharacter != nullptr &&
+		PlayerCharacter->IsNearCookingPot() &&
+		!bCharacterMenuVisible &&
+		!bCookingMenuVisible &&
+		!bCookingIngredientPickerOpen;
+
+	CookingInteractionPromptPanel->SetVisibility(
+		bCanShowPrompt ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+}
+
+void UTinoPlayerWidget::HideCookingInteractionPrompt()
+{
+	if (CookingInteractionPromptPanel != nullptr)
+	{
+		CookingInteractionPromptPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UTinoPlayerWidget::UpdateCookingNotice(float DeltaTime)
+{
+	if (CookingNoticeRemainingTime <= 0.0f)
+	{
+		return;
+	}
+
+	CookingNoticeRemainingTime = FMath::Max(0.0f, CookingNoticeRemainingTime - DeltaTime);
+	if (CookingNoticeRemainingTime <= 0.0f && CookingNoticePanel != nullptr)
+	{
+		CookingNoticePanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
 void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
 {
 	if (InventoryPreviewPanel != nullptr && InventoryPreviewImage != nullptr)
@@ -1178,8 +1323,8 @@ void UTinoPlayerWidget::EnsureInventoryPreviewWidget()
 	{
 		PreviewSlot->SetAnchors(FAnchors(0.0f, 0.5f, 0.0f, 0.5f));
 		PreviewSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		PreviewSlot->SetPosition(FVector2D(180.0f, -2.0f));
-		PreviewSlot->SetSize(FVector2D(360.0f, 360.0f));
+		PreviewSlot->SetPosition(FVector2D(170.0f, -2.0f));
+		PreviewSlot->SetSize(FVector2D(300.0f, 300.0f));
 		PreviewSlot->SetZOrder(20);
 	}
 }
@@ -1239,13 +1384,13 @@ void UTinoPlayerWidget::EnsureRecipeBookWidget()
 	}
 
 	FSlateFontInfo TitleFont = TitleTextBlock->GetFont();
-	TitleFont.Size = 30;
+	TitleFont.Size = 25;
 	TitleTextBlock->SetFont(TitleFont);
 	TitleTextBlock->SetText(FText::FromString(TEXT("요리 도감")));
 	TitleTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.86f, 0.56f, 1.0f)));
 
 	FSlateFontInfo CountFont = RecipeBookCountTextBlock->GetFont();
-	CountFont.Size = 18;
+	CountFont.Size = 15;
 	RecipeBookCountTextBlock->SetFont(CountFont);
 	RecipeBookCountTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.76f, 0.72f, 0.64f, 1.0f)));
 
@@ -1278,8 +1423,8 @@ void UTinoPlayerWidget::EnsureRecipeBookWidget()
 	{
 		RecipeBookSlot->SetAnchors(FAnchors(1.0f, 0.5f, 1.0f, 0.5f));
 		RecipeBookSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-		RecipeBookSlot->SetPosition(FVector2D(-245.0f, -2.0f));
-		RecipeBookSlot->SetSize(FVector2D(430.0f, 620.0f));
+		RecipeBookSlot->SetPosition(FVector2D(-110.0f, -2.0f));
+		RecipeBookSlot->SetSize(FVector2D(200.0f, 500.0f));
 		RecipeBookSlot->SetZOrder(18);
 	}
 }
@@ -1364,8 +1509,8 @@ UWidget* UTinoPlayerWidget::BuildRecipeBookRow(const FDiscoveredCookingRecipe& R
 	RowBorder->SetPadding(FMargin(10.0f));
 	RowBorder->SetContent(RowBox);
 
-	IconSizeBox->SetWidthOverride(72.0f);
-	IconSizeBox->SetHeightOverride(72.0f);
+	IconSizeBox->SetWidthOverride(48.0f);
+	IconSizeBox->SetHeightOverride(48.0f);
 	if (Recipe.Icon != nullptr)
 	{
 		IconImage->SetBrushFromTexture(Recipe.Icon, true);
@@ -1375,12 +1520,12 @@ UWidget* UTinoPlayerWidget::BuildRecipeBookRow(const FDiscoveredCookingRecipe& R
 	UHorizontalBoxSlot* IconSlot = RowBox->AddChildToHorizontalBox(IconSizeBox);
 	if (IconSlot != nullptr)
 	{
-		IconSlot->SetPadding(FMargin(0.0f, 0.0f, 12.0f, 0.0f));
+		IconSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
 		IconSlot->SetVerticalAlignment(VAlign_Center);
 	}
 
 	FSlateFontInfo RowFont = RowTextBlock->GetFont();
-	RowFont.Size = 19;
+	RowFont.Size = 15;
 	RowTextBlock->SetFont(RowFont);
 	RowTextBlock->SetText(BuildRecipeBookRowText(Recipe));
 	RowTextBlock->SetColorAndOpacity(FSlateColor(GetCookingQualityDisplayColor(Recipe.BestQuality)));

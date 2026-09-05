@@ -36,6 +36,7 @@
 #include "DrawDebugHelpers.h"
 #include "TimerManager.h"
 #include "Engine/OverlapResult.h"
+#include "EngineUtils.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
@@ -466,6 +467,46 @@ void APlayerCharacter::ToggleCookingMenu()
 	}
 
 	PlayerController->ToggleCookingMenu(CookingComponent, InventoryComponent);
+}
+
+bool APlayerCharacter::IsNearCookingPot() const
+{
+	const UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return false;
+	}
+
+	const FVector PlayerLocation = GetActorLocation();
+	const float InteractionRadiusSquared = FMath::Square(CookingPotInteractionRadius);
+
+	for (TActorIterator<AActor> ActorIterator(World); ActorIterator; ++ActorIterator)
+	{
+		const AActor* Actor = *ActorIterator;
+		if (!IsValid(Actor) || Actor == this)
+		{
+			continue;
+		}
+
+		const bool bTaggedCookingPot =
+			!CookingPotActorTag.IsNone() && Actor->ActorHasTag(CookingPotActorTag);
+		const bool bNamedCookingPot =
+			!CookingPotClassNameKeyword.IsEmpty() &&
+			(Actor->GetClass()->GetName().Contains(CookingPotClassNameKeyword) ||
+			 Actor->GetName().Contains(CookingPotClassNameKeyword));
+
+		if (!bTaggedCookingPot && !bNamedCookingPot)
+		{
+			continue;
+		}
+
+		if (FVector::DistSquared(PlayerLocation, Actor->GetActorLocation()) <= InteractionRadiusSquared)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void APlayerCharacter::StartRunning()
