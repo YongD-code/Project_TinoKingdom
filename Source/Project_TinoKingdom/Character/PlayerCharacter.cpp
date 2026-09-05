@@ -43,6 +43,7 @@
 #include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
+#include "Project_TinoKingdom/World/SecretPlaceEntrance.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -328,30 +329,56 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void APlayerCharacter::OpenSecretPlace()
 {
+	TryOpenSecretPlace();
+}
+
+bool APlayerCharacter::TryOpenSecretPlace()
+{
 	if (bLevelTravelInProgress || bDeathHandled || SecretPlaceLevelName.IsNone())
 	{
-		return;
+		return false;
 	}
 
 	if (IsValid(DialogueComponent) && DialogueComponent->IsInDialogue())
 	{
-		return;
+		return false;
 	}
 
 	UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance());
 	if (!ensureMsgf(TinoGameInstance != nullptr,
 		TEXT("Project Settings의 GameInstance Class가 TinoGameInstance로 지정되지 않았습니다.")))
 	{
-		return;
+		return false;
 	}
 
 	if (!TinoGameInstance->CapturePlayerState(this))
 	{
-		return;
+		return false;
 	}
 
 	bLevelTravelInProgress = true;
 	UGameplayStatics::OpenLevel(this, SecretPlaceLevelName);
+	return true;
+}
+
+bool APlayerCharacter::TryUseUsableItem(const FName ItemId)
+{
+	if (ItemId.IsNone() || bDeathHandled || bLevelTravelInProgress)
+	{
+		return false;
+	}
+
+	ASecretPlaceEntrance* SecretPlaceEntrance = Cast<ASecretPlaceEntrance>(
+		UGameplayStatics::GetActorOfClass(this, ASecretPlaceEntrance::StaticClass()));
+	if (!IsValid(SecretPlaceEntrance))
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("Usable 아이템 %s 사용 실패: 현재 월드에 SecretPlaceEntrance가 없습니다."),
+			*ItemId.ToString());
+		return false;
+	}
+
+	return SecretPlaceEntrance->TryUseItem(this, ItemId);
 }
 
 void APlayerCharacter::Interact()

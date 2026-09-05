@@ -111,6 +111,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cooking")
 	void ToggleCookingMenu();
 
+	// 인벤토리 UI에서 Usable 아이템의 실제 효과를 요청한다.
+	// SecretPlaceMap/SecretPlaceKey의 소모 여부는 SecretPlaceEntrance가 결정한다.
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool TryUseUsableItem(FName ItemId);
+
+	// 비밀 장소 입구와 발표용 직접 입력이 공통으로 사용하는 레벨 이동 함수다.
+	UFUNCTION(BlueprintCallable, Category = "Level Travel")
+	bool TryOpenSecretPlace();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ability System")
 	TObjectPtr<UTinoAbilitySystemComponent> AbilitySystemComponent;

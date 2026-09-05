@@ -185,6 +185,10 @@ void ATinoNPCCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	InitialSpawnTransform = GetActorTransform();
+
+	// 대화 NPC는 제자리에서 동작한다. 월드 파티션의 지면 충돌이 늦게 로드되어도
+	// CharacterMovement 중력으로 맵 아래로 추락하지 않도록 이동을 비활성화한다.
+	SetNPCMovementEnabled(false);
 	
 	CacheAnimationMeshes();
 	
@@ -215,6 +219,25 @@ void ATinoNPCCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(RespawnCheckTimerHandle);
 	Super::EndPlay(EndPlayReason);
+}
+
+void ATinoNPCCharacter::SetNPCMovementEnabled(bool bEnabled)
+{
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	if (MovementComponent == nullptr)
+	{
+		return;
+	}
+
+	MovementComponent->StopMovementImmediately();
+	if (bEnabled)
+	{
+		MovementComponent->SetMovementMode(MOVE_Walking);
+	}
+	else
+	{
+		MovementComponent->DisableMovement();
+	}
 }
 
 UDialogueData* ATinoNPCCharacter::SelectDialogueData(const UQuestComponent* PlayerQuest) const
@@ -408,11 +431,7 @@ void ATinoNPCCharacter::HandleDeath()
 	CombatTarget.Reset();
 	StopTalkAnimation();
 	
-	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
-	{
-		MovementComponent->StopMovementImmediately();
-		MovementComponent->DisableMovement();
-	}
+	SetNPCMovementEnabled(false);
 	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
@@ -509,11 +528,7 @@ void ATinoNPCCharacter::RespawnAtInitialTransform()
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
-	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
-	{
-		MovementComponent->StopMovementImmediately();
-		MovementComponent->SetMovementMode(MOVE_Walking);
-	}
+	SetNPCMovementEnabled(false);
 
 	UE_LOG(
 		LogTinoNPC,

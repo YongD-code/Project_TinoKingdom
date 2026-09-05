@@ -8,6 +8,8 @@
 #include "QuestComponent.generated.h"
 
 class UInventoryComponent;
+class UCookingComponent;
+class UPlayerProgressionComponent;
 struct FInventoryItemStack;
 
 // UI가 C++을 직접 참조하지 않고 퀘스트 상태에 반응할 수 있도록 델리게이트로 알린다.
@@ -77,6 +79,9 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	// 일반 아이템 ID 또는 요리 결과 조건이 이 퀘스트의 목표와 일치하는지 검사한다.
+	bool DoesItemMatchQuestObjective(const FInventoryItemStack& ItemStack, const UQuestData* Quest) const;
+
 	// 인벤토리가 바뀔 때마다 추적 중인 퀘스트의 진행도를 다시 계산한다.
 	UFUNCTION()
 	void HandleItemAdded(const FInventoryItemStack& ItemStack, int32 AddedCount);
@@ -91,6 +96,12 @@ private:
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCookingComponent> CookingComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UPlayerProgressionComponent> ProgressionComponent;
 
 	// 퀘스트별 상태. 수령한 적 없는 퀘스트는 아예 들어 있지 않다.
 	UPROPERTY(Transient)

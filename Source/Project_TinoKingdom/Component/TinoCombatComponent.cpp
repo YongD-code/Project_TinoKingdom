@@ -379,9 +379,9 @@ void UTinoCombatComponent::PerformAttackTrace()
 		
 		if (IsValid(HitEffect))
 		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, HitEffect, HitResult.ImpactPoint);	
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, HitEffect, HitResult.ImpactPoint);
 		}
-		
+
 		if (AttackSection.MaxHitTargets > 0 && HitActorsThisWindow.Num() >= AttackSection.MaxHitTargets)
 		{
 			break;

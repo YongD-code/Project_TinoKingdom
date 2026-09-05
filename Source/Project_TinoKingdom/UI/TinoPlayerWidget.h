@@ -322,7 +322,7 @@ private:
 	FText BuildInventoryItemToolTipText(const FInventoryItemStack& Item) const;
 	UWidget* BuildInventoryItemToolTipWidget(const FInventoryItemStack& Item, int32 SlotIndex);
 	void HandleInventorySlotHovered(int32 SlotIndex);
-	bool TryUseInventoryFoodAt(int32 SlotIndex);
+	bool TryUseInventoryItemAt(int32 SlotIndex);
 	bool ApplyFoodEffectsToAbilitySystem(const FCookingResultData& FoodData);
 	void EnsureRecipeBookWidget();
 	void RefreshRecipeBookPanel();
