@@ -129,6 +129,12 @@ void UTinoPlayerWidget::SetCharacterMenuVisible(bool bVisible)
 		}
 
 		RefreshInventorySlots();
+
+		// 레벨업 이벤트를 UI가 놓쳤더라도 메뉴를 열 때 실제 포인트와 버튼 상태를 다시 맞춘다.
+		if (const UPlayerProgressionComponent* ProgressionComponent = BoundProgressionComponent.Get())
+		{
+			HandleStatPointsChanged(ProgressionComponent->GetUnspentStatPoints());
+		}
 		EnsureRecipeBookWidget();
 		RefreshRecipeBookPanel();
 	}
@@ -281,7 +287,7 @@ void UTinoPlayerWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTim
 
 FReply UTinoPlayerWidget::NativeOnPreviewMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && TryUseInventoryFoodAt(HoveredInventorySlotIndex))
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && TryUseInventoryItemAt(HoveredInventorySlotIndex))
 	{
 		return FReply::Handled();
 	}
@@ -1600,6 +1606,10 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 
 		ToolTip += TEXT("\n우클릭: 먹기");
 	}
+	else if (Item.ItemType == EInventoryItemType::Usable)
+	{
+		ToolTip += TEXT("\n우클릭: 사용");
+	}
 	else if (Item.ItemType == EInventoryItemType::Key)
 	{
 		ToolTip += TEXT("\n어딘가의 잠긴 길을 여는 열쇠입니다.");
@@ -1647,7 +1657,7 @@ void UTinoPlayerWidget::HandleInventorySlotHovered(int32 SlotIndex)
 	HoveredInventorySlotIndex = SlotIndex;
 }
 
-bool UTinoPlayerWidget::TryUseInventoryFoodAt(int32 SlotIndex)
+bool UTinoPlayerWidget::TryUseInventoryItemAt(int32 SlotIndex)
 {
 	if (bCookingIngredientPickerOpen || !DisplayedInventoryItems.IsValidIndex(SlotIndex))
 	{
@@ -1655,7 +1665,7 @@ bool UTinoPlayerWidget::TryUseInventoryFoodAt(int32 SlotIndex)
 	}
 
 	const FInventoryItemStack Item = DisplayedInventoryItems[SlotIndex];
-	if (Item.ItemType != EInventoryItemType::Food)
+	if (Item.ItemType != EInventoryItemType::Food && Item.ItemType != EInventoryItemType::Usable)
 	{
 		return false;
 	}
@@ -1670,17 +1680,31 @@ bool UTinoPlayerWidget::TryUseInventoryFoodAt(int32 SlotIndex)
 		return false;
 	}
 
-	bool bUsed = ApplyFoodEffectsToAbilitySystem(Item.FoodResultData);
-	if (!bUsed)
+	bool bUsed = false;
+	if (Item.ItemType == EInventoryItemType::Usable)
 	{
 		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
 		{
-			bUsed = InventoryComponent->UseFoodItem(Item.ItemId, PlayerCharacter->FindComponentByClass<UStatComponent>());
+			// 사용 조건 확인과 아이템 소모는 실제 효과를 소유한 게임플레이 코드가 처리한다.
+			bUsed = PlayerCharacter->TryUseUsableItem(Item.ItemId);
 		}
 	}
 	else
 	{
-		bUsed = InventoryComponent->RemoveItem(Item.ItemId, 1);
+		bUsed = ApplyFoodEffectsToAbilitySystem(Item.FoodResultData);
+		if (!bUsed)
+		{
+			if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
+			{
+				bUsed = InventoryComponent->UseFoodItem(
+					Item.ItemId,
+					PlayerCharacter->FindComponentByClass<UStatComponent>());
+			}
+		}
+		else
+		{
+			bUsed = InventoryComponent->RemoveItem(Item.ItemId, 1);
+		}
 	}
 
 	if (bUsed)

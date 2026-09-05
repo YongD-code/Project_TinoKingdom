@@ -55,7 +55,10 @@ void ATinoPlayerController::ToggleCharacterMenu()
 	
 	if (bCharacterMenuOpen)
 	{
+		PlayerUIWidget->SetIsFocusable(true);
+
 		FInputModeGameAndUI InputMode;
+		InputMode.SetWidgetToFocus(PlayerUIWidget->TakeWidget());
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		InputMode.SetHideCursorDuringCapture(false);
 		
@@ -217,7 +220,7 @@ void ATinoPlayerController::BeginPlay()
 
 		if (PlayerUIWidget != nullptr)
 		{
-			PlayerUIWidget->AddToViewport();
+			PlayerUIWidget->AddToViewport(4);
 		}
 	}
 	

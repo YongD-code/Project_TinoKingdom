@@ -89,6 +89,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Movement", meta = (ClampMin = "0.0"))
 	float WalkSpeed = 180.0f;
 
+	// 플레이어가 이 거리 안에 있고 지면 충돌이 준비됐을 때만 AI와 이동을 활성화한다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI", meta = (ClampMin = "0.0"))
+	float AIActivationDistance = 10000.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI", meta = (ClampMin = "0.05"))
+	float AIActivationCheckInterval = 0.25f;
+
+	// 스트리밍 중 이 거리보다 아래로 떨어지면 마지막으로 확인된 안전 위치로 복구한다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI", meta = (ClampMin = "100.0"))
+	float MaxStreamingFallDistance = 1000.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI", meta = (ClampMin = "0.0"))
+	float GroundProbeDistance = 200.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat")
 	TObjectPtr<UAnimMontage> AttackMontage;
 	
@@ -165,7 +179,15 @@ private:
 	
 	FTimerHandle AttackResetTimerHandle;
 	FTimerHandle HitReactionResetTimerHandle;
+	FTimerHandle AIActivationTimerHandle;
+
+	FTransform LastSafeTransform = FTransform::Identity;
+
+	bool bAIActive = false;
 
 	void ResetAttackState();
 	void ResetHitReactionState();
+	void UpdateAIActivation();
+	void SetEnemyAIActive(bool bEnabled);
+	bool HasGroundBelow(const FVector& Location) const;
 };

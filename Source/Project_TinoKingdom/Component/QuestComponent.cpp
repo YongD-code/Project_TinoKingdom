@@ -3,7 +3,11 @@
 
 #include "QuestComponent.h"
 
+#include "Project_TinoKingdom/Component/CookingComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/Character.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
+#include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoQuest, Log, All);
 
@@ -19,6 +23,8 @@ void UQuestComponent::BeginPlay()
 	if (AActor* Owner = GetOwner())
 	{
 		InventoryComponent = Owner->FindComponentByClass<UInventoryComponent>();
+		CookingComponent = Owner->FindComponentByClass<UCookingComponent>();
+		ProgressionComponent = Owner->FindComponentByClass<UPlayerProgressionComponent>();
 	}
 
 	if (IsValid(InventoryComponent))
@@ -57,10 +63,42 @@ int32 UQuestComponent::GetQuestProgress(const UQuestData* Quest) const
 	}
 
 	// 별도 카운터를 두지 않고 인벤토리를 직접 센다.
-	// 아이템을 버리거나 세이브를 불러와도 표시가 어긋나지 않는다.
-	const int32 Count = InventoryComponent->GetItemCount(Quest->TargetItemId);
+	// 요리는 각각 고유 ItemId를 가지므로 스택의 요리 결과 데이터로 판정한다.
+	int32 Count = 0;
+	for (const FInventoryItemStack& ItemStack : InventoryComponent->GetItems())
+	{
+		if (DoesItemMatchQuestObjective(ItemStack, Quest))
+		{
+			Count += ItemStack.Count;
+		}
+	}
 
 	return FMath::Min(Count, Quest->RequiredCount);
+}
+
+bool UQuestComponent::DoesItemMatchQuestObjective(
+	const FInventoryItemStack& ItemStack,
+	const UQuestData* Quest) const
+{
+	if (!IsValid(Quest) || ItemStack.Count <= 0)
+	{
+		return false;
+	}
+
+	if (Quest->ObjectiveType == EQuestObjectiveType::Item)
+	{
+		return !Quest->TargetItemId.IsNone() && ItemStack.ItemId == Quest->TargetItemId;
+	}
+
+	if (ItemStack.ItemType != EInventoryItemType::Food)
+	{
+		return false;
+	}
+
+	const FCookingResultData& FoodResult = ItemStack.FoodResultData;
+	return FoodResult.IconData.MainTag == Quest->RequiredCookingMainTag
+		&& FoodResult.ResultType == Quest->RequiredCookingResultType
+		&& FoodResult.Quality == Quest->RequiredCookingQuality;
 }
 
 bool UQuestComponent::AcceptQuest(UQuestData* Quest)
@@ -95,6 +133,99 @@ bool UQuestComponent::CompleteQuest(UQuestData* Quest)
 		return false;
 	}
 
+	if (Quest->RewardType == EQuestRewardType::Experience)
+	{
+		if (!IsValid(ProgressionComponent))
+		{
+			return false;
+		}
+
+		ProgressionComponent->AddExperience(Quest->RewardExperience);
+	}
+	else
+	{
+		if (!IsValid(InventoryComponent) || Quest->RewardItemCount <= 0)
+		{
+			return false;
+		}
+
+		if (Quest->RewardItemType == EQuestItemRewardType::InventoryItem)
+		{
+			if (Quest->RewardItemId.IsNone())
+			{
+				return false;
+			}
+
+			const EInventoryItemType ItemType = Quest->bRewardItemUsable
+				? EInventoryItemType::Usable
+				: (Quest->RewardItemCookingTag == ECookingTag::None
+					? EInventoryItemType::Etc
+					: EInventoryItemType::Material);
+
+			InventoryComponent->AddItem(
+				Quest->RewardItemId,
+				Quest->RewardItemName,
+				Quest->RewardItemCount,
+				Quest->RewardItemIcon,
+				ItemType,
+				Quest->RewardItemCookingTag);
+		}
+		else
+		{
+			const FCookingIconData& IconData = Quest->RewardCookingIconData;
+			if (!IsValid(CookingComponent)
+				|| IconData.MainTag == ECookingTag::None
+				|| Quest->RewardCookingResultType == ECookingResultType::None
+				|| Quest->RewardCookingResultType == ECookingResultType::Failed
+				|| Quest->RewardCookingQuality == ECookingQuality::Failed)
+			{
+				return false;
+			}
+
+			FCookingResultData CookingReward;
+			CookingReward.ResultType = Quest->RewardCookingResultType;
+			CookingReward.Quality = Quest->RewardCookingQuality;
+			CookingReward.HealAmount = Quest->RewardCookingHealAmount;
+			CookingReward.StaminaAmount = Quest->RewardCookingStaminaAmount;
+			CookingReward.AttackBuffAmount = Quest->RewardCookingAttackBuffAmount;
+			CookingReward.DefenseBuffAmount = Quest->RewardCookingDefenseBuffAmount;
+			CookingReward.IconData = IconData;
+			CookingReward.IconData.BaseType = CookingReward.ResultType;
+			CookingReward.ResultName = Quest->RewardCookingName.IsEmpty()
+				? CookingComponent->MakeResultName(
+					IconData.MainTag,
+					IconData.SubTag,
+					CookingReward.ResultType,
+					CookingReward.Quality)
+				: Quest->RewardCookingName;
+
+			const FName BaseItemId = CookingComponent->MakeResultItemId(
+				IconData.MainTag,
+				IconData.SubTag,
+				CookingReward.ResultType,
+				CookingReward.Quality);
+
+			for (int32 Index = 0; Index < Quest->RewardItemCount; ++Index)
+			{
+				CookingReward.ResultItemId = FName(*FString::Printf(
+					TEXT("%s_%s"),
+					*BaseItemId.ToString(),
+					*FGuid::NewGuid().ToString(EGuidFormats::Short)));
+
+				InventoryComponent->AddItem(
+					CookingReward.ResultItemId,
+					CookingReward.ResultName,
+					1,
+					CookingComponent->CreateResultIconTexture(CookingReward),
+					EInventoryItemType::Food,
+					ECookingTag::None,
+					EFoodEffectType::None,
+					1.0f,
+					CookingReward);
+			}
+		}
+	}
+
 	QuestStates.Add(Quest, EQuestState::Completed);
 
 	if (TrackedQuest == Quest)
@@ -104,9 +235,34 @@ bool UQuestComponent::CompleteQuest(UQuestData* Quest)
 
 	OnQuestCompleted.Broadcast(Quest);
 
+	PlayCompletedEffect();
+
 	UE_LOG(LogTinoQuest, Log, TEXT("퀘스트 완료: %s"), *Quest->Title.ToString());
 
 	return true;
+}
+
+void UQuestComponent::PlayCompletedEffect() const
+{
+	const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+
+	if (CompletedEffect == nullptr || !IsValid(OwnerCharacter))
+	{
+		return;
+	}
+
+	// GetActorLocation은 캡슐 중심이므로 절반 높이만큼 내려야 발밑이 된다.
+	const float CapsuleHalfHeight = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const FVector FeetLocation = OwnerCharacter->GetActorLocation() - FVector(0.0f, 0.0f, CapsuleHalfHeight);
+
+	// 파티클이 월드 공간에서 한 번에 뿌려지므로 캐릭터에 붙여도 따라오지 않는다.
+	// 스폰한 자리에 그대로 남긴다.
+	AActor* SpawnedEffect = GetWorld()->SpawnActor<AActor>(CompletedEffect, FeetLocation, FRotator::ZeroRotator);
+
+	if (IsValid(SpawnedEffect))
+	{
+		SpawnedEffect->SetLifeSpan(CompletedEffectLifeSpan);
+	}
 }
 
 void UQuestComponent::RestoreStateForTravel(
@@ -150,7 +306,7 @@ void UQuestComponent::HandleItemAdded(const FInventoryItemStack& ItemStack, int3
 	}
 
 	// 추적 중인 퀘스트와 무관한 아이템이면 계산할 필요가 없다.
-	if (ItemStack.ItemId != TrackedQuest->TargetItemId)
+	if (!DoesItemMatchQuestObjective(ItemStack, TrackedQuest))
 	{
 		return;
 	}

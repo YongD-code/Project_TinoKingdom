@@ -8,6 +8,8 @@
 #include "QuestComponent.generated.h"
 
 class UInventoryComponent;
+class UCookingComponent;
+class UPlayerProgressionComponent;
 struct FInventoryItemStack;
 
 // UI가 C++을 직접 참조하지 않고 퀘스트 상태에 반응할 수 있도록 델리게이트로 알린다.
@@ -63,11 +65,23 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Quest")
 	FOnQuestCompleted OnQuestCompleted;
 
+	// 퀘스트를 완료한 자리에 스폰할 이펙트 액터. 비워 두면 아무것도 스폰하지 않는다.
+	// 스플라인으로 모양을 잡는 이펙트라 시스템이 아닌 액터를 받는다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Quest|Effect")
+	TSubclassOf<AActor> CompletedEffect;
+
+	// 이펙트 액터가 스스로 사라지지 않으므로 이 시간이 지나면 지운다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Quest|Effect", meta = (ClampMin = "0.1"))
+	float CompletedEffectLifeSpan = 5.0f;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	// 일반 아이템 ID 또는 요리 결과 조건이 이 퀘스트의 목표와 일치하는지 검사한다.
+	bool DoesItemMatchQuestObjective(const FInventoryItemStack& ItemStack, const UQuestData* Quest) const;
+
 	// 인벤토리가 바뀔 때마다 추적 중인 퀘스트의 진행도를 다시 계산한다.
 	UFUNCTION()
 	void HandleItemAdded(const FInventoryItemStack& ItemStack, int32 AddedCount);
@@ -75,9 +89,19 @@ private:
 	// 진행도를 다시 세고, 목표를 채웠으면 완료 가능 상태로 올린다.
 	void RefreshProgress(UQuestData* Quest);
 
+	// 완료 지점(플레이어 발밑)에 CompletedEffect를 스폰한다.
+	void PlayCompletedEffect() const;
+
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInventoryComponent> InventoryComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCookingComponent> CookingComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UPlayerProgressionComponent> ProgressionComponent;
 
 	// 퀘스트별 상태. 수령한 적 없는 퀘스트는 아예 들어 있지 않다.
 	UPROPERTY(Transient)
