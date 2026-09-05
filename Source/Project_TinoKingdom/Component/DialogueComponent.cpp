@@ -11,6 +11,7 @@
 #include "LevelSequencePlayer.h"
 #include "Engine/LocalPlayer.h"
 #include "Project_TinoKingdom/Character/TinoNPCCharacter.h"
+#include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/Component/TinoStateComponent.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
@@ -344,9 +345,15 @@ void UDialogueComponent::CompleteDialogue()
 	}
 	
 	ATinoNPCCharacter* CompletedNPC = CurrentNPC;
+	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwner());
 	
 	EndDialogue();
 	ResolveQuest(CompletedNPC);
+
+	if (IsValid(CompletedNPC))
+	{
+		CompletedNPC->OnDialogueCompleted(PlayerCharacter);
+	}
 }
 
 void UDialogueComponent::EndDialogue()

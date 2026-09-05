@@ -9,6 +9,7 @@
 #include "TinoNPCCharacter.generated.h"
 
 class UAbilitySystemComponent;
+class APlayerCharacter;
 class UGameplayEffect;
 class UTinoAbilitySystemComponent;
 class UTinoAttributeSet;
@@ -88,6 +89,11 @@ public:
 
 	// 대화가 끝나거나 시네마틱이 시작될 때 말하는 동작을 정리한다.
 	void StopTalkAnimation();
+
+	// 대화가 완전히 끝난 뒤 NPC별 후속 행동을 시작할 수 있는 지점.
+	UFUNCTION(BlueprintNativeEvent, Category = "Dialogue")
+	void OnDialogueCompleted(APlayerCharacter* PlayerCharacter);
+	virtual void OnDialogueCompleted_Implementation(APlayerCharacter* PlayerCharacter);
 
 protected:
 	virtual void BeginPlay() override;

@@ -19,6 +19,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
+#include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
 #include "Project_TinoKingdom/DataAsset/DialogueData.h"
 #include "Project_TinoKingdom/DataAsset/QuestData.h"
@@ -419,6 +420,10 @@ void ATinoNPCCharacter::StopTalkAnimation()
 {
 	StopMontageOnMesh(BodyMesh, TalkBodyMontage, TalkMontageBlendOutTime);
 	StopMontageOnMesh(FaceMesh, TalkFaceMontage, TalkMontageBlendOutTime);
+}
+
+void ATinoNPCCharacter::OnDialogueCompleted_Implementation(APlayerCharacter* PlayerCharacter)
+{
 }
 
 void ATinoNPCCharacter::PlayHitReaction()
