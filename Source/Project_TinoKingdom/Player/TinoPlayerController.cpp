@@ -18,7 +18,7 @@ void ATinoPlayerController::SetPlayerUIVisible(bool bVisible)
 {
 	if (PlayerUIWidget != nullptr)
 	{
-		PlayerUIWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		PlayerUIWidget->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 
