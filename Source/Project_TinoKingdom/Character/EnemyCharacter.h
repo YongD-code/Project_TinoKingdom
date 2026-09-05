@@ -14,7 +14,9 @@ class UAnimMontage;
 class AEnemyAIController;
 class ATargetPoint;
 class APlayerCharacter;
+class UEnemyHealthBarWidget;
 class UTexture2D;
+class UWidgetComponent;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AEnemyCharacter : public ACharacter, public ITargetableInterface
@@ -70,15 +72,24 @@ protected:
 
 	UFUNCTION()
 	void HandleDead();
+
+	UFUNCTION()
+	void HandleHPChanged(float CurrentValue, float MaxValue);
 	
 	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	void OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	void UpdateHealthBar(float CurrentValue, float MaxValue);
+	void UpdateHealthBarVisibility();
+	bool IsHealthBarInVisibleRange() const;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stat")
 	TObjectPtr<UStatComponent> StatComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Targeting")
 	TObjectPtr<USceneComponent> LockOnAnchor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UWidgetComponent> HealthBarComponent;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI")
 	TObjectPtr<UBehaviorTree> BehaviorTree;
@@ -159,6 +170,15 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Hit", meta = (ClampMin = "0.0"))
 	float KnockbackUpPower = 80.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|UI", meta = (ClampMin = "0.0"))
+	float HealthBarHeight = 110.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|UI", meta = (ClampMin = "1.0"))
+	FVector2D HealthBarDrawSize = FVector2D(90.0f, 12.0f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|UI", meta = (ClampMin = "0.0"))
+	float MaxHealthBarVisibleDistance = 1800.0f;
 	
 
 	

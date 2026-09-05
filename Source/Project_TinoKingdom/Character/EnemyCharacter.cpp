@@ -11,6 +11,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/DamageType.h"
 #include "Kismet/GameplayStatics.h"
@@ -20,6 +21,7 @@
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
+#include "Project_TinoKingdom/UI/EnemyHealthBarWidget.h"
 
 namespace
 {
@@ -74,6 +76,15 @@ AEnemyCharacter::AEnemyCharacter()
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	LockOnAnchor = CreateDefaultSubobject<USceneComponent>(TEXT("LockOnAnchor"));
 	LockOnAnchor->SetupAttachment(GetRootComponent());
+
+	HealthBarComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarComponent"));
+	HealthBarComponent->SetupAttachment(GetRootComponent());
+	HealthBarComponent->SetWidgetClass(UEnemyHealthBarWidget::StaticClass());
+	HealthBarComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	HealthBarComponent->SetDrawSize(HealthBarDrawSize);
+	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, HealthBarHeight));
+	HealthBarComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HealthBarComponent->SetVisibility(true);
 	
 	AIControllerClass = AEnemyAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
@@ -106,6 +117,8 @@ void AEnemyCharacter::BeginPlay()
 	if (StatComponent != nullptr)
 	{
 		StatComponent->OnDead.AddUniqueDynamic(this, &AEnemyCharacter::HandleDead);
+		StatComponent->OnHPChanged.AddUniqueDynamic(this, &AEnemyCharacter::HandleHPChanged);
+		UpdateHealthBar(StatComponent->GetCurrentHP(), StatComponent->GetMaxHP());
 	}
 }
 
@@ -118,6 +131,7 @@ void AEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (IsValid(StatComponent))
 	{
 		StatComponent->OnDead.RemoveDynamic(this, &AEnemyCharacter::HandleDead);
+		StatComponent->OnHPChanged.RemoveDynamic(this, &AEnemyCharacter::HandleHPChanged);
 	}
 	Super::EndPlay(EndPlayReason);
 }
@@ -249,6 +263,11 @@ void AEnemyCharacter::HandleDead()
 	bAttacking = false;
 	bHitReacting = false;
 	CombatTarget = nullptr;
+
+	if (HealthBarComponent != nullptr)
+	{
+		HealthBarComponent->SetVisibility(false);
+	}
 	
 	if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(LastDamageCauser))
 	{
@@ -300,6 +319,67 @@ void AEnemyCharacter::HandleDead()
 	{
 		SetLifeSpan(DeadLifeSpan);
 	}
+}
+
+void AEnemyCharacter::HandleHPChanged(float CurrentValue, float MaxValue)
+{
+	UpdateHealthBar(CurrentValue, MaxValue);
+}
+
+void AEnemyCharacter::UpdateHealthBar(float CurrentValue, float MaxValue)
+{
+	if (HealthBarComponent == nullptr)
+	{
+		return;
+	}
+
+	HealthBarComponent->SetDrawSize(HealthBarDrawSize);
+	HealthBarComponent->SetRelativeLocation(FVector(0.0f, 0.0f, HealthBarHeight));
+	HealthBarComponent->InitWidget();
+
+	UEnemyHealthBarWidget* HealthBarWidget =
+		Cast<UEnemyHealthBarWidget>(HealthBarComponent->GetUserWidgetObject());
+	if (HealthBarWidget == nullptr)
+	{
+		return;
+	}
+
+	const float HealthPercent = MaxValue > 0.0f ? CurrentValue / MaxValue : 0.0f;
+	HealthBarWidget->SetHealthPercent(HealthPercent);
+	UpdateHealthBarVisibility();
+}
+
+void AEnemyCharacter::UpdateHealthBarVisibility()
+{
+	if (HealthBarComponent == nullptr || StatComponent == nullptr)
+	{
+		return;
+	}
+
+	const bool bShouldShow =
+		!bDead &&
+		!StatComponent->IsDead() &&
+		StatComponent->GetCurrentHP() > 0.0f &&
+		IsHealthBarInVisibleRange();
+
+	HealthBarComponent->SetVisibility(bShouldShow);
+}
+
+bool AEnemyCharacter::IsHealthBarInVisibleRange() const
+{
+	if (MaxHealthBarVisibleDistance <= 0.0f)
+	{
+		return true;
+	}
+
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!IsValid(PlayerPawn))
+	{
+		return false;
+	}
+
+	return FVector::DistSquared(PlayerPawn->GetActorLocation(), GetActorLocation())
+		<= FMath::Square(MaxHealthBarVisibleDistance);
 }
 
 void AEnemyCharacter::PlayHitReaction()
@@ -479,6 +559,7 @@ void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
 void AEnemyCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	UpdateHealthBarVisibility();
 
 	if (bAIActive && GetCharacterMovement()->IsMovingOnGround())
 	{
