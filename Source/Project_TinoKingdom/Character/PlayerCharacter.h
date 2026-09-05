@@ -115,7 +115,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	bool IsNearCookingPot() const;
 	// 인벤토리 UI에서 Usable 아이템의 실제 효과를 요청한다.
-	// SecretPlaceMap/SecretPlaceKey의 소모 여부는 SecretPlaceEntrance가 결정한다.
+	// SecretPlaceMap/Monkey 키의 소모 여부는 SecretPlaceEntrance가 결정한다.
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	bool TryUseUsableItem(FName ItemId);
 

@@ -7,7 +7,8 @@
 
 namespace
 {
-const FName MonkeyKeyItemId(TEXT("Key_Monkey"));
+// BP_Monkey의 DropItemId와 비밀 장소 입구가 같은 키 스택을 참조하도록 ID를 하나로 통일한다.
+const FName MonkeyKeyItemId(TEXT("Monkey"));
 const FText MonkeyKeyDisplayName = FText::FromString(TEXT("원숭이 열쇠"));
 }
 

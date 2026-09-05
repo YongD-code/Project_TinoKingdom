@@ -261,8 +261,12 @@ void AEnemyCharacter::HandleDead()
 			if (UInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 			{
 				const ECookingTag DropCookingTag = InferCookingTagFromDrop(DropItemId, DropItemName);
-				const EInventoryItemType DropItemType =
-					DropCookingTag == ECookingTag::None ? EInventoryItemType::Etc : EInventoryItemType::Material;
+				const bool bDropsMonkeyKey = DropItemId == UInventoryComponent::GetMonkeyKeyItemId();
+				const EInventoryItemType DropItemType = bDropsMonkeyKey
+					? EInventoryItemType::Key
+					: (DropCookingTag == ECookingTag::None
+						? EInventoryItemType::Etc
+						: EInventoryItemType::Material);
 
 				InventoryComponent->AddItem(
 					DropItemId,

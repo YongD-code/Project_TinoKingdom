@@ -1613,6 +1613,7 @@ FText UTinoPlayerWidget::BuildInventoryItemToolTipText(const FInventoryItemStack
 	else if (Item.ItemType == EInventoryItemType::Key)
 	{
 		ToolTip += TEXT("\n어딘가의 잠긴 길을 여는 열쇠입니다.");
+		ToolTip += TEXT("\n입구 근처에서 우클릭: 사용");
 	}
 
 	return FText::FromString(ToolTip);
@@ -1665,7 +1666,9 @@ bool UTinoPlayerWidget::TryUseInventoryItemAt(int32 SlotIndex)
 	}
 
 	const FInventoryItemStack Item = DisplayedInventoryItems[SlotIndex];
-	if (Item.ItemType != EInventoryItemType::Food && Item.ItemType != EInventoryItemType::Usable)
+	if (Item.ItemType != EInventoryItemType::Food
+		&& Item.ItemType != EInventoryItemType::Usable
+		&& Item.ItemType != EInventoryItemType::Key)
 	{
 		return false;
 	}
@@ -1681,7 +1684,7 @@ bool UTinoPlayerWidget::TryUseInventoryItemAt(int32 SlotIndex)
 	}
 
 	bool bUsed = false;
-	if (Item.ItemType == EInventoryItemType::Usable)
+	if (Item.ItemType == EInventoryItemType::Usable || Item.ItemType == EInventoryItemType::Key)
 	{
 		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
 		{

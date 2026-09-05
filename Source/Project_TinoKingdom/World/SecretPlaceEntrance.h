@@ -57,9 +57,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Secret Place|Items")
 	FName MapItemId = TEXT("SecretPlaceMap");
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Secret Place|Items")
-	FName RequiredItemId = TEXT("SecretPlaceKey");
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Secret Place|Interaction")
 	float EntranceRadiusSize = 350.f;
 
