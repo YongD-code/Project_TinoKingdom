@@ -61,6 +61,7 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 			if (OwnerEnemy != nullptr)
 			{
 				OwnerEnemy->SetCombatTarget(nullptr);
+				OwnerEnemy->SetEngaged(false);
 			}
 
 			CurrentTarget = nullptr;
@@ -88,5 +89,10 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 			AEnemyAIController::TargetPlayer,
 			PlayerPawn
 		);
+
+		if (AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(OwnerPawn))
+		{
+			Enemy->SetEngaged(true);
+		}
 	}
 }

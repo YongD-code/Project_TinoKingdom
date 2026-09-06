@@ -57,6 +57,9 @@ public:
 	
 	void SetCombatTarget(AActor* Target);
 	
+	// 플레이어를 쫓기 시작하거나 그만둘 때 호출한다. 상태가 실제로 바뀔 때만 GameMode에 알린다.
+	void SetEngaged(bool bNewEngaged);
+	
 	void ApplyKnockbackFrom(AActor* DamageCauser);
 	
 	const TArray<TObjectPtr<ATargetPoint>>& GetPatrolPoints() const {return PatrolPoints;}
@@ -185,6 +188,9 @@ protected:
 	
 	virtual void Tick(float DeltaSeconds) override;
 private:
+	// 지금 플레이어를 쫓고 있는지. 중복 통지를 막기 위해 들고 있는다.
+	bool bEngaged = false;
+
 	UPROPERTY(Transient)
 	bool bAttacking = false;
 	
