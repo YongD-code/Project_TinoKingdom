@@ -54,6 +54,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy|AI")
 	void SetAggroTarget(AActor* NewTarget);
 
+	UFUNCTION(BlueprintCallable, Category = "Enemy|AI")
+	void SetCinematicAIBlocked(bool bBlocked);
+
 	UFUNCTION(BlueprintPure, Category = "Enemy|State")
 	bool IsDead() const { return bDead; }
 
@@ -245,6 +248,8 @@ private:
 	FTransform LastSafeTransform = FTransform::Identity;
 
 	bool bAIActive = false;
+
+	bool bCinematicAIBlocked = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> CombatAnimationMesh = nullptr;

@@ -605,6 +605,37 @@ void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
 	CombatTarget = NewTarget;
 }
 
+void AEnemyCharacter::SetCinematicAIBlocked(bool bBlocked)
+{
+	if (bCinematicAIBlocked == bBlocked)
+	{
+		return;
+	}
+
+	bCinematicAIBlocked = bBlocked;
+
+	if (bCinematicAIBlocked)
+	{
+		CombatTarget = nullptr;
+		bAttacking = false;
+		bHitReacting = false;
+		LastAttackTime = -999.0f;
+		SetEngaged(false);
+		SetEnemyAIActive(false);
+
+		if (AAIController* AIController = Cast<AAIController>(GetController()))
+		{
+			if (UBlackboardComponent* BlackboardComponent = AIController->GetBlackboardComponent())
+			{
+				BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
+			}
+		}
+		return;
+	}
+
+	UpdateAIActivation();
+}
+
 void AEnemyCharacter::SetEngaged(bool bNewEngaged)
 {
 	if (bEngaged == bNewEngaged)
@@ -818,7 +849,7 @@ void AEnemyCharacter::ResetHitReactionState()
 
 void AEnemyCharacter::SetAggroTarget(AActor* NewTarget)
 {
-	if (NewTarget == nullptr || NewTarget == this || bDead)
+	if (NewTarget == nullptr || NewTarget == this || bDead || bCinematicAIBlocked)
 	{
 		return;
 	}
@@ -845,8 +876,12 @@ void AEnemyCharacter::SetAggroTarget(AActor* NewTarget)
 
 void AEnemyCharacter::UpdateAIActivation()
 {
-	if (bDead)
+	if (bDead || bCinematicAIBlocked)
 	{
+		if (bAIActive)
+		{
+			SetEnemyAIActive(false);
+		}
 		return;
 	}
 

@@ -30,6 +30,9 @@ public:
 	void ShowDeathScreen(AActor* DamageCauser);
 	void FadeDeathScreenToBlack(float Duration);
 	void HideDeathScreen();
+
+	UFUNCTION(BlueprintCallable, Category = "Input")
+	void ResetGameInputMode();
 	
 	void ToggleCharacterMenu();
 
@@ -74,6 +77,7 @@ protected:
 private:
 	void EnsureMenuBackgroundWidget();
 	void EnsureDeathScreenWidget();
+	void ResetGameInputModeForCurrentMap();
 
 	bool bCharacterMenuOpen = false;
 	bool bCookingMenuOpen = false;

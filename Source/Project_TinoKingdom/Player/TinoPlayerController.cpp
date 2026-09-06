@@ -5,6 +5,7 @@
 
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Engine/World.h"
 #include "InputKeyEventArgs.h"
 #include "Blueprint/UserWidget.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
@@ -100,6 +101,31 @@ void ATinoPlayerController::HideDeathScreen()
 	}
 }
 
+void ATinoPlayerController::ResetGameInputMode()
+{
+	bShowMouseCursor = false;
+
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+}
+
+void ATinoPlayerController::ResetGameInputModeForCurrentMap()
+{
+	const UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	const FString MapName = World->GetMapName();
+	if (!MapName.Contains(TEXT("SecretPlace")))
+	{
+		return;
+	}
+
+	ResetGameInputMode();
+}
+
 void ATinoPlayerController::CloseAllMenus()
 {
 	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn());
@@ -139,7 +165,7 @@ void ATinoPlayerController::CloseAllMenus()
 	}
 
 	bShowMouseCursor = false;
-	SetInputMode(FInputModeGameOnly());
+	ResetGameInputMode();
 }
 
 
@@ -206,7 +232,7 @@ void ATinoPlayerController::ToggleCharacterMenu()
 		PlayerCharacter->StopSlowMotion();
 	}
 	bShowMouseCursor = false;
-	SetInputMode(FInputModeGameOnly());
+	ResetGameInputMode();
 }
 
 void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponent, UInventoryComponent* InventoryComponent)
@@ -237,7 +263,7 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 			PlayerCharacter->StopSlowMotion();
 		}
 		bShowMouseCursor = false;
-		SetInputMode(FInputModeGameOnly());
+		ResetGameInputMode();
 		return;
 	}
 
@@ -366,6 +392,14 @@ void ATinoPlayerController::BeginPlay()
 			PlayerUIWidget->AddToViewport(4);
 		}
 	}
+
+	FTimerHandle ResetInputModeTimerHandle;
+	GetWorldTimerManager().SetTimer(
+		ResetInputModeTimerHandle,
+		this,
+		&ATinoPlayerController::ResetGameInputModeForCurrentMap,
+		0.1f,
+		false);
 	
 	if (DefaultMappingContext == nullptr)
 	{
