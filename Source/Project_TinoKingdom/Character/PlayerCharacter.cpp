@@ -51,6 +51,8 @@ APlayerCharacter::APlayerCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	SecretPlaceTransitionSequence = TSoftObjectPtr<ULevelSequence>(FSoftObjectPath(
+		TEXT("/Game/Cinematics/Runtime/LS_MapConversion.LS_MapConversion")));
 
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -123,6 +125,7 @@ void APlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	InitialSpawnTransform = GetActorTransform();
+	bool bPlaySecretPlaceEntrySequence = false;
 	
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	const UTinoAttributeSet* RegisteredAttributeSet = AbilitySystemComponent->GetSet<UTinoAttributeSet>();
@@ -156,6 +159,7 @@ void APlayerCharacter::BeginPlay()
 	if (UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance()))
 	{
 		TinoGameInstance->RestorePlayerState(this);
+		bPlaySecretPlaceEntrySequence = TinoGameInstance->ConsumeSecretPlaceEntrySequenceRequest();
 	}
 	
 	DefaultCameraArmLength = CameraBoom->TargetArmLength;
@@ -188,7 +192,33 @@ void APlayerCharacter::BeginPlay()
 	// Body Mesh는 별도로 포즈를 계산하지 않고 Leader Pose를 따라간다.
 	VisibleBodyMesh->SetLeaderPoseComponent(DriverMesh, true, false);
 
-	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	if (bPlaySecretPlaceEntrySequence)
+	{
+		// 시퀀스가 첫 프레임을 평가하기 전에도 SecretPlace 화면이 노출되지 않도록 검정을 유지한다.
+		if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+		{
+			if (IsValid(PlayerController->PlayerCameraManager))
+			{
+				PlayerController->PlayerCameraManager->SetManualCameraFade(
+					1.f, FLinearColor::Black, false);
+			}
+		}
+
+		if (!PlaySecretPlaceTransition())
+		{
+			UE_LOG(LogTemp, Warning,
+				TEXT("SecretPlace 입장 시퀀스를 재생하지 못해 일반 화면으로 전환합니다."));
+			if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+			{
+				if (IsValid(PlayerController->PlayerCameraManager))
+				{
+					PlayerController->PlayerCameraManager->SetManualCameraFade(
+						0.f, FLinearColor::Black, false);
+				}
+			}
+		}
+	}
+	else if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (IsValid(PlayerController->PlayerCameraManager) && StartupFadeInDuration > 0.f)
 		{
@@ -203,7 +233,9 @@ void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
 	GetWorldTimerManager().ClearTimer(DeathScreenShowTimerHandle);
 	GetWorldTimerManager().ClearTimer(DeathScreenFadeTimerHandle);
+	GetWorldTimerManager().ClearTimer(SecretPlaceTravelTimerHandle);
 	ClearRespawnSequence();
+	ClearSecretPlaceTransition();
 	
 	// 메뉴가 열린 채 종료돼도 전역 시간을 원래대로 복구한다.
 	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
@@ -364,8 +396,147 @@ bool APlayerCharacter::TryOpenSecretPlace()
 	}
 
 	bLevelTravelInProgress = true;
-	UGameplayStatics::OpenLevel(this, SecretPlaceLevelName);
+	TinoGameInstance->RequestSecretPlaceEntrySequence();
+	ForceStopSlowMotion();
+	StopAiming();
+	StopRunning();
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		PlayerController->SetIgnoreMoveInput(true);
+		PlayerController->SetIgnoreLookInput(true);
+		if (ATinoPlayerController* TinoPlayerController = Cast<ATinoPlayerController>(PlayerController))
+		{
+			TinoPlayerController->SetPlayerUIVisible(false);
+		}
+
+		if (IsValid(PlayerController->PlayerCameraManager))
+		{
+			if (SecretPlaceFadeOutDuration > 0.f)
+			{
+				PlayerController->PlayerCameraManager->StartCameraFade(
+					0.f, 1.f, SecretPlaceFadeOutDuration, FLinearColor::Black, false, true);
+			}
+			else
+			{
+				PlayerController->PlayerCameraManager->SetManualCameraFade(
+					1.f, FLinearColor::Black, false);
+			}
+		}
+	}
+
+	if (SecretPlaceFadeOutDuration <= 0.f)
+	{
+		TravelToSecretPlace();
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(
+			SecretPlaceTravelTimerHandle,
+			this,
+			&APlayerCharacter::TravelToSecretPlace,
+			SecretPlaceFadeOutDuration,
+			false);
+	}
 	return true;
+}
+
+bool APlayerCharacter::PlaySecretPlaceTransition()
+{
+	if (SecretPlaceTransitionSequence.IsNull())
+	{
+		return false;
+	}
+
+	ULevelSequence* Sequence = SecretPlaceTransitionSequence.LoadSynchronous();
+	if (!IsValid(Sequence))
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("SecretPlace 전환 시퀀스를 불러오지 못했습니다: %s"),
+			*SecretPlaceTransitionSequence.ToSoftObjectPath().ToString());
+		return false;
+	}
+
+	FMovieSceneSequencePlaybackSettings PlaybackSettings;
+	PlaybackSettings.bDisableMovementInput = true;
+	PlaybackSettings.bDisableLookAtInput = true;
+	PlaybackSettings.FinishCompletionStateOverride =
+		EMovieSceneCompletionModeOverride::ForceRestoreState;
+
+	ALevelSequenceActor* NewSequenceActor = nullptr;
+	ULevelSequencePlayer* NewSequencePlayer = ULevelSequencePlayer::CreateLevelSequencePlayer(
+		GetWorld(), Sequence, PlaybackSettings, NewSequenceActor);
+	if (!IsValid(NewSequencePlayer) || !IsValid(NewSequenceActor))
+	{
+		if (IsValid(NewSequenceActor))
+		{
+			NewSequenceActor->Destroy();
+		}
+		UE_LOG(LogTemp, Warning, TEXT("SecretPlace 전환 시퀀스 플레이어를 생성하지 못했습니다."));
+		return false;
+	}
+
+	SecretPlaceTransitionPlayer = NewSequencePlayer;
+	SecretPlaceTransitionActor = NewSequenceActor;
+	SecretPlaceTransitionPlayer->OnFinished.AddUniqueDynamic(
+		this, &APlayerCharacter::HandleSecretPlaceTransitionFinished);
+
+	if (ATinoPlayerController* PlayerController = Cast<ATinoPlayerController>(GetController()))
+	{
+		PlayerController->SetPlayerUIVisible(false);
+	}
+
+	SecretPlaceTransitionPlayer->Play();
+	return true;
+}
+
+void APlayerCharacter::HandleSecretPlaceTransitionFinished()
+{
+	// OnFinished 브로드캐스트 중에는 델리게이트를 제거하거나 플레이어를 Stop하지 않는다.
+	SecretPlaceTransitionPlayer = nullptr;
+
+	if (IsValid(SecretPlaceTransitionActor))
+	{
+		SecretPlaceTransitionActor->Destroy();
+	}
+	SecretPlaceTransitionActor = nullptr;
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		PlayerController->SetViewTarget(this);
+		if (IsValid(PlayerController->PlayerCameraManager))
+		{
+			// 재생 전 유지했던 검정 상태로 복원되지 않도록 시퀀스 종료 후 명시적으로 해제한다.
+			PlayerController->PlayerCameraManager->SetManualCameraFade(
+				0.f, FLinearColor::Black, false);
+		}
+		if (ATinoPlayerController* TinoPlayerController = Cast<ATinoPlayerController>(PlayerController))
+		{
+			TinoPlayerController->SetPlayerUIVisible(true);
+		}
+	}
+}
+
+void APlayerCharacter::TravelToSecretPlace()
+{
+	UGameplayStatics::OpenLevel(this, SecretPlaceLevelName);
+}
+
+void APlayerCharacter::ClearSecretPlaceTransition()
+{
+	if (SecretPlaceTransitionPlayer != nullptr)
+	{
+		SecretPlaceTransitionPlayer->OnFinished.RemoveDynamic(
+			this, &APlayerCharacter::HandleSecretPlaceTransitionFinished);
+		SecretPlaceTransitionPlayer->Stop();
+		SecretPlaceTransitionPlayer = nullptr;
+	}
+
+	if (IsValid(SecretPlaceTransitionActor))
+	{
+		SecretPlaceTransitionActor->Destroy();
+	}
+	SecretPlaceTransitionActor = nullptr;
 }
 
 bool APlayerCharacter::TryUseUsableItem(const FName ItemId)

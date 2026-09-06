@@ -241,6 +241,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel")
 	FName SecretPlaceLevelName = TEXT("/Game/MedievalDungeon/Maps/SecretPlace");
 
+	// SecretPlace 맵이 열린 직후 해당 맵에서 재생하는 입장 시퀀스.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel|Cinematic")
+	TSoftObjectPtr<ULevelSequence> SecretPlaceTransitionSequence;
+
+	// 현재 맵을 검게 만든 다음 SecretPlace를 여는 데 걸리는 시간.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel|Cinematic",
+		meta = (ClampMin = "0.0", Units = "s"))
+	float SecretPlaceFadeOutDuration = 0.5f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
 	float InteractionRadius = 300.f;
 
@@ -370,6 +379,7 @@ private:
 	FTimerHandle RespawnTimerHandle;
 	FTimerHandle DeathScreenShowTimerHandle;
 	FTimerHandle DeathScreenFadeTimerHandle;
+	FTimerHandle SecretPlaceTravelTimerHandle;
 
 	TWeakObjectPtr<AActor> PendingDeathDamageCauser;
 
@@ -378,6 +388,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<ALevelSequenceActor> RespawnSequenceActor;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ULevelSequencePlayer> SecretPlaceTransitionPlayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ALevelSequenceActor> SecretPlaceTransitionActor;
 	
 	bool bDeathHandled = false;
 	bool bLevelTravelInProgress = false;
@@ -400,10 +416,16 @@ private:
 	void RespawnAtInitialTransform();
 	void FinishRespawn(bool bFadeInFromBlack);
 	void ClearRespawnSequence();
+	bool PlaySecretPlaceTransition();
+	void TravelToSecretPlace();
+	void ClearSecretPlaceTransition();
 	void ForceStopSlowMotion();
 
 	UFUNCTION()
 	void HandleRespawnSequenceFinished();
+
+	UFUNCTION()
+	void HandleSecretPlaceTransitionFinished();
 
 	void HandleDeathScreenShowDelayElapsed();
 	void HandleDeathScreenFadeDelayElapsed();

@@ -78,10 +78,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Player Travel")
 	bool HasPendingPlayerState() const { return bHasPendingPlayerState; }
 
+	// SecretPlace 이동 직후 입장 시퀀스를 한 번만 재생하도록 요청한다.
+	void RequestSecretPlaceEntrySequence() { bPendingSecretPlaceEntrySequence = true; }
+	bool ConsumeSecretPlaceEntrySequenceRequest();
+
 private:
 	UPROPERTY(Transient)
 	bool bHasPendingPlayerState = false;
 
 	UPROPERTY(Transient)
 	FTinoPlayerTravelState PendingPlayerState;
+
+	UPROPERTY(Transient)
+	bool bPendingSecretPlaceEntrySequence = false;
 };

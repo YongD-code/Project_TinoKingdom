@@ -13,6 +13,13 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoGameInstance, Log, All);
 
+bool UTinoGameInstance::ConsumeSecretPlaceEntrySequenceRequest()
+{
+	const bool bWasRequested = bPendingSecretPlaceEntrySequence;
+	bPendingSecretPlaceEntrySequence = false;
+	return bWasRequested;
+}
+
 bool UTinoGameInstance::CapturePlayerState(APlayerCharacter* PlayerCharacter)
 {
 	if (!IsValid(PlayerCharacter))
