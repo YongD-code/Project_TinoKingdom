@@ -21,6 +21,7 @@
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
+#include "Project_TinoKingdom/GameMode/TinoGameMode.h"
 #include "Project_TinoKingdom/UI/EnemyHealthBarWidget.h"
 
 namespace
@@ -124,6 +125,8 @@ void AEnemyCharacter::BeginPlay()
 
 void AEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	SetEngaged(false);
+
 	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
 	GetWorldTimerManager().ClearTimer(HitReactionResetTimerHandle);
 	GetWorldTimerManager().ClearTimer(AIActivationTimerHandle);
@@ -260,6 +263,9 @@ void AEnemyCharacter::HandleDead()
 
 	bDead = true;
 	bAIActive = false;
+
+	// 쫓던 중에 죽으면 전투 카운트가 남으므로 여기서 정리한다.
+	SetEngaged(false);
 	bAttacking = false;
 	bHitReacting = false;
 	CombatTarget = nullptr;
@@ -558,6 +564,31 @@ void AEnemyCharacter::PerformAttackTrace()
 void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
 {
 	CombatTarget = NewTarget;
+}
+
+void AEnemyCharacter::SetEngaged(bool bNewEngaged)
+{
+	if (bEngaged == bNewEngaged)
+	{
+		return;
+	}
+
+	bEngaged = bNewEngaged;
+
+	ATinoGameMode* GameMode = Cast<ATinoGameMode>(UGameplayStatics::GetGameMode(this));
+	if (!IsValid(GameMode))
+	{
+		return;
+	}
+
+	if (bEngaged)
+	{
+		GameMode->NotifyEnemyEngaged();
+	}
+	else
+	{
+		GameMode->NotifyEnemyDisengaged();
+	}
 }
 
 void AEnemyCharacter::Tick(float DeltaSeconds)
