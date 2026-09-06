@@ -222,7 +222,20 @@ bool AEnemyCharacter::IsTargetWithinAttackRange(const AActor* TargetActor) const
 		GetActorLocation(),
 		TargetActor->GetActorLocation());
 
-	return DistanceToTarget <= AttackRange || CanUseJumpAttackAtDistance(DistanceToTarget);
+	// 공격 도중 거리가 달라져도 현재 몽타주가 끝날 때까지 공격 브랜치를 유지한다.
+	// 특히 Dash의 Root Motion으로 350 아래에 들어갔을 때 Move To가 끼어드는 것을 막는다.
+	if (bAttacking)
+	{
+		return true;
+	}
+
+	if (DistanceToTarget <= AttackRange)
+	{
+		return true;
+	}
+
+	// Dash 범위에 들어왔더라도 쿨다운 중이면 공격 브랜치로 전환하지 않고 계속 추적한다.
+	return CanUseDashAttackAtDistance(DistanceToTarget) && CanAttack();
 }
 
 bool AEnemyCharacter::RequestAttack()
@@ -644,15 +657,15 @@ bool AEnemyCharacter::HasAttackMontageSection(FName SectionName) const
 		&& AttackMontage->GetSectionIndex(SectionName) != INDEX_NONE;
 }
 
-bool AEnemyCharacter::CanUseJumpAttackAtDistance(float DistanceToTarget) const
+bool AEnemyCharacter::CanUseDashAttackAtDistance(float DistanceToTarget) const
 {
-	if (!HasAttackMontageSection(JumpAttackSection))
+	if (!HasAttackMontageSection(DashAttackSection))
 	{
 		return false;
 	}
 
-	const float MinDistance = FMath::Max(JumpAttackMinDistance, AttackRange);
-	const float MaxDistance = FMath::Max(JumpAttackMaxDistance, MinDistance);
+	const float MinDistance = FMath::Max(DashAttackMinDistance, AttackRange);
+	const float MaxDistance = FMath::Max(DashAttackMaxDistance, MinDistance);
 	return DistanceToTarget >= MinDistance && DistanceToTarget <= MaxDistance;
 }
 
@@ -664,9 +677,9 @@ FName AEnemyCharacter::SelectAttackMontageSection() const
 			GetActorLocation(),
 			CombatTarget->GetActorLocation());
 
-		if (CanUseJumpAttackAtDistance(DistanceToTarget))
+		if (CanUseDashAttackAtDistance(DistanceToTarget))
 		{
-			return JumpAttackSection;
+			return DashAttackSection;
 		}
 	}
 

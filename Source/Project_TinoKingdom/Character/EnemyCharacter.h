@@ -42,7 +42,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy|Combat")
 	float GetAttackRange() const {return AttackRange;}
 
-	// 근접 공격 또는 몽타주의 JumpAttack 섹션을 실행할 수 있는 거리인지 확인한다.
+	// 근접 공격 또는 몽타주의 DashAttack 섹션을 실행할 수 있는 거리인지 확인한다.
 	bool IsTargetWithinAttackRange(const AActor* TargetActor) const;
 	
 	UFUNCTION(BlueprintPure, Category = "Enemy | Combat")
@@ -166,13 +166,13 @@ protected:
 	FName AttackSection2 = TEXT("Attack2");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections")
-	FName JumpAttackSection = TEXT("JumpAttack");
+	FName DashAttackSection = TEXT("DashAttack");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections", meta = (ClampMin = "0.0"))
-	float JumpAttackMinDistance = 500.0f;
+	float DashAttackMinDistance = 350.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections", meta = (ClampMin = "0.0"))
-	float JumpAttackMaxDistance = 1000.0f;
+	float DashAttackMaxDistance = 500.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Death", meta = (ClampMin = "0.0"))
 	float DeadLifeSpan = 5.0f;
@@ -245,6 +245,6 @@ private:
 	bool HasGroundBelow(const FVector& Location) const;
 	USkeletalMeshComponent* GetCombatAnimationMesh() const;
 	bool HasAttackMontageSection(FName SectionName) const;
-	bool CanUseJumpAttackAtDistance(float DistanceToTarget) const;
+	bool CanUseDashAttackAtDistance(float DistanceToTarget) const;
 	FName SelectAttackMontageSection() const;
 };

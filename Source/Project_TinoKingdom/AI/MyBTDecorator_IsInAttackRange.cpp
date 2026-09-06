@@ -11,6 +11,7 @@
 UMyBTDecorator_IsInAttackRange::UMyBTDecorator_IsInAttackRange()
 {
 	NodeName = TEXT("Is In Attack Range");
+	INIT_DECORATOR_NODE_NOTIFY_FLAGS();
 }
 
 bool UMyBTDecorator_IsInAttackRange::CalculateRawConditionValue(
@@ -52,5 +53,49 @@ bool UMyBTDecorator_IsInAttackRange::CalculateRawConditionValue(
 	}
 
 	return EnemyCharacter->IsTargetWithinAttackRange(TargetActor);
+}
+
+void UMyBTDecorator_IsInAttackRange::OnBecomeRelevant(
+	UBehaviorTreeComponent& OwnerComp,
+	uint8* NodeMemory)
+{
+	TNodeInstanceMemory* DecoratorMemory = CastInstanceNodeMemory<TNodeInstanceMemory>(NodeMemory);
+	DecoratorMemory->bLastRawResult = CalculateRawConditionValue(OwnerComp, NodeMemory);
+}
+
+void UMyBTDecorator_IsInAttackRange::TickNode(
+	UBehaviorTreeComponent& OwnerComp,
+	uint8* NodeMemory,
+	float DeltaSeconds)
+{
+	TNodeInstanceMemory* DecoratorMemory = CastInstanceNodeMemory<TNodeInstanceMemory>(NodeMemory);
+	const bool bCurrentRawResult = CalculateRawConditionValue(OwnerComp, NodeMemory);
+
+	if (bCurrentRawResult != DecoratorMemory->bLastRawResult)
+	{
+		DecoratorMemory->bLastRawResult = bCurrentRawResult;
+		OwnerComp.RequestExecution(this);
+	}
+}
+
+uint16 UMyBTDecorator_IsInAttackRange::GetInstanceMemorySize() const
+{
+	return sizeof(TNodeInstanceMemory);
+}
+
+void UMyBTDecorator_IsInAttackRange::InitializeMemory(
+	UBehaviorTreeComponent& OwnerComp,
+	uint8* NodeMemory,
+	EBTMemoryInit::Type InitType) const
+{
+	InitializeNodeMemory<TNodeInstanceMemory>(NodeMemory, InitType);
+}
+
+void UMyBTDecorator_IsInAttackRange::CleanupMemory(
+	UBehaviorTreeComponent& OwnerComp,
+	uint8* NodeMemory,
+	EBTMemoryClear::Type CleanupType) const
+{
+	CleanupNodeMemory<TNodeInstanceMemory>(NodeMemory, CleanupType);
 }
 
