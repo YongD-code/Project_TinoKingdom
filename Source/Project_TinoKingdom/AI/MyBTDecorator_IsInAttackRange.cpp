@@ -51,11 +51,6 @@ bool UMyBTDecorator_IsInAttackRange::CalculateRawConditionValue(
 		return false;
 	}
 
-	const float DistanceToTarget = FVector::Dist(
-		EnemyCharacter->GetActorLocation(),
-		TargetActor->GetActorLocation()
-	);
-
-	return DistanceToTarget <= EnemyCharacter->GetAttackRange();
+	return EnemyCharacter->IsTargetWithinAttackRange(TargetActor);
 }
 

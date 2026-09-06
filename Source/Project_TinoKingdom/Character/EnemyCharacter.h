@@ -41,6 +41,9 @@ public:
 	
 	UFUNCTION(BlueprintPure, Category = "Enemy|Combat")
 	float GetAttackRange() const {return AttackRange;}
+
+	// 근접 공격 또는 몽타주의 JumpAttack 섹션을 실행할 수 있는 거리인지 확인한다.
+	bool IsTargetWithinAttackRange(const AActor* TargetActor) const;
 	
 	UFUNCTION(BlueprintPure, Category = "Enemy | Combat")
 	UBehaviorTree* GetBehaviorTree() const {return BehaviorTree;}
@@ -152,6 +155,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat", meta = (ClampMin = "0.0"))
 	float AttackDamage = 10.0f;
 
+	// 이 섹션들이 AttackMontage에 있을 때 여러 공격 패턴을 자동으로 사용한다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections")
+	FName AttackSection1 = TEXT("Attack1");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections")
+	FName AttackSection2 = TEXT("Attack2");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections")
+	FName JumpAttackSection = TEXT("JumpAttack");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections", meta = (ClampMin = "0.0"))
+	float JumpAttackMinDistance = 500.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections", meta = (ClampMin = "0.0"))
+	float JumpAttackMaxDistance = 1000.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Death", meta = (ClampMin = "0.0"))
 	float DeadLifeSpan = 5.0f;
 
@@ -219,4 +238,7 @@ private:
 	void SetEnemyAIActive(bool bEnabled);
 	bool HasGroundBelow(const FVector& Location) const;
 	USkeletalMeshComponent* GetCombatAnimationMesh() const;
+	bool HasAttackMontageSection(FName SectionName) const;
+	bool CanUseJumpAttackAtDistance(float DistanceToTarget) const;
+	FName SelectAttackMontageSection() const;
 };
