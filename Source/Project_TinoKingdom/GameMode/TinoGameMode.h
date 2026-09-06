@@ -24,6 +24,9 @@ public:
 	void NotifyEnemyEngaged();
 	void NotifyEnemyDisengaged();
 
+	// 사망 연출처럼 음악을 잠시 멈춰야 할 때 사용한다.
+	void SetMusicSuspended(bool bSuspended);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -53,6 +56,10 @@ private:
 	// 지금 플레이어를 쫓고 있는 적의 수.
 	int32 EngagedEnemyCount = 0;
 
-	// 직전에 전투 상태였는지. 적 수만 바뀌었을 때 음악을 다시 트는 것을 막는다.
-	bool bWasInCombat = false;
+	// 사망 연출 등으로 음악을 멈춘 상태인지.
+	bool bMusicSuspended = false;
+
+	// 직전에 각 곡이 켜져 있었는지. BeginPlay에서 기본 곡을 틀어두므로 그 상태로 시작한다.
+	bool bBaseWasOn = true;
+	bool bCombatWasOn = false;
 };

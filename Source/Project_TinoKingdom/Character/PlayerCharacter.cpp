@@ -45,6 +45,7 @@
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 #include "Project_TinoKingdom/World/SecretPlaceEntrance.h"
+#include "Project_TinoKingdom/GameMode/TinoGameMode.h"
 #include "Sound/SoundBase.h"
 
 // Sets default values
@@ -1099,6 +1100,12 @@ void APlayerCharacter::FinishRespawn(bool bFadeInFromBlack)
 	// 시퀀스의 Transform/Animation 트랙이 남긴 값을 제거하고 정확한 부활 위치를 보장한다.
 	SetActorTransform(InitialSpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
 	CharacterStateComponent->RemoveStateTag(TinoGameplayTags::State_Dead);
+
+	if (ATinoGameMode* GameMode = Cast<ATinoGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		GameMode->SetMusicSuspended(false);
+	}
+
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
@@ -1201,6 +1208,13 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 		return;
 	}
 	bDeathHandled = true;
+
+	// 사망 화면과 리스폰 시퀀스 동안에는 음악을 멈춘다.
+	if (ATinoGameMode* GameMode = Cast<ATinoGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		GameMode->SetMusicSuspended(true);
+	}
+
 	StopAiming();
 	TargetingComponent->ClearTarget();
 	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);

@@ -50,35 +50,51 @@ void ATinoGameMode::NotifyEnemyDisengaged()
 	UpdateMusicState();
 }
 
-void ATinoGameMode::UpdateMusicState()
+void ATinoGameMode::SetMusicSuspended(bool bSuspended)
 {
-	const bool bInCombat = EngagedEnemyCount > 0;
-
-	// 적 수만 바뀌고 전투 여부는 그대로면 지금 나오는 곡을 그대로 둔다.
-	if (bWasInCombat == bInCombat)
+	if (bMusicSuspended == bSuspended)
 	{
 		return;
 	}
 
-	bWasInCombat = bInCombat;
+	bMusicSuspended = bSuspended;
+	UpdateMusicState();
+}
+
+void ATinoGameMode::UpdateMusicState()
+{
+	const bool bInCombat = EngagedEnemyCount > 0;
+
+	// 멈춤 상태면 두 곡 다 끈다.
+	const bool bBaseOn = !bMusicSuspended && !bInCombat;
+	const bool bCombatOn = !bMusicSuspended && bInCombat;
+
+	// 켜고 꺼야 할 곡이 그대로면 지금 나오는 것을 건드리지 않는다.
+	if (bBaseWasOn == bBaseOn && bCombatWasOn == bCombatOn)
+	{
+		return;
+	}
+
+	bBaseWasOn = bBaseOn;
+	bCombatWasOn = bCombatOn;
 
 	// AdjustVolume은 볼륨만 건드려 정지 상태를 되살리지 못한다.
 	// FadeIn은 재생을 시작하고 FadeOut은 끝나면 정지시키므로 전환에 이쪽을 쓴다.
 	if (IsValid(BaseMusicComponent))
 	{
-		if (bInCombat)
+		if (bBaseOn)
 		{
-			BaseMusicComponent->FadeOut(MusicFadeTime, 0.0f);
+			BaseMusicComponent->FadeIn(MusicFadeTime, 1.0f);
 		}
 		else
 		{
-			BaseMusicComponent->FadeIn(MusicFadeTime, 1.0f);
+			BaseMusicComponent->FadeOut(MusicFadeTime, 0.0f);
 		}
 	}
 
 	if (IsValid(CombatMusicComponent))
 	{
-		if (bInCombat)
+		if (bCombatOn)
 		{
 			CombatMusicComponent->FadeIn(MusicFadeTime, 1.0f);
 		}
