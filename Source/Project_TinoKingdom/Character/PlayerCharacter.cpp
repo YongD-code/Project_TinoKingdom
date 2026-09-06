@@ -1276,6 +1276,9 @@ void APlayerCharacter::FinishRespawn(bool bFadeInFromBlack)
 	{
 		GameMode->SetMusicSuspended(false);
 	}
+	
+	//리스폰 했다는걸 알리기 위함
+	OnPlayerRespawned.Broadcast();
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
@@ -1385,7 +1388,10 @@ void APlayerCharacter::HandleDeath(AActor* DamageCauser)
 	{
 		GameMode->SetMusicSuspended(true);
 	}
-
+	
+	//죽었다는걸 블루프린트에 알리기 위함
+	OnPlayerDied.Broadcast();
+	
 	StopAiming();
 	TargetingComponent->ClearTarget();
 	CharacterStateComponent->AddStateTag(TinoGameplayTags::State_Dead);

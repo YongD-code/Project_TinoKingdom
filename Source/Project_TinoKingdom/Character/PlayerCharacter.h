@@ -35,6 +35,9 @@ class ULevelSequencePlayer;
 class ALevelSequenceActor;
 struct FInputActionValue;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerDied);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerRespawned);
+
 UCLASS()
 class PROJECT_TINOKINGDOM_API APlayerCharacter : public ACharacter, public IAbilitySystemInterface
 {
@@ -61,6 +64,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
 	void StopSlowMotion();
+	
+	UPROPERTY(BlueprintAssignable, Category = "Player")
+	FOnPlayerDied OnPlayerDied;
+
+	UPROPERTY(BlueprintAssignable, Category = "Player")
+	FOnPlayerRespawned OnPlayerRespawned;
 
 protected:
 	virtual void BeginPlay() override;
