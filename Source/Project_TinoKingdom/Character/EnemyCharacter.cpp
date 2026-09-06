@@ -192,7 +192,7 @@ bool AEnemyCharacter::CanAttack() const
 		return false;
 	}
 
-	const USkeletalMeshComponent* MeshComponent = GetMesh();
+	const USkeletalMeshComponent* MeshComponent = GetCombatAnimationMesh();
 	if (MeshComponent == nullptr || MeshComponent->GetAnimInstance() == nullptr)
 	{
 		return false;
@@ -215,7 +215,8 @@ bool AEnemyCharacter::RequestAttack()
 		return false;
 	}
 
-	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	USkeletalMeshComponent* AnimationMesh = GetCombatAnimationMesh();
+	UAnimInstance* AnimInstance = AnimationMesh != nullptr ? AnimationMesh->GetAnimInstance() : nullptr;
 	if (AnimInstance == nullptr || AttackMontage == nullptr)
 	{
 		CombatTarget = nullptr;
@@ -312,7 +313,8 @@ void AEnemyCharacter::HandleDead()
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	USkeletalMeshComponent* AnimationMesh = GetCombatAnimationMesh();
+	UAnimInstance* AnimInstance = AnimationMesh != nullptr ? AnimationMesh->GetAnimInstance() : nullptr;
 	if (AnimInstance != nullptr && DeathMontage != nullptr)
 	{
 		AnimInstance->Montage_Stop(0.1f);
@@ -393,7 +395,8 @@ void AEnemyCharacter::PlayHitReaction()
 		return;
 	}
 
-	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	USkeletalMeshComponent* AnimationMesh = GetCombatAnimationMesh();
+	UAnimInstance* AnimInstance = AnimationMesh != nullptr ? AnimationMesh->GetAnimInstance() : nullptr;
 	if (AnimInstance == nullptr || HitMontage == nullptr)
 	{
 		return;
@@ -558,6 +561,27 @@ void AEnemyCharacter::PerformAttackTrace()
 void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
 {
 	CombatTarget = NewTarget;
+}
+
+void AEnemyCharacter::RegisterCombatAnimationMesh(USkeletalMeshComponent* AnimationMesh)
+{
+	if (IsValid(AnimationMesh) && AnimationMesh->GetOwner() == this)
+	{
+		CombatAnimationMesh = AnimationMesh;
+	}
+}
+
+void AEnemyCharacter::UnregisterCombatAnimationMesh(USkeletalMeshComponent* AnimationMesh)
+{
+	if (CombatAnimationMesh == AnimationMesh)
+	{
+		CombatAnimationMesh = nullptr;
+	}
+}
+
+USkeletalMeshComponent* AEnemyCharacter::GetCombatAnimationMesh() const
+{
+	return IsValid(CombatAnimationMesh) ? CombatAnimationMesh.Get() : GetMesh();
 }
 
 void AEnemyCharacter::Tick(float DeltaSeconds)

@@ -15,6 +15,7 @@ class AEnemyAIController;
 class ATargetPoint;
 class APlayerCharacter;
 class UEnemyHealthBarWidget;
+class USkeletalMeshComponent;
 class UTexture2D;
 class UWidgetComponent;
 
@@ -56,6 +57,10 @@ public:
 	void PlayHitReaction();
 	
 	void SetCombatTarget(AActor* Target);
+
+	// 기본 CharacterMesh0 대신 실제 AnimInstance가 실행되는 메시를 전투 몽타주 대상으로 사용한다.
+	void RegisterCombatAnimationMesh(USkeletalMeshComponent* AnimationMesh);
+	void UnregisterCombatAnimationMesh(USkeletalMeshComponent* AnimationMesh);
 	
 	void ApplyKnockbackFrom(AActor* DamageCauser);
 	
@@ -205,9 +210,13 @@ private:
 
 	bool bAIActive = false;
 
+	UPROPERTY(Transient)
+	TObjectPtr<USkeletalMeshComponent> CombatAnimationMesh = nullptr;
+
 	void ResetAttackState();
 	void ResetHitReactionState();
 	void UpdateAIActivation();
 	void SetEnemyAIActive(bool bEnabled);
 	bool HasGroundBelow(const FVector& Location) const;
+	USkeletalMeshComponent* GetCombatAnimationMesh() const;
 };

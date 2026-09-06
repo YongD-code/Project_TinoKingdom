@@ -5,6 +5,7 @@
 
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Project_TinoKingdom/Character/EnemyCharacter.h"
 
 void UKingAnimInstance::NativeInitializeAnimation()
 {
@@ -14,6 +15,11 @@ void UKingAnimInstance::NativeInitializeAnimation()
 
 void UKingAnimInstance::NativeUninitializeAnimation()
 {
+	if (AEnemyCharacter* EnemyCharacter = Cast<AEnemyCharacter>(OwnerCharacter))
+	{
+		EnemyCharacter->UnregisterCombatAnimationMesh(GetSkelMeshComponent());
+	}
+
 	MovementComponent = nullptr;
 	OwnerCharacter = nullptr;
 	ResetLocomotionState();
@@ -63,6 +69,11 @@ void UKingAnimInstance::CacheOwnerReferences()
 	MovementComponent = IsValid(OwnerCharacter)
 		? OwnerCharacter->GetCharacterMovement()
 		: nullptr;
+
+	if (AEnemyCharacter* EnemyCharacter = Cast<AEnemyCharacter>(OwnerCharacter))
+	{
+		EnemyCharacter->RegisterCombatAnimationMesh(GetSkelMeshComponent());
+	}
 }
 
 void UKingAnimInstance::ResetLocomotionState()
