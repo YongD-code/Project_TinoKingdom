@@ -26,6 +26,7 @@ class UImage;
 class UScrollBox;
 class UProgressBar;
 class UPlayerProgressionComponent;
+class USoundBase;
 class USizeBox;
 class UTextBlock;
 class UUniformGridPanel;
@@ -365,6 +366,10 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience", meta = (ClampMin = "0.0"))
 	float ExperienceInterpSpeed = 2.f;
+	
+	// 경험치 바가 가득 차서 레벨 숫자가 오르는 순간 재생할 소리.
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Experience")
+	TObjectPtr<USoundBase> LevelUpSound;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Bar Size", meta = (ClampMin = "1.0"))
 	float BaseBarWidth = 393.9082f;
