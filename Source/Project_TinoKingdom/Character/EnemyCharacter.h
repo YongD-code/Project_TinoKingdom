@@ -166,6 +166,14 @@ protected:
 	FName AttackSection2 = TEXT("Attack2");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections")
+	FName AttackSection3 = TEXT("Attack3");
+
+	// 직전에 사용한 근접 공격이 다시 선택될 때 적용할 가중치 배율이다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections",
+		meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float RepeatAttackWeightMultiplier = 0.25f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections")
 	FName DashAttackSection = TEXT("DashAttack");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Combat|Attack Sections", meta = (ClampMin = "0.0"))
@@ -223,6 +231,9 @@ private:
 	
 	UPROPERTY(Transient)
 	float LastAttackTime = -999.f;
+
+	UPROPERTY(Transient)
+	FName LastPlayedAttackSection = NAME_None;
 	
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> LastDamageCauser;

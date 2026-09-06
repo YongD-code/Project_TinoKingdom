@@ -270,6 +270,7 @@ bool AEnemyCharacter::RequestAttack()
 		// 선택한 공격 한 개만 실행하고 다음 섹션으로 자동 연결되지 않게 한다.
 		AnimInstance->Montage_SetNextSection(SelectedSection, NAME_None, AttackMontage);
 		AnimInstance->Montage_JumpToSection(SelectedSection, AttackMontage);
+		LastPlayedAttackSection = SelectedSection;
 	}
 
 	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
@@ -683,25 +684,46 @@ FName AEnemyCharacter::SelectAttackMontageSection() const
 		}
 	}
 
-	const bool bHasAttack1 = HasAttackMontageSection(AttackSection1);
-	const bool bHasAttack2 = HasAttackMontageSection(AttackSection2);
-
-	if (bHasAttack1 && bHasAttack2)
+	const FName AttackSections[] = {AttackSection1, AttackSection2, AttackSection3};
+	TArray<FName, TInlineAllocator<3>> ValidSections;
+	for (const FName SectionName : AttackSections)
 	{
-		return FMath::RandBool() ? AttackSection1 : AttackSection2;
+		if (HasAttackMontageSection(SectionName))
+		{
+			ValidSections.Add(SectionName);
+		}
 	}
 
-	if (bHasAttack1)
+	if (ValidSections.IsEmpty())
 	{
-		return AttackSection1;
+		return NAME_None;
 	}
 
-	if (bHasAttack2)
+	if (ValidSections.Num() == 1)
 	{
-		return AttackSection2;
+		return ValidSections[0];
 	}
 
-	return NAME_None;
+	const float RepeatWeight = FMath::Clamp(RepeatAttackWeightMultiplier, 0.0f, 1.0f);
+	float TotalWeight = 0.0f;
+	for (const FName SectionName : ValidSections)
+	{
+		TotalWeight += SectionName == LastPlayedAttackSection ? RepeatWeight : 1.0f;
+	}
+
+	float SelectionValue = FMath::FRand() * TotalWeight;
+	for (const FName SectionName : ValidSections)
+	{
+		const float SectionWeight = SectionName == LastPlayedAttackSection ? RepeatWeight : 1.0f;
+		if (SelectionValue < SectionWeight)
+		{
+			return SectionName;
+		}
+
+		SelectionValue -= SectionWeight;
+	}
+
+	return ValidSections.Last();
 }
 
 void AEnemyCharacter::Tick(float DeltaSeconds)
