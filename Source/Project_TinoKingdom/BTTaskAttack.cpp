@@ -11,6 +11,7 @@
 UBTTaskAttack::UBTTaskAttack()
 {
 	NodeName = TEXT("Attack");
+	bNotifyTick = true;
 }
 
 EBTNodeResult::Type UBTTaskAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -63,7 +64,34 @@ EBTNodeResult::Type UBTTaskAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp
 		EnemyCharacter->SetActorRotation(FRotator(0.0f, LookRotation.Yaw, 0.0f));
 	}
 
+	// 이전 Move To 요청을 취소한다. 몽타주의 Root Motion 이동은 영향을 받지 않는다.
+	AIController->StopMovement();
+
 	return EnemyCharacter->RequestAttack()
-		? EBTNodeResult::Succeeded
+		? EBTNodeResult::InProgress
 		: EBTNodeResult::Failed;
+}
+
+void UBTTaskAttack::TickTask(
+	UBehaviorTreeComponent& OwnerComp,
+	uint8* NodeMemory,
+	float DeltaSeconds)
+{
+	Super::TickTask(OwnerComp, NodeMemory, DeltaSeconds);
+
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	AEnemyCharacter* EnemyCharacter = AIController != nullptr
+		? Cast<AEnemyCharacter>(AIController->GetPawn())
+		: nullptr;
+
+	if (EnemyCharacter == nullptr || EnemyCharacter->IsDead())
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+
+	if (!EnemyCharacter->IsAttacking())
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+	}
 }
