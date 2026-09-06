@@ -222,7 +222,20 @@ bool AEnemyCharacter::IsTargetWithinAttackRange(const AActor* TargetActor) const
 		GetActorLocation(),
 		TargetActor->GetActorLocation());
 
-	return DistanceToTarget <= AttackRange || CanUseJumpAttackAtDistance(DistanceToTarget);
+	// 공격 도중 거리가 달라져도 현재 몽타주가 끝날 때까지 공격 브랜치를 유지한다.
+	// 특히 Dash의 Root Motion으로 350 아래에 들어갔을 때 Move To가 끼어드는 것을 막는다.
+	if (bAttacking)
+	{
+		return true;
+	}
+
+	if (DistanceToTarget <= AttackRange)
+	{
+		return true;
+	}
+
+	// Dash 범위에 들어왔더라도 쿨다운 중이면 공격 브랜치로 전환하지 않고 계속 추적한다.
+	return CanUseDashAttackAtDistance(DistanceToTarget) && CanAttack();
 }
 
 bool AEnemyCharacter::RequestAttack()
@@ -257,6 +270,7 @@ bool AEnemyCharacter::RequestAttack()
 		// 선택한 공격 한 개만 실행하고 다음 섹션으로 자동 연결되지 않게 한다.
 		AnimInstance->Montage_SetNextSection(SelectedSection, NAME_None, AttackMontage);
 		AnimInstance->Montage_JumpToSection(SelectedSection, AttackMontage);
+		LastPlayedAttackSection = SelectedSection;
 	}
 
 	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
@@ -644,15 +658,15 @@ bool AEnemyCharacter::HasAttackMontageSection(FName SectionName) const
 		&& AttackMontage->GetSectionIndex(SectionName) != INDEX_NONE;
 }
 
-bool AEnemyCharacter::CanUseJumpAttackAtDistance(float DistanceToTarget) const
+bool AEnemyCharacter::CanUseDashAttackAtDistance(float DistanceToTarget) const
 {
-	if (!HasAttackMontageSection(JumpAttackSection))
+	if (!HasAttackMontageSection(DashAttackSection))
 	{
 		return false;
 	}
 
-	const float MinDistance = FMath::Max(JumpAttackMinDistance, AttackRange);
-	const float MaxDistance = FMath::Max(JumpAttackMaxDistance, MinDistance);
+	const float MinDistance = FMath::Max(DashAttackMinDistance, AttackRange);
+	const float MaxDistance = FMath::Max(DashAttackMaxDistance, MinDistance);
 	return DistanceToTarget >= MinDistance && DistanceToTarget <= MaxDistance;
 }
 
@@ -664,31 +678,52 @@ FName AEnemyCharacter::SelectAttackMontageSection() const
 			GetActorLocation(),
 			CombatTarget->GetActorLocation());
 
-		if (CanUseJumpAttackAtDistance(DistanceToTarget))
+		if (CanUseDashAttackAtDistance(DistanceToTarget))
 		{
-			return JumpAttackSection;
+			return DashAttackSection;
 		}
 	}
 
-	const bool bHasAttack1 = HasAttackMontageSection(AttackSection1);
-	const bool bHasAttack2 = HasAttackMontageSection(AttackSection2);
-
-	if (bHasAttack1 && bHasAttack2)
+	const FName AttackSections[] = {AttackSection1, AttackSection2, AttackSection3};
+	TArray<FName, TInlineAllocator<3>> ValidSections;
+	for (const FName SectionName : AttackSections)
 	{
-		return FMath::RandBool() ? AttackSection1 : AttackSection2;
+		if (HasAttackMontageSection(SectionName))
+		{
+			ValidSections.Add(SectionName);
+		}
 	}
 
-	if (bHasAttack1)
+	if (ValidSections.IsEmpty())
 	{
-		return AttackSection1;
+		return NAME_None;
 	}
 
-	if (bHasAttack2)
+	if (ValidSections.Num() == 1)
 	{
-		return AttackSection2;
+		return ValidSections[0];
 	}
 
-	return NAME_None;
+	const float RepeatWeight = FMath::Clamp(RepeatAttackWeightMultiplier, 0.0f, 1.0f);
+	float TotalWeight = 0.0f;
+	for (const FName SectionName : ValidSections)
+	{
+		TotalWeight += SectionName == LastPlayedAttackSection ? RepeatWeight : 1.0f;
+	}
+
+	float SelectionValue = FMath::FRand() * TotalWeight;
+	for (const FName SectionName : ValidSections)
+	{
+		const float SectionWeight = SectionName == LastPlayedAttackSection ? RepeatWeight : 1.0f;
+		if (SelectionValue < SectionWeight)
+		{
+			return SectionName;
+		}
+
+		SelectionValue -= SectionWeight;
+	}
+
+	return ValidSections.Last();
 }
 
 void AEnemyCharacter::Tick(float DeltaSeconds)
