@@ -18,6 +18,8 @@
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
 #include "Components/VerticalBox.h"
@@ -1896,6 +1898,12 @@ void UTinoPlayerWidget::UpdateExperienceBar(float DeltaTime)
 	PendingLevelUpLevels.RemoveAt(0);
 
 	SetDisplayedLevel(NewLevel);
+
+	// 바가 가득 찬 뒤 레벨이 하나 오를 때마다 낸다. 여러 레벨이 밀려 있어도 연출에 맞춰 하나씩 울린다.
+	if (IsValid(LevelUpSound))
+	{
+		UGameplayStatics::PlaySound2D(this, LevelUpSound);
+	}
 
 	if (NewLevel >= UPlayerProgressionComponent::MaxLevel)
 	{
