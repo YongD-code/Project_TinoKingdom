@@ -36,6 +36,7 @@
 #include "DrawDebugHelpers.h"
 #include "TimerManager.h"
 #include "Engine/OverlapResult.h"
+#include "Engine/Texture2D.h"
 #include "EngineUtils.h"
 #include "Project_TinoKingdom/Component/TargetingComponent.h"
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
@@ -361,6 +362,15 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 			&APlayerCharacter::OpenSecretPlace);
 	}
 
+	if (AddCookingIngredientsAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(
+			AddCookingIngredientsAction,
+			ETriggerEvent::Started,
+			this,
+			&APlayerCharacter::AddCookingIngredientsForDebug);
+	}
+
 	// 대화 시작은 기본 컨텍스트에, 진행과 취소는 대화 컨텍스트에 매핑되어 있다.
 	EnhancedInputComponent->BindAction(DialInteractAction, ETriggerEvent::Started, this, &APlayerCharacter::Interact);
 	EnhancedInputComponent->BindAction(DialAdvanceAction, ETriggerEvent::Started, this, &APlayerCharacter::DialogueAdvancePressed);
@@ -371,6 +381,66 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::OpenSecretPlace()
 {
 	TryOpenSecretPlace();
+}
+
+void APlayerCharacter::AddCookingIngredientsForDebug()
+{
+	if (!IsValid(InventoryComponent))
+	{
+		return;
+	}
+
+	struct FCookingIngredientDebugData
+	{
+		FName ItemId;
+		const TCHAR* DisplayName;
+		ECookingTag CookingTag;
+		const TCHAR* IconPath;
+	};
+
+	static constexpr int32 DefaultStackLimit = 99;
+	static const FCookingIngredientDebugData Ingredients[] =
+	{
+		{
+			TEXT("Slime"),
+			TEXT("슬라임 젤리"),
+			ECookingTag::Slime,
+			TEXT("/Game/Monster/Texture/ItemIcon_SlimeJelly.ItemIcon_SlimeJelly")
+		},
+		{
+			TEXT("WaterBest"),
+			TEXT("육수용 생선"),
+			ECookingTag::Fish,
+			TEXT("/Game/Monster/Texture/ItemIcon_WaterBestFin.ItemIcon_WaterBestFin")
+		},
+		{
+			TEXT("Mushroom"),
+			TEXT("보스의 징표"),
+			ECookingTag::Mushroom,
+			TEXT("/Game/Monster/Texture/ItemIcon_BossMark_Mushroom.ItemIcon_BossMark_Mushroom")
+		}
+	};
+
+	for (const FCookingIngredientDebugData& Ingredient : Ingredients)
+	{
+		const int32 CurrentCount = InventoryComponent->GetItemCount(Ingredient.ItemId);
+		const int32 CountToAdd = FMath::Max(DefaultStackLimit - CurrentCount, 0);
+		if (CountToAdd <= 0)
+		{
+			continue;
+		}
+
+		UTexture2D* Icon = LoadObject<UTexture2D>(nullptr, Ingredient.IconPath);
+		InventoryComponent->AddItem(
+			Ingredient.ItemId,
+			FText::FromString(Ingredient.DisplayName),
+			CountToAdd,
+			Icon,
+			EInventoryItemType::Material,
+			Ingredient.CookingTag);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("요리 재료 3종을 각각 %d개까지 보충했습니다."), DefaultStackLimit);
 }
 
 bool APlayerCharacter::TryOpenSecretPlace()

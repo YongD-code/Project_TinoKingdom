@@ -101,6 +101,7 @@ protected:
 	void StopAiming();
 	void RequestTargeting();
 	void OpenSecretPlace();
+	void AddCookingIngredientsForDebug();
 	void UpdateCameraTransition(float DeltaTime);
 
 	bool ShouldUseStrafeMovement() const;
@@ -246,6 +247,11 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Level Travel")
 	TObjectPtr<UInputAction> OpenSecretPlaceAction;
+
+	// 지정한 입력을 누르면 현재 요리 재료 3종을 스택 상한까지 보충한다.
+	// 인벤토리에 별도의 스택 상한이 없으므로 현재는 99개를 상한으로 사용한다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Debug")
+	TObjectPtr<UInputAction> AddCookingIngredientsAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel")
 	FName SecretPlaceLevelName = TEXT("/Game/MedievalDungeon/Maps/SecretPlace");
