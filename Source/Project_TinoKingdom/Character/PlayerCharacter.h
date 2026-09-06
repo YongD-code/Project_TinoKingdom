@@ -56,6 +56,12 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StartSlowMotion();
+
+	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
+	void StopSlowMotion();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -235,6 +241,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel")
 	FName SecretPlaceLevelName = TEXT("/Game/MedievalDungeon/Maps/SecretPlace");
 
+	// SecretPlace 맵이 열린 직후 해당 맵에서 재생하는 입장 시퀀스.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel|Cinematic")
+	TSoftObjectPtr<ULevelSequence> SecretPlaceTransitionSequence;
+
+	// 현재 맵을 검게 만든 다음 SecretPlace를 여는 데 걸리는 시간.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel|Cinematic",
+		meta = (ClampMin = "0.0", Units = "s"))
+	float SecretPlaceFadeOutDuration = 0.5f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction", meta = (ClampMin = "0.0"))
 	float InteractionRadius = 300.f;
 
@@ -305,12 +320,6 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Equipment")
 	void CancelEquipmentWheel();
 
-	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
-	void StartSlowMotion();
-
-	UFUNCTION(BlueprintCallable, Category = "Equipment|Time")
-	void StopSlowMotion();
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment|Time")
 	float TimeDilation = 0.2f;
 
@@ -334,7 +343,13 @@ protected:
 	float StartupFadeInDuration = 3.f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn")
-	float RespawnDelay = 4.f;
+	float RespawnDelay = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Death Screen", meta = (ClampMin = "0.0"))
+	float DeathScreenShowDelay = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Death Screen", meta = (ClampMin = "0.0"))
+	float DeathScreenFadeToBlackDuration = 1.0f;
 
 	// 런타임에 직접 재생할 부활 카메라/사운드 시퀀스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Respawn|Cinematic")
@@ -356,16 +371,29 @@ private:
 	UPROPERTY(Transient)
 	bool bEquipmentWheelSlowMotionActive = false;
 
+	int32 SlowMotionRequestCount = 0;
+
 	bool bRunning = false;
 	float StaminaDelayTime = 0.0f;
 
 	FTimerHandle RespawnTimerHandle;
+	FTimerHandle DeathScreenShowTimerHandle;
+	FTimerHandle DeathScreenFadeTimerHandle;
+	FTimerHandle SecretPlaceTravelTimerHandle;
+
+	TWeakObjectPtr<AActor> PendingDeathDamageCauser;
 
 	UPROPERTY(Transient)
 	TObjectPtr<ULevelSequencePlayer> RespawnSequencePlayer;
 
 	UPROPERTY(Transient)
 	TObjectPtr<ALevelSequenceActor> RespawnSequenceActor;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ULevelSequencePlayer> SecretPlaceTransitionPlayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ALevelSequenceActor> SecretPlaceTransitionActor;
 	
 	bool bDeathHandled = false;
 	bool bLevelTravelInProgress = false;
@@ -388,9 +416,19 @@ private:
 	void RespawnAtInitialTransform();
 	void FinishRespawn(bool bFadeInFromBlack);
 	void ClearRespawnSequence();
+	bool PlaySecretPlaceTransition();
+	void TravelToSecretPlace();
+	void ClearSecretPlaceTransition();
+	void ForceStopSlowMotion();
 
 	UFUNCTION()
 	void HandleRespawnSequenceFinished();
+
+	UFUNCTION()
+	void HandleSecretPlaceTransitionFinished();
+
+	void HandleDeathScreenShowDelayElapsed();
+	void HandleDeathScreenFadeDelayElapsed();
 	
 	float ApplyDamageGameplayEffect(float DamageAmount, AController* EventInstigator, AActor* DamageCauser);
 	

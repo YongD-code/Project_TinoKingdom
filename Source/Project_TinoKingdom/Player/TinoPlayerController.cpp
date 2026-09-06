@@ -11,14 +11,143 @@
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/UI/CookingWidget.h"
+#include "Project_TinoKingdom/UI/DeathScreenWidget.h"
 #include "Project_TinoKingdom/UI/TinoPlayerWidget.h"
+
+ATinoPlayerController::ATinoPlayerController()
+{
+	MenuBackgroundClass = TSoftClassPtr<UUserWidget>(FSoftObjectPath(
+		TEXT("/Game/UI/WBP_MenuBackground.WBP_MenuBackground_C")));
+	DeathScreenClass = TSoftClassPtr<UDeathScreenWidget>(FSoftObjectPath(
+		TEXT("/Game/UI/WBP_DeathScreen.WBP_DeathScreen_C")));
+}
+
+void ATinoPlayerController::EnsureMenuBackgroundWidget()
+{
+	if (MenuBackgroundWidget != nullptr)
+	{
+		return;
+	}
+
+	UClass* BackgroundClass = MenuBackgroundClass.LoadSynchronous();
+	if (!IsValid(BackgroundClass))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("MenuBackgroundClass를 불러오지 못했습니다."));
+		return;
+	}
+
+	MenuBackgroundWidget = CreateWidget<UUserWidget>(this, BackgroundClass);
+	if (MenuBackgroundWidget != nullptr)
+	{
+		MenuBackgroundWidget->AddToViewport(-100);
+		MenuBackgroundWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void ATinoPlayerController::SetMenuBackgroundVisible(bool bVisible)
+{
+	EnsureMenuBackgroundWidget();
+	if (MenuBackgroundWidget != nullptr)
+	{
+		MenuBackgroundWidget->SetVisibility(
+			bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void ATinoPlayerController::EnsureDeathScreenWidget()
+{
+	if (DeathScreenWidget != nullptr)
+	{
+		return;
+	}
+
+	UClass* WidgetClass = DeathScreenClass.LoadSynchronous();
+	if (!IsValid(WidgetClass))
+	{
+		WidgetClass = UDeathScreenWidget::StaticClass();
+	}
+
+	DeathScreenWidget = CreateWidget<UDeathScreenWidget>(this, WidgetClass);
+	if (DeathScreenWidget != nullptr)
+	{
+		DeathScreenWidget->AddToViewport(100);
+		DeathScreenWidget->HideDeathMessage();
+	}
+}
+
+void ATinoPlayerController::ShowDeathScreen(AActor* DamageCauser)
+{
+	EnsureDeathScreenWidget();
+	if (DeathScreenWidget != nullptr)
+	{
+		DeathScreenWidget->ShowDeathMessage(DamageCauser);
+	}
+}
+
+void ATinoPlayerController::FadeDeathScreenToBlack(float Duration)
+{
+	if (DeathScreenWidget != nullptr)
+	{
+		DeathScreenWidget->FadeToBlack(Duration);
+	}
+}
+
+void ATinoPlayerController::HideDeathScreen()
+{
+	if (DeathScreenWidget != nullptr)
+	{
+		DeathScreenWidget->HideDeathMessage();
+	}
+}
+
+void ATinoPlayerController::CloseAllMenus()
+{
+	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn());
+
+	if (bCharacterMenuOpen)
+	{
+		bCharacterMenuOpen = false;
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->SetCharacterMenuVisible(false);
+		}
+		if (PlayerCharacter != nullptr)
+		{
+			PlayerCharacter->StopSlowMotion();
+		}
+	}
+
+	if (bCookingMenuOpen)
+	{
+		bCookingMenuOpen = false;
+		if (PlayerUIWidget != nullptr)
+		{
+			PlayerUIWidget->SetCookingMenuOpen(false);
+			PlayerUIWidget->CloseCookingIngredientPicker();
+		}
+
+		if (CookingUIWidget != nullptr)
+		{
+			CookingUIWidget->ClearIngredients();
+			CookingUIWidget->RemoveFromParent();
+		}
+
+		if (PlayerCharacter != nullptr)
+		{
+			PlayerCharacter->StopSlowMotion();
+		}
+	}
+
+	bShowMouseCursor = false;
+	SetInputMode(FInputModeGameOnly());
+}
 
 
 void ATinoPlayerController::SetPlayerUIVisible(bool bVisible)
 {
 	if (PlayerUIWidget != nullptr)
 	{
-		PlayerUIWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		PlayerUIWidget->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 
@@ -64,12 +193,18 @@ void ATinoPlayerController::ToggleCharacterMenu()
 		
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
-		SetPause(true);
+		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn()))
+		{
+			PlayerCharacter->StartSlowMotion();
+		}
 		
 		return;
 	}
 	
-	SetPause(false);
+	if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn()))
+	{
+		PlayerCharacter->StopSlowMotion();
+	}
 	bShowMouseCursor = false;
 	SetInputMode(FInputModeGameOnly());
 }
@@ -97,7 +232,10 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 			CookingUIWidget->RemoveFromParent();
 		}
 
-		SetPause(false);
+		if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn()))
+		{
+			PlayerCharacter->StopSlowMotion();
+		}
 		bShowMouseCursor = false;
 		SetInputMode(FInputModeGameOnly());
 		return;
@@ -155,7 +293,10 @@ void ATinoPlayerController::ToggleCookingMenu(UCookingComponent* CookingComponen
 
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
-	SetPause(true);
+	if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn()))
+	{
+		PlayerCharacter->StartSlowMotion();
+	}
 }
 
 bool ATinoPlayerController::InputKey(const FInputKeyEventArgs& Params)
@@ -213,6 +354,8 @@ void ATinoPlayerController::RefreshCookingIngredientPicker()
 void ATinoPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	EnsureMenuBackgroundWidget();
+	EnsureDeathScreenWidget();
 	
 	if (PlayerUIClass != nullptr)
 	{

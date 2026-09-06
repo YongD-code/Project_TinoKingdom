@@ -11,6 +11,8 @@ class UTinoPlayerWidget;
 class UCookingComponent;
 class UCookingWidget;
 class UInventoryComponent;
+class UUserWidget;
+class UDeathScreenWidget;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
@@ -18,9 +20,16 @@ class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
+	ATinoPlayerController();
+
 	void SetPlayerUIVisible(bool bVisible);
 	void SetCrosshairVisible(bool bVisible);
 	void SetLockOnMarkerTarget(AActor* NewTarget);
+	void SetMenuBackgroundVisible(bool bVisible);
+	void CloseAllMenus();
+	void ShowDeathScreen(AActor* DamageCauser);
+	void FadeDeathScreenToBlack(float Duration);
+	void HideDeathScreen();
 	
 	void ToggleCharacterMenu();
 
@@ -49,8 +58,23 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UCookingWidget> CookingUIWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Menu")
+	TSoftClassPtr<UUserWidget> MenuBackgroundClass;
+
+	UPROPERTY()
+	TObjectPtr<UUserWidget> MenuBackgroundWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Death")
+	TSoftClassPtr<UDeathScreenWidget> DeathScreenClass;
+
+	UPROPERTY()
+	TObjectPtr<UDeathScreenWidget> DeathScreenWidget;
 	
 private:
+	void EnsureMenuBackgroundWidget();
+	void EnsureDeathScreenWidget();
+
 	bool bCharacterMenuOpen = false;
 	bool bCookingMenuOpen = false;
 };
