@@ -45,6 +45,7 @@
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
 #include "Project_TinoKingdom/World/SecretPlaceEntrance.h"
+#include "Sound/SoundBase.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()

@@ -28,6 +28,7 @@
 #include "SceneView.h"
 #include "TimerManager.h"
 #include "Slate/SceneViewport.h"
+#include "Sound/SoundBase.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoNPC, Log, All);
 
