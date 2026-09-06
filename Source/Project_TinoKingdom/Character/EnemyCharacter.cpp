@@ -195,7 +195,7 @@ bool AEnemyCharacter::CanAttack() const
 		return false;
 	}
 
-	const USkeletalMeshComponent* MeshComponent = GetMesh();
+	const USkeletalMeshComponent* MeshComponent = GetCombatAnimationMesh();
 	if (MeshComponent == nullptr || MeshComponent->GetAnimInstance() == nullptr)
 	{
 		return false;
@@ -211,6 +211,20 @@ bool AEnemyCharacter::CanAttack() const
 	return CurrentTime - LastAttackTime >= AttackCooldown;
 }
 
+bool AEnemyCharacter::IsTargetWithinAttackRange(const AActor* TargetActor) const
+{
+	if (!IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	const float DistanceToTarget = FVector::Dist2D(
+		GetActorLocation(),
+		TargetActor->GetActorLocation());
+
+	return DistanceToTarget <= AttackRange || CanUseJumpAttackAtDistance(DistanceToTarget);
+}
+
 bool AEnemyCharacter::RequestAttack()
 {
 	if (!CanAttack())
@@ -218,7 +232,8 @@ bool AEnemyCharacter::RequestAttack()
 		return false;
 	}
 
-	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	USkeletalMeshComponent* AnimationMesh = GetCombatAnimationMesh();
+	UAnimInstance* AnimInstance = AnimationMesh != nullptr ? AnimationMesh->GetAnimInstance() : nullptr;
 	if (AnimInstance == nullptr || AttackMontage == nullptr)
 	{
 		CombatTarget = nullptr;
@@ -228,12 +243,20 @@ bool AEnemyCharacter::RequestAttack()
 	bAttacking = true;
 	LastAttackTime = GetWorld()->GetTimeSeconds();
 
+	const FName SelectedSection = SelectAttackMontageSection();
 	const float PlayLength = AnimInstance->Montage_Play(AttackMontage);
 	if (PlayLength <= 0.f)
 	{
 		bAttacking = false;
 		CombatTarget = nullptr;
 		return false;
+	}
+
+	if (!SelectedSection.IsNone())
+	{
+		// 선택한 공격 한 개만 실행하고 다음 섹션으로 자동 연결되지 않게 한다.
+		AnimInstance->Montage_SetNextSection(SelectedSection, NAME_None, AttackMontage);
+		AnimInstance->Montage_JumpToSection(SelectedSection, AttackMontage);
 	}
 
 	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
@@ -318,7 +341,8 @@ void AEnemyCharacter::HandleDead()
 	GetCharacterMovement()->DisableMovement();
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	USkeletalMeshComponent* AnimationMesh = GetCombatAnimationMesh();
+	UAnimInstance* AnimInstance = AnimationMesh != nullptr ? AnimationMesh->GetAnimInstance() : nullptr;
 	if (AnimInstance != nullptr && DeathMontage != nullptr)
 	{
 		AnimInstance->Montage_Stop(0.1f);
@@ -399,7 +423,8 @@ void AEnemyCharacter::PlayHitReaction()
 		return;
 	}
 
-	UAnimInstance* AnimInstance = GetMesh() != nullptr ? GetMesh()->GetAnimInstance() : nullptr;
+	USkeletalMeshComponent* AnimationMesh = GetCombatAnimationMesh();
+	UAnimInstance* AnimInstance = AnimationMesh != nullptr ? AnimationMesh->GetAnimInstance() : nullptr;
 	if (AnimInstance == nullptr || HitMontage == nullptr)
 	{
 		return;
@@ -589,6 +614,81 @@ void AEnemyCharacter::SetEngaged(bool bNewEngaged)
 	{
 		GameMode->NotifyEnemyDisengaged();
 	}
+}
+
+void AEnemyCharacter::RegisterCombatAnimationMesh(USkeletalMeshComponent* AnimationMesh)
+{
+	if (IsValid(AnimationMesh) && AnimationMesh->GetOwner() == this)
+	{
+		CombatAnimationMesh = AnimationMesh;
+	}
+}
+
+void AEnemyCharacter::UnregisterCombatAnimationMesh(USkeletalMeshComponent* AnimationMesh)
+{
+	if (CombatAnimationMesh == AnimationMesh)
+	{
+		CombatAnimationMesh = nullptr;
+	}
+}
+
+USkeletalMeshComponent* AEnemyCharacter::GetCombatAnimationMesh() const
+{
+	return IsValid(CombatAnimationMesh) ? CombatAnimationMesh.Get() : GetMesh();
+}
+
+bool AEnemyCharacter::HasAttackMontageSection(FName SectionName) const
+{
+	return AttackMontage != nullptr
+		&& !SectionName.IsNone()
+		&& AttackMontage->GetSectionIndex(SectionName) != INDEX_NONE;
+}
+
+bool AEnemyCharacter::CanUseJumpAttackAtDistance(float DistanceToTarget) const
+{
+	if (!HasAttackMontageSection(JumpAttackSection))
+	{
+		return false;
+	}
+
+	const float MinDistance = FMath::Max(JumpAttackMinDistance, AttackRange);
+	const float MaxDistance = FMath::Max(JumpAttackMaxDistance, MinDistance);
+	return DistanceToTarget >= MinDistance && DistanceToTarget <= MaxDistance;
+}
+
+FName AEnemyCharacter::SelectAttackMontageSection() const
+{
+	if (IsValid(CombatTarget))
+	{
+		const float DistanceToTarget = FVector::Dist2D(
+			GetActorLocation(),
+			CombatTarget->GetActorLocation());
+
+		if (CanUseJumpAttackAtDistance(DistanceToTarget))
+		{
+			return JumpAttackSection;
+		}
+	}
+
+	const bool bHasAttack1 = HasAttackMontageSection(AttackSection1);
+	const bool bHasAttack2 = HasAttackMontageSection(AttackSection2);
+
+	if (bHasAttack1 && bHasAttack2)
+	{
+		return FMath::RandBool() ? AttackSection1 : AttackSection2;
+	}
+
+	if (bHasAttack1)
+	{
+		return AttackSection1;
+	}
+
+	if (bHasAttack2)
+	{
+		return AttackSection2;
+	}
+
+	return NAME_None;
 }
 
 void AEnemyCharacter::Tick(float DeltaSeconds)
