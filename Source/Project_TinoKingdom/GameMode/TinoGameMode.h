@@ -27,6 +27,9 @@ public:
 	// 사망 연출처럼 음악을 잠시 멈춰야 할 때 사용한다.
 	void SetMusicSuspended(bool bSuspended);
 
+	// 이 레벨에서 쓸 발소리. 애니메이션 노티파이가 읽어 간다.
+	USoundBase* GetFootstepSound() const { return FootstepSound; }
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -42,6 +45,10 @@ private:
 	// 전투 중에 재생할 배경음악.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USoundBase> CombatMusic;
+
+	// 이 레벨의 발소리. 레벨마다 다른 소리를 쓸 수 있도록 GameMode가 들고 있는다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> FootstepSound;
 
 	// 두 음악이 서로 바뀌는 데 걸리는 시간.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
