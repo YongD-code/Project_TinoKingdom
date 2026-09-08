@@ -362,6 +362,14 @@ void UDialogueComponent::CompleteDialogue()
 	}
 }
 
+void UDialogueComponent::CancelDialogueWithNPC(ATinoNPCCharacter* NPC)
+{
+	if (NPC != nullptr && CurrentNPC == NPC)
+	{
+		EndDialogue();
+	}
+}
+
 void UDialogueComponent::EndDialogue()
 {
 	ClearCinematicPlayer();

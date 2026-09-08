@@ -22,6 +22,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss Intro")
 	void PlayIntro(APlayerCharacter* PlayerCharacter);
 
+	AEnemyCharacter* GetBossEnemy() const { return BossEnemy; }
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

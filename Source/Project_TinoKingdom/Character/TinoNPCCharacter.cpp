@@ -21,6 +21,7 @@
 #include "Project_TinoKingdom/Constants/TinoGameplayTags.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/QuestComponent.h"
+#include "Project_TinoKingdom/Component/MagicStoneDestructionComponent.h"
 #include "Project_TinoKingdom/DataAsset/DialogueData.h"
 #include "Project_TinoKingdom/DataAsset/QuestData.h"
 #include "Project_TinoKingdom/GameplayAbilitySystem/TinoAbilitySystemComponent.h"
@@ -62,6 +63,11 @@ UAbilitySystemComponent* ATinoNPCCharacter::GetAbilitySystemComponent() const
 float ATinoNPCCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
 	class AController* EventInstigator, AActor* DamageCauser)
 {
+	if (UMagicStoneDestructionComponent* Stone = FindComponentByClass<UMagicStoneDestructionComponent>())
+	{
+		return Stone->ReceiveStoneDamage(DamageAmount, EventInstigator, DamageCauser);
+	}
+
 	if (DamageAmount <= 0.f || IsDead())
 	{
 		return 0.f;
@@ -118,6 +124,10 @@ FVector ATinoNPCCharacter::GetLockOnLocation_Implementation() const
 
 bool ATinoNPCCharacter::IsDead() const
 {
+	if (const UMagicStoneDestructionComponent* Stone = FindComponentByClass<UMagicStoneDestructionComponent>())
+	{
+		return Stone->IsStoneBroken();
+	}
 	return AttributeSet == nullptr || AttributeSet->GetHealth() <= 0.f;
 }
 

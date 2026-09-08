@@ -39,6 +39,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsInDialogue() const;
 
+	void CancelDialogueWithNPC(ATinoNPCCharacter* NPC);
+
 	UFUNCTION(BlueprintPure, Category = "Dialogue")
 	bool IsPlayingCinematic() const;
 
