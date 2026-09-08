@@ -204,8 +204,8 @@ bool UMagicStoneDestructionComponent::SpawnDebris()
 		Geometry->SetCollisionResponseToAllChannels(ECR_Ignore);
 		Geometry->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 		Geometry->SetEnableDamageFromCollision(false);
-		Geometry->SetSimulatePhysics(true);
 		Geometry->RegisterComponent();
+		Geometry->SetSimulatePhysics(true);
 		DebrisComponents.Add(Geometry);
 	}
 	Debris->SetLifeSpan(FMath::Max(DebrisLifetime, 1.0f));
@@ -224,6 +224,16 @@ void UMagicStoneDestructionComponent::ApplyBreakFields()
 		Strain->SetRadialFalloff(FMath::Max(BreakStrain, 1.0f), 1.0f, 1.0f, 0.0f,
 			FMath::Max(Geometry->Bounds.SphereRadius * 2.0f, 100.0f), Geometry->Bounds.Origin, Field_FallOff_None);
 		Geometry->ApplyPhysicsField(true, EGeometryCollectionPhysicsTypeEnum::Chaos_ExternalClusterStrain, nullptr, Strain);
+		
+		UE_LOG(
+		LogMagicStone, Warning,
+		TEXT("GC %s: Registered=%d, PhysicsState=%d, Proxy=%d, Loading=%d"),
+		*Geometry->GetName(),
+		Geometry->IsRegistered(),
+		Geometry->IsPhysicsStateCreated(),
+		Geometry->GetPhysicsProxy() != nullptr,
+		Geometry->GetIsObjectLoading()
+	);
 	}
 	// Velocity is applied after Chaos has processed the cluster-breaking command.
 	GetWorld()->GetTimerManager().SetTimer(ScatterTimer, this, &ThisClass::ScatterDebris, 0.1f, false);
