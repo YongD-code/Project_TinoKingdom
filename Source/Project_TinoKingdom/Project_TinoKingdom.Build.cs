@@ -21,7 +21,6 @@ public class Project_TinoKingdom : ModuleRules
 			"GameplayTags",
 			"GameplayAbilities",
 			"GameplayTasks",
-			"Niagara",
 			"LevelSequence",
 			"MovieScene",
 			"Niagara"
