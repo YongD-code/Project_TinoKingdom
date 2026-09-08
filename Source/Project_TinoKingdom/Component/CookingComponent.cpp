@@ -10,6 +10,8 @@
 #include "Project_TinoKingdom/Component/CookingRecipeBookComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogCookingIcon, Log, All);
+
 namespace
 {
 constexpr int32 CookingIconTextureSize = 256;
@@ -75,7 +77,73 @@ bool ReadTextureSourcePixels(UTexture2D* Texture, FCookingTexturePixels& OutPixe
 	}
 #endif
 
-	return false;
+	// Texture->Source is editor-only and is stripped from packaged builds. The cooking
+	// layers use TC_EditorIcon, so their cooked top mip remains an uncompressed 8-bit
+	// BGRA/RGBA buffer that can be read through PlatformData at runtime.
+	FTexturePlatformData* PlatformData = Texture->GetPlatformData();
+	if (PlatformData == nullptr || PlatformData->Mips.IsEmpty())
+	{
+		UE_LOG(LogCookingIcon, Warning,
+			TEXT("요리 아이콘 레이어의 Cook 데이터가 없습니다: %s"),
+			*Texture->GetPathName());
+		return false;
+	}
+
+	const EPixelFormat PixelFormat = static_cast<EPixelFormat>(PlatformData->PixelFormat);
+	if (PixelFormat != PF_B8G8R8A8 && PixelFormat != PF_R8G8B8A8)
+	{
+		UE_LOG(LogCookingIcon, Warning,
+			TEXT("요리 아이콘 레이어의 지원하지 않는 Cook 포맷입니다: %s (PixelFormat=%d)"),
+			*Texture->GetPathName(),
+			static_cast<int32>(PixelFormat));
+		return false;
+	}
+
+	FTexture2DMipMap& Mip = PlatformData->Mips[0];
+	const int32 Width = Mip.SizeX;
+	const int32 Height = Mip.SizeY;
+	const int64 RequiredBytes = static_cast<int64>(Width) * Height * 4;
+	if (Width <= 0 || Height <= 0 || Mip.BulkData.GetBulkDataSize() < RequiredBytes)
+	{
+		UE_LOG(LogCookingIcon, Warning,
+			TEXT("요리 아이콘 레이어의 Cook mip 크기가 올바르지 않습니다: %s"),
+			*Texture->GetPathName());
+		return false;
+	}
+
+	const uint8* MipData = static_cast<const uint8*>(Mip.BulkData.LockReadOnly());
+	if (MipData == nullptr)
+	{
+		Mip.BulkData.Unlock();
+		UE_LOG(LogCookingIcon, Warning,
+			TEXT("요리 아이콘 레이어의 Cook mip을 읽지 못했습니다: %s"),
+			*Texture->GetPathName());
+		return false;
+	}
+
+	OutPixels.Width = Width;
+	OutPixels.Height = Height;
+	OutPixels.Pixels.SetNumUninitialized(Width * Height);
+
+	if (PixelFormat == PF_B8G8R8A8)
+	{
+		FMemory::Memcpy(OutPixels.Pixels.GetData(), MipData, RequiredBytes);
+	}
+	else
+	{
+		for (int32 PixelIndex = 0; PixelIndex < Width * Height; ++PixelIndex)
+		{
+			const int32 ByteIndex = PixelIndex * 4;
+			OutPixels.Pixels[PixelIndex] = FColor(
+				MipData[ByteIndex],
+				MipData[ByteIndex + 1],
+				MipData[ByteIndex + 2],
+				MipData[ByteIndex + 3]);
+		}
+	}
+
+	Mip.BulkData.Unlock();
+	return true;
 }
 
 void AlphaBlendPixel(FColor& Target, const FColor& Source, float Opacity)
