@@ -26,7 +26,7 @@ public class Project_TinoKingdom : ModuleRules
 			"Niagara"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
+		PrivateDependencyModuleNames.AddRange(new string[] { "MassSpawner" });
 
 		if (Target.bBuildEditor)
 		{
