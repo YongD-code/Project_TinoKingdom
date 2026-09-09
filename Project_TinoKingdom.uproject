@@ -75,6 +75,10 @@
 		{
 			"Name": "MetaHumanCrowd",
 			"Enabled": true
+		},
+		{
+			"Name": "MetaHumanCrowdContent",
+			"Enabled": true
 		}
 	]
 }
