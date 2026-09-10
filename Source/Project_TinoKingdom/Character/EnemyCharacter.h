@@ -57,6 +57,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy|AI")
 	void SetCinematicAIBlocked(bool bBlocked);
 
+	// 전환 취소 시 기존 시네마틱 AI 정지 상태를 복원하기 위해 조회합니다.
+	bool IsCinematicAIBlocked() const { return bCinematicAIBlocked; }
+
 	UFUNCTION(BlueprintPure, Category = "Enemy|State")
 	bool IsDead() const { return bDead; }
 

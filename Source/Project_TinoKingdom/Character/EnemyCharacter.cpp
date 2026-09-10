@@ -146,6 +146,12 @@ float AEnemyCharacter::TakeDamage(
 	AActor* DamageCauser
 )
 {
+	// 군중 전환 준비 중이거나 전환된 몬스터는 피해와 피격 반응을 받지 않습니다.
+	if (!CanBeDamaged())
+	{
+		return 0.0f;
+	}
+
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (StatComponent != nullptr)
@@ -829,7 +835,8 @@ void AEnemyCharacter::ApplyKnockbackFrom(AActor* DamageCauser)
 
 bool AEnemyCharacter::CanBeTargeted_Implementation() const
 {
-	return !IsDead();
+	// 전환 준비 중이거나 숨겨진 몬스터가 계속 잠금 대상으로 선택되는 것을 막습니다.
+	return !IsDead() && !IsHidden() && CanBeDamaged();
 }
 
 FVector AEnemyCharacter::GetLockOnLocation_Implementation() const

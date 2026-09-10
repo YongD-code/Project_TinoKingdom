@@ -23,10 +23,9 @@ public class Project_TinoKingdom : ModuleRules
 			"GameplayTasks",
 			"LevelSequence",
 			"MovieScene",
-			"Niagara"
+			"Niagara",
+			"MassSpawner"
 		});
-
-		PrivateDependencyModuleNames.AddRange(new string[] { "MassSpawner" });
 
 		if (Target.bBuildEditor)
 		{
