@@ -8,6 +8,7 @@
 class AMassSpawner;
 class AEnemyCharacter;
 class ATinoEndingCrowdSpawner;
+class UTinoEndingCrowdSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTinoEndingCrowdSpawningFinishedSignature);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTinoEndingCrowdSpawnFailedSignature, FString, Reason);
@@ -21,15 +22,25 @@ class PROJECT_TINOKINGDOM_API ATinoEndingCrowdController : public AActor
 public:
 	ATinoEndingCrowdController();
 
-	// 제어 액터의 수명 동안 한 번만 생성을 요청합니다. 플레이 중 엔딩 이벤트에서 호출합니다.
+	// 일반 생성 또는 월드 전체의 엔딩 상태를 한 번 활성화합니다.
 	UFUNCTION(BlueprintCallable, Category = "Ending Crowd")
 	void SpawnEndingCrowd();
+
+	// NavMesh 또는 에셋 문제를 해결한 뒤 실패한 대상만 다시 시도합니다.
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending Crowd")
+	void RetryFailedCrowdConversions();
+
+	UFUNCTION(BlueprintPure, Category = "Ending Crowd|Status")
+	int32 GetLoadedCrowdCount() const;
+
+	UFUNCTION(BlueprintPure, Category = "Ending Crowd|Status")
+	int32 GetPendingCrowdCount() const;
 
 	// Mass 생성 작업의 완료를 알립니다. 렌더링이나 애니메이션 준비 완료를 의미하지는 않습니다.
 	UPROPERTY(BlueprintAssignable, Category = "Ending Crowd")
 	FTinoEndingCrowdSpawningFinishedSignature OnCrowdSpawningFinished;
 
-	// 생성한 군중을 확인하고 몬스터의 표시와 충돌을 끈 뒤 호출합니다.
+	// 엔딩 활성화 당시 로드된 대상의 처리 완료입니다. 이후 스트리밍 대상은 별도로 계속 처리합니다.
 	UPROPERTY(BlueprintAssignable, Category = "Ending Crowd")
 	FTinoEndingCrowdSpawningFinishedSignature OnMonstersTransformed;
 
@@ -40,12 +51,12 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	// 일반 생성에는 기존 스포너, 몬스터 전환에는 TinoEndingCrowdSpawner를 지정합니다.
+	// 몬스터 전환에서는 TinoEndingCrowdSpawner의 Entity Config만 읽습니다.
 	// 스포너의 Auto Spawn on Begin Play는 꺼둡니다.
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending Crowd")
 	TObjectPtr<AMassSpawner> CrowdSpawner;
 
-	// 켜면 격자 대신 태그가 붙은 살아 있는 몬스터의 발밑 위치에 한 명씩 생성합니다.
+	// 켜면 엔딩 상태를 유지하며, 이후 로드되는 태그 대상도 발밑 위치에 한 명씩 생성합니다.
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending Crowd|Transformation")
 	bool bTransformTaggedMonsters = false;
 
@@ -58,7 +69,7 @@ protected:
 		meta = (EditCondition = "bTransformTaggedMonsters", ClampMin = "1.0", Units = "cm"))
 	FVector NavProjectionExtent = FVector(50.0, 50.0, 200.0);
 
-	// 전환 중 생성 완료를 기다릴 게임 시간입니다. 초과하면 생성 취소와 AI 복원을 수행합니다.
+	// 각 대상의 NavMesh 준비와 군중 생성에 각각 적용하는 제한 시간입니다. 실패해도 전투 차단은 유지합니다.
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending Crowd|Transformation",
 		meta = (EditCondition = "bTransformTaggedMonsters", ClampMin = "1.0", Units = "s"))
 	float TransformationTimeout = 60.0f;
@@ -84,32 +95,24 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "Ending Crowd|Status")
 	FString LastSpawnError;
 
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "Ending Crowd|Status")
+	bool bEndingWorldActive = false;
+
 private:
 	UFUNCTION()
 	void HandleSpawningFinished();
 
-	bool PrepareMonsterTransformation(ATinoEndingCrowdSpawner& Spawner);
-	void FinalizeMonsterTransformation();
-	void HandleTransformationTimeout();
+	void HandleInitialCrowdReady();
+	void HandleSessionError(const FString& Reason);
 	void FailSpawn(const FString& Reason);
-	void RestorePendingMonsters();
 	void UnbindSpawner();
-
-	// 생성 완료 전까지 숨기지 않고 보존할 몬스터와 원래 상태입니다.
-	struct FPendingMonster
-	{
-		TWeakObjectPtr<AEnemyCharacter> Enemy;
-		bool bWasAIBlocked = false;
-		bool bCouldBeDamaged = true;
-	};
-	TArray<FPendingMonster> PendingMonsters;
-	bool bTransformationInProgress = false;
+	void BindSession(UTinoEndingCrowdSubsystem& Session);
 
 	// 에디터 플레이 중 참조가 변경되어도 실제 생성 요청을 보낸 스포너를 추적합니다.
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AMassSpawner> RequestedSpawner;
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UTinoEndingCrowdSubsystem> EndingSession;
 
 	FTimerHandle TestSpawnTimerHandle;
-	FTimerHandle TransformationTimeoutHandle;
-	FTimerHandle FinalizeTransformationHandle;
 };

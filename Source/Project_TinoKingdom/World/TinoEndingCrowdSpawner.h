@@ -17,9 +17,18 @@ public:
 	bool PrepareSpawnLocations(const TArray<FTransform>& Transforms);
 	void CancelEndingSpawn();
 	int32 GetSpawnedEntityCount() const;
+	// 배치된 스포너의 설정만 복사하여 몬스터별 런타임 스포너에 적용합니다.
+	bool GetEndingEntityConfig(TSoftObjectPtr<UMassEntityConfigAsset>& OutConfig) const;
+	void SetEndingEntityConfig(const TSoftObjectPtr<UMassEntityConfigAsset>& Config);
+	void SpawnPreparedCrowd();
+	bool HasFinishedPreparedSpawn() const { return bPreparedSpawnFinished; }
 	TConstArrayView<FTransform> GetPreparedTransforms() const { return PreparedTransforms; }
 
 private:
+	UFUNCTION()
+	void HandlePreparedSpawnFinished();
+	bool bPreparedSpawnFinished = false;
+
 	UPROPERTY(Transient)
 	TArray<FTransform> PreparedTransforms;
 };
