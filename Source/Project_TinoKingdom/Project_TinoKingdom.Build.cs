@@ -24,7 +24,9 @@ public class Project_TinoKingdom : ModuleRules
 			"LevelSequence",
 			"MovieScene",
 			"Niagara",
-			"MassSpawner"
+			"MassSpawner",
+			"GeometryCollectionEngine",
+			"FieldSystemEngine"
 		});
 
 		if (Target.bBuildEditor)
