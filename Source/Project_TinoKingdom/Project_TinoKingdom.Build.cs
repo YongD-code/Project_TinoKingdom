@@ -24,11 +24,10 @@ public class Project_TinoKingdom : ModuleRules
 			"LevelSequence",
 			"MovieScene",
 			"Niagara",
+			"MassSpawner",
 			"GeometryCollectionEngine",
 			"FieldSystemEngine"
 		});
-
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
 		if (Target.bBuildEditor)
 		{

@@ -23,6 +23,7 @@
 #include "Project_TinoKingdom/Component/PlayerProgressionComponent.h"
 #include "Project_TinoKingdom/GameMode/TinoGameMode.h"
 #include "Project_TinoKingdom/UI/EnemyHealthBarWidget.h"
+#include "Project_TinoKingdom/World/TinoEndingCrowdSubsystem.h"
 
 namespace
 {
@@ -101,6 +102,12 @@ AEnemyCharacter::AEnemyCharacter()
 
 void AEnemyCharacter::BeginPlay()
 {
+	// 블루프린트의 플레이 시작 이벤트보다 먼저 엔딩 상태를 적용합니다.
+	UTinoEndingCrowdSubsystem* EndingCrowd = GetWorld()->GetSubsystem<UTinoEndingCrowdSubsystem>();
+	if (EndingCrowd)
+	{
+		EndingCrowd->RegisterEnemy(*this);
+	}
 	Super::BeginPlay();
 
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
@@ -121,10 +128,19 @@ void AEnemyCharacter::BeginPlay()
 		StatComponent->OnHPChanged.AddUniqueDynamic(this, &AEnemyCharacter::HandleHPChanged);
 		UpdateHealthBar(StatComponent->GetCurrentHP(), StatComponent->GetMaxHP());
 	}
+	if (EndingCrowd)
+	{
+		// 플레이 시작에서 추가한 태그와 블루프린트가 변경한 표시 상태도 반영합니다.
+		EndingCrowd->RegisterEnemy(*this);
+	}
 }
 
 void AEnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (UTinoEndingCrowdSubsystem* EndingCrowd = GetWorld()->GetSubsystem<UTinoEndingCrowdSubsystem>())
+	{
+		EndingCrowd->UnregisterEnemy(*this);
+	}
 	SetEngaged(false);
 
 	GetWorldTimerManager().ClearTimer(AttackResetTimerHandle);
@@ -146,6 +162,12 @@ float AEnemyCharacter::TakeDamage(
 	AActor* DamageCauser
 )
 {
+	// 군중 전환 준비 중이거나 전환된 몬스터는 피해와 피격 반응을 받지 않습니다.
+	if (!CanBeDamaged())
+	{
+		return 0.0f;
+	}
+
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (StatComponent != nullptr)
@@ -180,7 +202,7 @@ float AEnemyCharacter::TakeDamage(
 
 bool AEnemyCharacter::CanAttack() const
 {
-	if (!bAIActive || bAttacking || bHitReacting || bDead)
+	if (!bAIActive || bAttacking || bHitReacting || bDead || bCinematicAIBlocked || bEndingCrowdSuppressed)
 	{
 		return false;
 	}
@@ -495,7 +517,8 @@ void AEnemyCharacter::OnHitMontageEnded(UAnimMontage* Montage, bool bInterrupted
 
 void AEnemyCharacter::PerformAttackTrace()
 {
-	if (bDead)
+	// 이미 재생 중인 공격 몽타주의 알림도 엔딩 이후 피해를 발생시키지 못하게 합니다.
+	if (bDead || bEndingCrowdSuppressed || bCinematicAIBlocked)
 	{
 		return;
 	}
@@ -607,6 +630,11 @@ void AEnemyCharacter::SetCombatTarget(AActor* NewTarget)
 
 void AEnemyCharacter::SetCinematicAIBlocked(bool bBlocked)
 {
+	// 다른 시네마틱의 종료 이벤트가 엔딩 이후 몬스터의 AI를 다시 켜지 못하게 합니다.
+	if (bEndingCrowdSuppressed && !bBlocked)
+	{
+		return;
+	}
 	if (bCinematicAIBlocked == bBlocked)
 	{
 		return;
@@ -634,6 +662,41 @@ void AEnemyCharacter::SetCinematicAIBlocked(bool bBlocked)
 	}
 
 	UpdateAIActivation();
+}
+
+void AEnemyCharacter::SuppressForEndingCrowd(bool bHide)
+{
+	if (!bEndingCrowdSuppressed)
+	{
+		bBeforeEndingAIBlocked = bCinematicAIBlocked;
+		bBeforeEndingHidden = IsHidden();
+		bBeforeEndingCollision = GetActorEnableCollision();
+		bBeforeEndingDamage = CanBeDamaged();
+		bBeforeEndingTick = IsActorTickEnabled();
+		bEndingCrowdSuppressed = true;
+	}
+	SetCanBeDamaged(false);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
+	SetCinematicAIBlocked(true);
+	if (bHide)
+	{
+		SetActorHiddenInGame(true);
+	}
+}
+
+void AEnemyCharacter::ReleaseEndingCrowdSuppression()
+{
+	if (!bEndingCrowdSuppressed)
+	{
+		return;
+	}
+	bEndingCrowdSuppressed = false;
+	bCinematicAIBlocked = bBeforeEndingAIBlocked;
+	SetActorHiddenInGame(bBeforeEndingHidden);
+	SetActorEnableCollision(bBeforeEndingCollision);
+	SetCanBeDamaged(bBeforeEndingDamage);
+	SetActorTickEnabled(bBeforeEndingTick);
 }
 
 void AEnemyCharacter::SetEngaged(bool bNewEngaged)
@@ -829,7 +892,8 @@ void AEnemyCharacter::ApplyKnockbackFrom(AActor* DamageCauser)
 
 bool AEnemyCharacter::CanBeTargeted_Implementation() const
 {
-	return !IsDead();
+	// 전환 준비 중이거나 숨겨진 몬스터가 계속 잠금 대상으로 선택되는 것을 막습니다.
+	return !IsDead() && !IsHidden() && CanBeDamaged();
 }
 
 FVector AEnemyCharacter::GetLockOnLocation_Implementation() const
