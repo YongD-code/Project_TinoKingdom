@@ -24,6 +24,10 @@ public:
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending")
 	void PlayEnding();
 
+	// 시퀀스 없이 군중 전환만 확인한다. 연기와 사람이 나오는지 볼 때 쓴다.
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending|Crowd")
+	void PlayCrowdCue();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -78,9 +82,6 @@ private:
 
 	UFUNCTION()
 	void HandleEndingFinished();
-
-	UFUNCTION()
-	void HandleCrowdCue();
 
 	UPROPERTY(Transient)
 	TObjectPtr<ULevelSequencePlayer> SequencePlayer;

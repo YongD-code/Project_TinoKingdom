@@ -204,16 +204,16 @@ void AEndingCinematicActor::PlayEnding()
 	{
 		if (CrowdSpawnDelay <= 0.0f)
 		{
-			HandleCrowdCue();
+			PlayCrowdCue();
 			return;
 		}
 
 		GetWorldTimerManager().SetTimer(
-			CrowdTimerHandle, this, &AEndingCinematicActor::HandleCrowdCue, CrowdSpawnDelay, false);
+			CrowdTimerHandle, this, &AEndingCinematicActor::PlayCrowdCue, CrowdSpawnDelay, false);
 	}
 }
 
-void AEndingCinematicActor::HandleCrowdCue()
+void AEndingCinematicActor::PlayCrowdCue()
 {
 	if (!IsValid(CrowdController))
 	{
