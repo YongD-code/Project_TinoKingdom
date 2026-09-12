@@ -631,6 +631,26 @@ bool APlayerCharacter::TryUseUsableItem(const FName ItemId)
 	return SecretPlaceEntrance->TryUseItem(this, ItemId);
 }
 
+void APlayerCharacter::SetCinematicPoseOverride(bool bEnabled)
+{
+	if (!IsValid(VisibleBodyMesh))
+	{
+		return;
+	}
+
+	if (bEnabled)
+	{
+		// 연결을 끊어야 시퀀서의 컨트롤 릭 포즈가 화면에 남는다.
+		VisibleBodyMesh->SetLeaderPoseComponent(nullptr);
+	}
+	else
+	{
+		VisibleBodyMesh->SetLeaderPoseComponent(GetMesh(), true, false);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("시네마틱 포즈 오버라이드: %s"), bEnabled ? TEXT("켜짐") : TEXT("꺼짐"));
+}
+
 void APlayerCharacter::Interact()
 {
 	if (!IsValid(DialogueComponent) || DialogueComponent->IsInDialogue())

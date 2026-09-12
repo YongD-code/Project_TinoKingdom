@@ -130,6 +130,10 @@ void AEndingCinematicActor::PlayEnding()
 	{
 		SequenceActor->SetBindingByTag(PlayerBindingTag, { PlayerCharacter });
 		UE_LOG(LogEndingCinematic, Log, TEXT("Player 바인딩: %s"), *PlayerCharacter->GetName());
+
+		// 시퀀서의 컨트롤 릭 포즈가 Leader Pose에 덮이지 않도록 연결을 끊는다.
+		CinematicPlayerCharacter = PlayerCharacter;
+		PlayerCharacter->SetCinematicPoseOverride(true);
 	}
 
 	if (IsValid(GuideNPC))
@@ -151,6 +155,12 @@ void AEndingCinematicActor::HandleEndingFinished()
 {
 	// OnFinished 브로드캐스트 중에는 델리게이트를 제거하거나 Stop을 호출하지 않는다.
 	SequencePlayer = nullptr;
+
+	if (IsValid(CinematicPlayerCharacter))
+	{
+		CinematicPlayerCharacter->SetCinematicPoseOverride(false);
+		CinematicPlayerCharacter = nullptr;
+	}
 
 	if (IsValid(SequenceActor))
 	{

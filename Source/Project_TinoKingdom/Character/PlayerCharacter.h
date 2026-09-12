@@ -119,6 +119,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
+	// 시네마틱이 보이는 몸을 직접 포즈할 수 있도록 Leader Pose 연결을 끊는다.
+	// 평소에는 숨겨진 Mesh가 Body를 구동하므로 시퀀서 포즈가 매 프레임 덮어써진다.
+	UFUNCTION(BlueprintCallable, Category = "Player|Cinematic")
+	void SetCinematicPoseOverride(bool bEnabled);
+
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	UCookingComponent* GetCookingComponent() const { return CookingComponent; }
 

@@ -56,6 +56,10 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ALevelSequenceActor> SequenceActor;
 
+	// 재생 중 Leader Pose를 끊어둔 플레이어. 종료 시 되돌리기 위해 들고 있는다.
+	UPROPERTY(Transient)
+	TObjectPtr<class APlayerCharacter> CinematicPlayerCharacter;
+
 	FTimerHandle StartTimerHandle;
 	bool bPlayed = false;
 };
