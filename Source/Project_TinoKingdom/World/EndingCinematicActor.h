@@ -43,6 +43,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending")
 	bool bPlayOnlyOnce = true;
 
+	// 엔딩 포탈로 이동해 온 경우에만 레벨 시작 시 재생한다.
+	// 일반 게임 시작에는 요청 플래그가 없어 반응하지 않는다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending")
+	bool bPlayAfterEndingTravel = false;
+
 private:
 	UFUNCTION()
 	void HandleStoneBroken();

@@ -82,6 +82,11 @@ public:
 	void RequestSecretPlaceEntrySequence() { bPendingSecretPlaceEntrySequence = true; }
 	bool ConsumeSecretPlaceEntrySequenceRequest();
 
+	// 엔딩 포탈로 지상에 올라온 경우에만 엔딩 시퀀스를 재생하도록 요청한다.
+	// 일반 게임 시작에는 이 요청이 없으므로 엔딩이 재생되지 않는다.
+	void RequestEndingSequence() { bPendingEndingSequence = true; }
+	bool ConsumeEndingSequenceRequest();
+
 private:
 	UPROPERTY(Transient)
 	bool bHasPendingPlayerState = false;
@@ -91,4 +96,7 @@ private:
 
 	UPROPERTY(Transient)
 	bool bPendingSecretPlaceEntrySequence = false;
+
+	UPROPERTY(Transient)
+	bool bPendingEndingSequence = false;
 };

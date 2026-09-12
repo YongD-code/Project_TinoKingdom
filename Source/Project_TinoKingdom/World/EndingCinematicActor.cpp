@@ -5,6 +5,7 @@
 #include "LevelSequencePlayer.h"
 #include "MovieScene.h"
 #include "Kismet/GameplayStatics.h"
+#include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Character/GuideNPCCharacter.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/Component/MagicStoneDestructionComponent.h"
@@ -33,6 +34,21 @@ AEndingCinematicActor::AEndingCinematicActor()
 void AEndingCinematicActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (bPlayAfterEndingTravel)
+	{
+		UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance());
+		if (TinoGameInstance && TinoGameInstance->ConsumeEndingSequenceRequest())
+		{
+			UE_LOG(LogEndingCinematic, Log, TEXT("%s: 엔딩 이동을 확인했습니다."), *GetName());
+			PlayEnding();
+		}
+		else
+		{
+			UE_LOG(LogEndingCinematic, Log, TEXT("%s: 엔딩 이동 요청이 없어 대기합니다."), *GetName());
+		}
+		return;
+	}
 
 	if (!IsValid(MagicStoneActor))
 	{
