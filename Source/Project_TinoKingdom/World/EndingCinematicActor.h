@@ -6,6 +6,8 @@
 
 class AEndingPortal;
 class AGuideNPCCharacter;
+class ATinoEndingCrowdController;
+class UNiagaraSystem;
 class ALevelSequenceActor;
 class ULevelSequence;
 class ULevelSequencePlayer;
@@ -53,12 +55,32 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending")
 	bool bPlayAfterEndingTravel = false;
 
+	// 몬스터를 사람으로 바꿔줄 팀원의 컨트롤러. 비워두면 전환을 요청하지 않는다.
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending|Crowd")
+	TObjectPtr<ATinoEndingCrowdController> CrowdController;
+
+	// 재생 시작부터 전환을 요청하기까지의 시간.
+	// 첫 컷이 화면에 뜬 뒤여야 카메라가 비추는 동안 바뀐다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd", meta = (ClampMin = "0.0"))
+	float CrowdSpawnDelay = 0.7f;
+
+	// 몬스터가 사라지고 사람이 나타나기까지의 빈 프레임을 가려줄 연기.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd")
+	TObjectPtr<UNiagaraSystem> CrowdSmokeEffect;
+
+	// 연기를 터뜨릴 대상. CrowdController의 Target Monster Tag와 같은 값이어야 한다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd")
+	FName CrowdMonsterTag = TEXT("EndingCrowdTarget");
+
 private:
 	UFUNCTION()
 	void HandleStoneBroken();
 
 	UFUNCTION()
 	void HandleEndingFinished();
+
+	UFUNCTION()
+	void HandleCrowdCue();
 
 	UPROPERTY(Transient)
 	TObjectPtr<ULevelSequencePlayer> SequencePlayer;
@@ -71,5 +93,6 @@ private:
 	TObjectPtr<class APlayerCharacter> CinematicPlayerCharacter;
 
 	FTimerHandle StartTimerHandle;
+	FTimerHandle CrowdTimerHandle;
 	bool bPlayed = false;
 };

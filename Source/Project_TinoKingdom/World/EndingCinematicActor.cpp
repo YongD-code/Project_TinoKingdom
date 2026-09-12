@@ -4,12 +4,17 @@
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
 #include "MovieScene.h"
+#include "EngineUtils.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
+#include "Project_TinoKingdom/Character/EnemyCharacter.h"
 #include "Project_TinoKingdom/Character/GuideNPCCharacter.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/World/EndingPortal.h"
+#include "Project_TinoKingdom/World/TinoEndingCrowdController.h"
 #include "Project_TinoKingdom/Component/MagicStoneDestructionComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogEndingCinematic, Log, All);
@@ -79,6 +84,7 @@ void AEndingCinematicActor::BeginPlay()
 void AEndingCinematicActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(StartTimerHandle);
+	GetWorldTimerManager().ClearTimer(CrowdTimerHandle);
 
 	if (IsValid(MagicStoneActor))
 	{
@@ -189,6 +195,49 @@ void AEndingCinematicActor::PlayEnding()
 
 	UE_LOG(LogEndingCinematic, Log, TEXT("%s: %s 재생을 시작합니다."),
 		*GetName(), *EndingSequence->GetName());
+
+	// 카메라가 첫 지역을 비추는 동안 바뀌어야 하므로 재생 시작 기준으로 미룬다.
+	if (IsValid(CrowdController))
+	{
+		if (CrowdSpawnDelay <= 0.0f)
+		{
+			HandleCrowdCue();
+			return;
+		}
+
+		GetWorldTimerManager().SetTimer(
+			CrowdTimerHandle, this, &AEndingCinematicActor::HandleCrowdCue, CrowdSpawnDelay, false);
+	}
+}
+
+void AEndingCinematicActor::HandleCrowdCue()
+{
+	if (!IsValid(CrowdController))
+	{
+		return;
+	}
+
+	// 몬스터가 숨겨지고 사람이 생성되기까지 몇 프레임이 비므로 연기로 가린다.
+	if (IsValid(CrowdSmokeEffect) && !CrowdMonsterTag.IsNone())
+	{
+		int32 EffectCount = 0;
+		for (TActorIterator<AEnemyCharacter> It(GetWorld()); It; ++It)
+		{
+			if (!It->ActorHasTag(CrowdMonsterTag) || It->IsHidden() || It->IsDead())
+			{
+				continue;
+			}
+
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				GetWorld(), CrowdSmokeEffect, It->GetActorLocation());
+			++EffectCount;
+		}
+
+		UE_LOG(LogEndingCinematic, Log, TEXT("군중 전환 연기 %d개를 재생했습니다."), EffectCount);
+	}
+
+	CrowdController->SpawnEndingCrowd();
+	UE_LOG(LogEndingCinematic, Log, TEXT("%s: 군중 전환을 요청했습니다."), *GetName());
 }
 
 void AEndingCinematicActor::HandleEndingFinished()
