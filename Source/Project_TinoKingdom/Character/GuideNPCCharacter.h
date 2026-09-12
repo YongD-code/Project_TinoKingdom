@@ -8,6 +8,7 @@
 
 class AAIController;
 class APlayerCharacter;
+class UNiagaraSystem;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AGuideNPCCharacter : public ATinoNPCCharacter
@@ -71,6 +72,14 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
 	FName EvolvedFormMeshTag = TEXT("EvolvedForm");
+
+	// 변신하는 순간 터뜨릴 이펙트. 되돌릴 때는 재생하지 않는다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
+	TObjectPtr<UNiagaraSystem> EvolveEffect;
+
+	// 물고기와 사람의 키 차이를 보정해 이펙트를 띄울 높이.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
+	float EvolveEffectHeightOffset = 60.0f;
 
 private:
 	void MoveToCurrentTarget();

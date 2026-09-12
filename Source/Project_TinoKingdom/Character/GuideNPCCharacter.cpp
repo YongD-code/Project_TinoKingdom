@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogGuideNPC, Log, All);
@@ -176,8 +177,16 @@ void AGuideNPCCharacter::SetEvolvedForm(bool bEvolved)
 		}
 	}
 
-	UE_LOG(LogGuideNPC, Log, TEXT("%s 외형 전환: %s (컴포넌트 %d개)"),
-		*GetName(), bEvolved ? TEXT("사람") : TEXT("물짱이"), SwitchedCount);
+	// 사람이 되는 순간에만 터뜨린다.
+	if (bEvolved && IsValid(EvolveEffect))
+	{
+		const FVector EffectLocation = GetActorLocation() + FVector(0.0f, 0.0f, EvolveEffectHeightOffset);
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), EvolveEffect, EffectLocation);
+	}
+
+	UE_LOG(LogGuideNPC, Log, TEXT("%s 외형 전환: %s (컴포넌트 %d개, 이펙트 %s)"),
+		*GetName(), bEvolved ? TEXT("사람") : TEXT("물짱이"), SwitchedCount,
+		IsValid(EvolveEffect) ? TEXT("있음") : TEXT("없음"));
 }
 
 void AGuideNPCCharacter::MoveToCurrentTarget()
