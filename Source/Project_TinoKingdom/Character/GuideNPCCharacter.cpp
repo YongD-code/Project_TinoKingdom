@@ -1,6 +1,7 @@
 #include "GuideNPCCharacter.h"
 
 #include "AIController.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
@@ -123,6 +124,38 @@ void AGuideNPCCharacter::StopGuide()
 	GuidedPlayer = nullptr;
 	MoveRequestElapsed = 0.0f;
 	SetNPCMovementEnabled(false);
+}
+
+void AGuideNPCCharacter::SetEvolvedForm(bool bEvolved)
+{
+	if (bEvolvedForm == bEvolved)
+	{
+		return;
+	}
+	bEvolvedForm = bEvolved;
+
+	TArray<USkeletalMeshComponent*> FormMeshes;
+	GetComponents<USkeletalMeshComponent>(FormMeshes);
+
+	for (USkeletalMeshComponent* FormMesh : FormMeshes)
+	{
+		if (!IsValid(FormMesh))
+		{
+			continue;
+		}
+
+		// 얼굴과 그룸이 몸의 자식이므로 전파해야 함께 바뀐다.
+		if (FormMesh->ComponentHasTag(BaseFormMeshTag))
+		{
+			FormMesh->SetVisibility(!bEvolved, true);
+		}
+		else if (FormMesh->ComponentHasTag(EvolvedFormMeshTag))
+		{
+			FormMesh->SetVisibility(bEvolved, true);
+		}
+	}
+
+	UE_LOG(LogGuideNPC, Log, TEXT("%s 외형 전환: %s"), *GetName(), bEvolved ? TEXT("사람") : TEXT("물짱이"));
 }
 
 void AGuideNPCCharacter::MoveToCurrentTarget()
