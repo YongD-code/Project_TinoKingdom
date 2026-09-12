@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "EndingCinematicActor.generated.h"
 
+class AEndingPortal;
 class AGuideNPCCharacter;
 class ALevelSequenceActor;
 class ULevelSequence;
@@ -39,6 +40,10 @@ protected:
 	// 시퀀서에서 Guide 태그를 단 바인딩에 연결할 물짱이.
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending")
 	TObjectPtr<AGuideNPCCharacter> GuideNPC;
+
+	// 시네마틱이 끝나면 열어줄 귀환 포탈. 비워두면 포탈 없이 끝난다.
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending")
+	TObjectPtr<AEndingPortal> EndingPortal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending")
 	bool bPlayOnlyOnce = true;

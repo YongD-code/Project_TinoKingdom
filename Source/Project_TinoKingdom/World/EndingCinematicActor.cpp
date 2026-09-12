@@ -8,6 +8,7 @@
 #include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Character/GuideNPCCharacter.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
+#include "Project_TinoKingdom/World/EndingPortal.h"
 #include "Project_TinoKingdom/Component/MagicStoneDestructionComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogEndingCinematic, Log, All);
@@ -205,6 +206,12 @@ void AEndingCinematicActor::HandleEndingFinished()
 		SequenceActor->Destroy();
 	}
 	SequenceActor = nullptr;
+
+	// 연출이 끝난 뒤에 포탈을 열어야 시네마틱 도중에 들어가는 일이 없다.
+	if (IsValid(EndingPortal))
+	{
+		EndingPortal->RevealPortal();
+	}
 
 	UE_LOG(LogEndingCinematic, Log, TEXT("엔딩 시네마틱이 끝났습니다."));
 }
