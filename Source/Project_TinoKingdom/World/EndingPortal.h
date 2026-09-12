@@ -21,7 +21,8 @@ public:
 	AEndingPortal();
 
 	// 엔딩 시네마틱 A가 끝나는 시점에 호출한다. 이전까지는 보이지도, 반응하지도 않는다.
-	UFUNCTION(BlueprintCallable, Category = "Ending Portal")
+	// Details 패널의 버튼으로도 열 수 있어 시네마틱 없이 이동만 확인할 수 있다.
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending Portal")
 	void RevealPortal();
 
 	UFUNCTION(BlueprintPure, Category = "Ending Portal")
