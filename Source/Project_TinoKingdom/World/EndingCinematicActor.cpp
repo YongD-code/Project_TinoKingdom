@@ -4,13 +4,10 @@
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
 #include "MovieScene.h"
-#include "EngineUtils.h"
-#include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
-#include "Project_TinoKingdom/Character/EnemyCharacter.h"
 #include "Project_TinoKingdom/Character/GuideNPCCharacter.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 #include "Project_TinoKingdom/World/EndingPortal.h"
@@ -220,26 +217,9 @@ void AEndingCinematicActor::PlayCrowdCue()
 		return;
 	}
 
-	// 몬스터가 숨겨지고 사람이 생성되기까지 몇 프레임이 비므로 연기로 가린다.
-	if (IsValid(CrowdSmokeEffect) && !CrowdMonsterTag.IsNone())
-	{
-		int32 EffectCount = 0;
-		for (TActorIterator<AEnemyCharacter> It(GetWorld()); It; ++It)
-		{
-			if (!It->ActorHasTag(CrowdMonsterTag) || It->IsHidden() || It->IsDead())
-			{
-				continue;
-			}
-
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-				GetWorld(), CrowdSmokeEffect, It->GetActorLocation());
-			++EffectCount;
-		}
-
-		UE_LOG(LogEndingCinematic, Log, TEXT("군중 전환 연기 %d개를 재생했습니다."), EffectCount);
-	}
-
-	CrowdController->SpawnEndingCrowd();
+	// 월드 관리자가 몬스터별로 연기와 생성 순서를 함께 관리합니다.
+	CrowdController->SpawnEndingCrowdWithEffect(
+		CrowdSmokeEffect, SmokeToCrowdSpawnDelay, CrowdTransformationInterval);
 	UE_LOG(LogEndingCinematic, Log, TEXT("%s: 군중 전환을 요청했습니다."), *GetName());
 }
 

@@ -9,6 +9,7 @@ class AMassSpawner;
 class AEnemyCharacter;
 class ATinoEndingCrowdSpawner;
 class UTinoEndingCrowdSubsystem;
+class UNiagaraSystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTinoEndingCrowdSpawningFinishedSignature);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTinoEndingCrowdSpawnFailedSignature, FString, Reason);
@@ -25,6 +26,10 @@ public:
 	// 일반 생성 또는 월드 전체의 엔딩 상태를 한 번 활성화합니다.
 	UFUNCTION(BlueprintCallable, Category = "Ending Crowd")
 	void SpawnEndingCrowd();
+
+	// 각 몬스터의 연기를 먼저 재생한 뒤 같은 위치에 사람 군중을 생성합니다.
+	void SpawnEndingCrowdWithEffect(UNiagaraSystem* Effect,
+		float EffectToSpawnDelay, float TransformationInterval);
 
 	// NavMesh 또는 에셋 문제를 해결한 뒤 실패한 대상만 다시 시도합니다.
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending Crowd")
@@ -107,12 +112,17 @@ private:
 	void FailSpawn(const FString& Reason);
 	void UnbindSpawner();
 	void BindSession(UTinoEndingCrowdSubsystem& Session);
+	void SpawnEndingCrowdInternal();
 
 	// 에디터 플레이 중 참조가 변경되어도 실제 생성 요청을 보낸 스포너를 추적합니다.
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AMassSpawner> RequestedSpawner;
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UTinoEndingCrowdSubsystem> EndingSession;
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> RequestedTransformationEffect;
+	float RequestedEffectToSpawnDelay = 0.0f;
+	float RequestedTransformationInterval = 0.0f;
 
 	FTimerHandle TestSpawnTimerHandle;
 };

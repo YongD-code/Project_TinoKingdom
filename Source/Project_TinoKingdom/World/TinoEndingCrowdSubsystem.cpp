@@ -5,6 +5,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "MassEntityConfigAsset.h"
 #include "NavigationSystem.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "Project_TinoKingdom/Character/EnemyCharacter.h"
 #include "TinoEndingCrowdSpawner.h"
 
@@ -21,7 +23,9 @@ TStatId UTinoEndingCrowdSubsystem::GetStatId() const
 }
 
 bool UTinoEndingCrowdSubsystem::ActivateEnding(ATinoEndingCrowdSpawner& SettingsSpawner,
-	FName Tag, const FVector& ProjectionExtent, float Timeout, FString& OutError)
+	FName Tag, const FVector& ProjectionExtent, float Timeout, FString& OutError,
+	UNiagaraSystem* InTransformationEffect, float InEffectToSpawnDelay,
+	float InTransformationInterval)
 {
 	if (bShuttingDown || Tag.IsNone() || SettingsSpawner.GetWorld() != GetWorld())
 	{
@@ -48,6 +52,10 @@ bool UTinoEndingCrowdSubsystem::ActivateEnding(ATinoEndingCrowdSpawner& Settings
 	TargetTag = Tag;
 	NavProjectionExtent = ProjectionExtent.ComponentMax(FVector::OneVector);
 	ConversionTimeout = FMath::Max(Timeout, 1.0f);
+	TransformationEffect = InTransformationEffect;
+	EffectToSpawnDelay = FMath::Max(InEffectToSpawnDelay, 0.0f);
+	TransformationInterval = FMath::Max(InTransformationInterval, 0.0f);
+	NextEffectTime = GetWorld()->GetTimeSeconds();
 	bEndingActive = true;
 	bCollectingInitial = true;
 	// 기존 대상은 한 번만 탐색하고, 이후 로딩은 몬스터의 플레이 시작 알림으로 처리합니다.
@@ -146,7 +154,8 @@ void UTinoEndingCrowdSubsystem::Tick(float DeltaTime)
 	Conversions.GetKeys(Keys);
 	for (const auto& Pair : Conversions)
 	{
-		InFlightCount += Pair.Value->Phase == EConversionPhase::Spawning ? 1 : 0;
+		InFlightCount += (Pair.Value->Phase == EConversionPhase::EffectPlaying
+			|| Pair.Value->Phase == EConversionPhase::Spawning) ? 1 : 0;
 	}
 	// 등록 해제나 외부 완료 이벤트가 발생해도 맵 순회가 깨지지 않도록 키를 복사합니다.
 	for (const TWeakObjectPtr<AEnemyCharacter>& Key : Keys)
@@ -220,45 +229,78 @@ void UTinoEndingCrowdSubsystem::ProcessConversion(FConversion& Conversion, int32
 		return;
 	}
 
-	UNavigationSystemV1* Navigation = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-	const UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
-	FNavLocation Ground;
-	if (!Navigation || !Movement || !Navigation->ProjectPointToNavigation(
-		Movement->GetActorFeetLocation(), Ground, NavProjectionExtent))
+	if (Conversion.Phase == EConversionPhase::WaitingForNavigation)
 	{
-		if (Now - Conversion.PhaseStartTime >= ConversionTimeout)
+		UNavigationSystemV1* Navigation = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+		const UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
+		FNavLocation Ground;
+		if (!Navigation || !Movement || !Navigation->ProjectPointToNavigation(
+			Movement->GetActorFeetLocation(), Ground, NavProjectionExtent))
 		{
-			FailConversion(Conversion, TEXT("발밑 NavMesh 준비 대기 시간을 초과했습니다. 이 지역의 내비게이션을 확인하세요."));
+			if (Now - Conversion.PhaseStartTime >= ConversionTimeout)
+			{
+				FailConversion(Conversion, TEXT("발밑 NavMesh 준비 대기 시간을 초과했습니다. 이 지역의 내비게이션을 확인하세요."));
+			}
+			return;
 		}
-		return;
+		Conversion.SpawnTransform = FTransform(
+			FRotator(0.0, Enemy->GetActorRotation().Yaw, 0.0), Ground.Location, FVector::OneVector);
+		Conversion.EffectLocation = Enemy->GetActorLocation();
+		Conversion.Phase = EConversionPhase::WaitingForEffect;
+		Conversion.PhaseStartTime = Now;
 	}
-	// 한꺼번에 많은 비동기 생성 요청을 시작하지 않습니다. 대기열 자체에는 제한 시간을 적용하지 않습니다.
-	if (InFlightCount >= 4)
+
+	if (Conversion.Phase == EConversionPhase::WaitingForEffect)
+	{
+		// 연기 재생부터 생성 완료까지를 한 작업으로 계산하여 연기만 먼저 사라지는 일을 막습니다.
+		if (InFlightCount >= 4 || Now < NextEffectTime)
+		{
+			return;
+		}
+		if (IsValid(TransformationEffect))
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				GetWorld(), TransformationEffect, Conversion.EffectLocation);
+		}
+		Conversion.Phase = EConversionPhase::EffectPlaying;
+		Conversion.PhaseStartTime = Now;
+		NextEffectTime = Now + TransformationInterval;
+		++InFlightCount;
+		UE_LOG(LogTinoEndingCrowdSession, Log, TEXT("%s: 사람 전환 연기를 재생했습니다."), *GetNameSafe(Enemy));
+		if (EffectToSpawnDelay > 0.0f)
+		{
+			return;
+		}
+	}
+
+	if (Conversion.Phase != EConversionPhase::EffectPlaying
+		|| Now - Conversion.PhaseStartTime < EffectToSpawnDelay)
 	{
 		return;
 	}
+
 	FActorSpawnParameters Parameters;
 	Parameters.OverrideLevel = GetWorld()->PersistentLevel;
 	Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	Parameters.ObjectFlags |= RF_Transient;
-	const FTransform Transform(FRotator(0.0, Enemy->GetActorRotation().Yaw, 0.0), Ground.Location, FVector::OneVector);
 	ATinoEndingCrowdSpawner* Spawner = GetWorld()->SpawnActor<ATinoEndingCrowdSpawner>(
-		ATinoEndingCrowdSpawner::StaticClass(), Transform, Parameters);
+		ATinoEndingCrowdSpawner::StaticClass(), Conversion.SpawnTransform, Parameters);
 	if (!Spawner)
 	{
+		--InFlightCount;
 		FailConversion(Conversion, TEXT("런타임 군중 스포너를 만들지 못했습니다."));
 		return;
 	}
 	Conversion.Spawner = Spawner;
 	Spawner->SetEndingEntityConfig(EntityConfig);
-	if (!Spawner->PrepareSpawnLocations(TArray<FTransform>{Transform}))
+	if (!Spawner->PrepareSpawnLocations(TArray<FTransform>{Conversion.SpawnTransform}))
 	{
+		--InFlightCount;
 		FailConversion(Conversion, TEXT("몬스터 위치의 군중 생성 데이터를 준비하지 못했습니다."));
 		return;
 	}
 	Conversion.Phase = EConversionPhase::Spawning;
 	Conversion.PhaseStartTime = Now;
-	++InFlightCount;
 	Spawner->SpawnPreparedCrowd();
 }
 
@@ -288,6 +330,8 @@ void UTinoEndingCrowdSubsystem::RetryFailedConversions()
 		{
 			Conversion.Phase = EConversionPhase::WaitingForNavigation;
 			Conversion.PhaseStartTime = GetWorld()->GetTimeSeconds();
+			Conversion.SpawnTransform = FTransform::Identity;
+			Conversion.EffectLocation = FVector::ZeroVector;
 		}
 	}
 }

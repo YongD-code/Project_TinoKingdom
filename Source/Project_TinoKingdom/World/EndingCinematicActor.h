@@ -68,13 +68,19 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd", meta = (ClampMin = "0.0"))
 	float CrowdSpawnDelay = 0.7f;
 
-	// 몬스터가 사라지고 사람이 나타나기까지의 빈 프레임을 가려줄 연기.
+	// 몬스터가 사람으로 바뀌는 동안 화면을 가려줄 연기입니다.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd")
 	TObjectPtr<UNiagaraSystem> CrowdSmokeEffect;
 
-	// 연기를 터뜨릴 대상. CrowdController의 Target Monster Tag와 같은 값이어야 한다.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd")
-	FName CrowdMonsterTag = TEXT("EndingCrowdTarget");
+	// 연기를 재생한 뒤 해당 위치의 사람 군중 생성을 시작하기까지의 시간입니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd",
+		meta = (ClampMin = "0.0", Units = "s"))
+	float SmokeToCrowdSpawnDelay = 0.6f;
+
+	// 여러 몬스터의 연기가 한꺼번에 시작되지 않도록 두는 최소 간격입니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd",
+		meta = (ClampMin = "0.0", Units = "s"))
+	float CrowdTransformationInterval = 0.25f;
 
 private:
 	UFUNCTION()

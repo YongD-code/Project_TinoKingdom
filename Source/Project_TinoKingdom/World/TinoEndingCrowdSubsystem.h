@@ -7,6 +7,7 @@
 class AEnemyCharacter;
 class ATinoEndingCrowdSpawner;
 class UMassEntityConfigAsset;
+class UNiagaraSystem;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FTinoEndingCrowdSessionError, const FString&);
 
@@ -18,7 +19,10 @@ class PROJECT_TINOKINGDOM_API UTinoEndingCrowdSubsystem : public UTickableWorldS
 
 public:
 	bool ActivateEnding(ATinoEndingCrowdSpawner& SettingsSpawner, FName Tag,
-		const FVector& ProjectionExtent, float Timeout, FString& OutError);
+		const FVector& ProjectionExtent, float Timeout, FString& OutError,
+		UNiagaraSystem* InTransformationEffect = nullptr,
+		float InEffectToSpawnDelay = 0.0f,
+		float InTransformationInterval = 0.0f);
 	bool ShouldConvert(const AEnemyCharacter& Enemy) const;
 	void RegisterEnemy(AEnemyCharacter& Enemy);
 	void UnregisterEnemy(AEnemyCharacter& Enemy);
@@ -42,12 +46,22 @@ protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
 private:
-	enum class EConversionPhase : uint8 { WaitingForNavigation, Spawning, Ready, Failed };
+	enum class EConversionPhase : uint8
+	{
+		WaitingForNavigation,
+		WaitingForEffect,
+		EffectPlaying,
+		Spawning,
+		Ready,
+		Failed
+	};
 	struct FConversion
 	{
 		TWeakObjectPtr<AEnemyCharacter> Enemy;
 		TWeakObjectPtr<ATinoEndingCrowdSpawner> Spawner;
 		EConversionPhase Phase = EConversionPhase::WaitingForNavigation;
+		FTransform SpawnTransform;
+		FVector EffectLocation = FVector::ZeroVector;
 		double PhaseStartTime = 0.0;
 		bool bInitialPending = false;
 		bool bHideWhileWaiting = true;
@@ -62,9 +76,14 @@ private:
 	TMap<TWeakObjectPtr<AEnemyCharacter>, TSharedPtr<FConversion>> Conversions;
 	UPROPERTY(Transient)
 	TSoftObjectPtr<UMassEntityConfigAsset> EntityConfig;
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> TransformationEffect;
 	FName TargetTag;
 	FVector NavProjectionExtent = FVector(50.0, 50.0, 200.0);
 	float ConversionTimeout = 60.0f;
+	float EffectToSpawnDelay = 0.0f;
+	float TransformationInterval = 0.0f;
+	double NextEffectTime = 0.0;
 	float PollElapsed = 0.0f;
 	int32 InitialPendingCount = 0;
 	bool bEndingActive = false;

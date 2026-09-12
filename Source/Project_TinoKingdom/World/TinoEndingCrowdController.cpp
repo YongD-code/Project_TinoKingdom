@@ -72,6 +72,23 @@ void ATinoEndingCrowdController::BindSession(UTinoEndingCrowdSubsystem& Session)
 
 void ATinoEndingCrowdController::SpawnEndingCrowd()
 {
+	RequestedTransformationEffect = nullptr;
+	RequestedEffectToSpawnDelay = 0.0f;
+	RequestedTransformationInterval = 0.0f;
+	SpawnEndingCrowdInternal();
+}
+
+void ATinoEndingCrowdController::SpawnEndingCrowdWithEffect(UNiagaraSystem* Effect,
+	float EffectToSpawnDelay, float TransformationInterval)
+{
+	RequestedTransformationEffect = Effect;
+	RequestedEffectToSpawnDelay = FMath::Max(EffectToSpawnDelay, 0.0f);
+	RequestedTransformationInterval = FMath::Max(TransformationInterval, 0.0f);
+	SpawnEndingCrowdInternal();
+}
+
+void ATinoEndingCrowdController::SpawnEndingCrowdInternal()
+{
 	UWorld* World = GetWorld();
 	if (!World || !World->IsGameWorld() || !HasActorBegunPlay() || bSpawnRequested)
 	{
@@ -97,7 +114,9 @@ void ATinoEndingCrowdController::SpawnEndingCrowd()
 			return;
 		}
 		FString Error;
-		if (!Session->ActivateEnding(*SettingsSpawner, TargetMonsterTag, NavProjectionExtent, TransformationTimeout, Error))
+		if (!Session->ActivateEnding(*SettingsSpawner, TargetMonsterTag, NavProjectionExtent,
+			TransformationTimeout, Error, RequestedTransformationEffect,
+			RequestedEffectToSpawnDelay, RequestedTransformationInterval))
 		{
 			bSpawnRequested = false;
 			FailSpawn(Error);
