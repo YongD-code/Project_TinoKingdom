@@ -213,6 +213,12 @@ void AEndingCinematicActor::HandleEndingFinished()
 	{
 		EndingPortal->RevealPortal();
 	}
+	else if (!bPlayAfterEndingTravel)
+	{
+		// 지상 엔딩에는 포탈이 필요 없지만, 던전 엔딩에서 비어 있으면 진행이 막힌다.
+		UE_LOG(LogEndingCinematic, Warning,
+			TEXT("%s: Ending Portal이 비어 있어 포탈이 열리지 않습니다."), *GetName());
+	}
 
 	UE_LOG(LogEndingCinematic, Log, TEXT("엔딩 시네마틱이 끝났습니다."));
 }
