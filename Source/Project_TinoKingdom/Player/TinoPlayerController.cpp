@@ -3,16 +3,20 @@
 
 #include "TinoPlayerController.h"
 
+#include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "InputKeyEventArgs.h"
 #include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Component/CookingComponent.h"
 #include "Project_TinoKingdom/Component/InventoryComponent.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
+#include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/UI/CookingWidget.h"
 #include "Project_TinoKingdom/UI/DeathScreenWidget.h"
+#include "Project_TinoKingdom/UI/EndScreenWidget.h"
 #include "Project_TinoKingdom/UI/TinoPlayerWidget.h"
 
 ATinoPlayerController::ATinoPlayerController()
@@ -21,6 +25,23 @@ ATinoPlayerController::ATinoPlayerController()
 		TEXT("/Game/UI/WBP_MenuBackground.WBP_MenuBackground_C")));
 	DeathScreenClass = TSoftClassPtr<UDeathScreenWidget>(FSoftObjectPath(
 		TEXT("/Game/UI/WBP_DeathScreen.WBP_DeathScreen_C")));
+	EndScreenClass = TSoftClassPtr<UEndScreenWidget>(FSoftObjectPath(
+		TEXT("/Game/UI/WBP_EndScreen.WBP_EndScreen_C")));
+}
+
+void ATinoPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent);
+	if (EnhancedInputComponent != nullptr && EndScreenContinueAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(
+			EndScreenContinueAction,
+			ETriggerEvent::Started,
+			this,
+			&ATinoPlayerController::HandleEndScreenContinue);
+	}
 }
 
 void ATinoPlayerController::EnsureMenuBackgroundWidget()
@@ -99,6 +120,81 @@ void ATinoPlayerController::HideDeathScreen()
 	{
 		DeathScreenWidget->HideDeathMessage();
 	}
+}
+
+void ATinoPlayerController::EnsureEndScreenWidget()
+{
+	if (EndScreenWidget != nullptr)
+	{
+		return;
+	}
+
+	UClass* WidgetClass = EndScreenClass.LoadSynchronous();
+	if (!IsValid(WidgetClass))
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("EndScreenClass를 불러오지 못해 C++ 기본 EndScreenWidget을 사용합니다."));
+		WidgetClass = UEndScreenWidget::StaticClass();
+	}
+
+	EndScreenWidget = CreateWidget<UEndScreenWidget>(this, WidgetClass);
+	if (EndScreenWidget != nullptr)
+	{
+		EndScreenWidget->AddToViewport(200);
+		EndScreenWidget->HideEndScreen();
+	}
+}
+
+void ATinoPlayerController::ShowEndScreen()
+{
+	if (bEndScreenOpen || bEndScreenTravelInProgress)
+	{
+		return;
+	}
+
+	EnsureEndScreenWidget();
+	if (EndScreenWidget == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("End Screen 위젯을 생성하지 못했습니다."));
+		return;
+	}
+
+	CloseAllMenus();
+	bEndScreenOpen = true;
+	SetPlayerUIVisible(false);
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
+	bShowMouseCursor = false;
+
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+	EndScreenWidget->ShowEndScreen();
+}
+
+void ATinoPlayerController::HandleEndScreenContinue()
+{
+	if (!bEndScreenOpen || bEndScreenTravelInProgress || EndScreenDestinationLevel.IsNone())
+	{
+		return;
+	}
+
+	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn());
+	UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance());
+	if (!IsValid(PlayerCharacter) || !ensureMsgf(TinoGameInstance != nullptr,
+		TEXT("Project Settings의 GameInstance Class가 TinoGameInstance로 지정되지 않았습니다.")))
+	{
+		return;
+	}
+
+	// SecretPlace로 들어갈 때와 동일한 전달 상태를 만들어 다음 맵의 PlayerCharacter가 복원하게 한다.
+	if (!TinoGameInstance->CapturePlayerState(PlayerCharacter))
+	{
+		UE_LOG(LogTemp, Error, TEXT("End Screen 레벨 이동을 위한 플레이어 상태 저장에 실패했습니다."));
+		return;
+	}
+
+	bEndScreenTravelInProgress = true;
+	UGameplayStatics::OpenLevel(this, EndScreenDestinationLevel);
 }
 
 void ATinoPlayerController::ResetGameInputMode()

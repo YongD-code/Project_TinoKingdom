@@ -13,5 +13,11 @@ UCLASS()
 class PROJECT_TINOKINGDOM_API UEndScreenWidget : public UUserWidget
 {
 	GENERATED_BODY()
-	
+
+public:
+	void ShowEndScreen();
+	void HideEndScreen();
+
+protected:
+	virtual void NativeOnInitialized() override;
 };
