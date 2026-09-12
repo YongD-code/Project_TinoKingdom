@@ -11,8 +11,10 @@ class UTinoPlayerWidget;
 class UCookingComponent;
 class UCookingWidget;
 class UInventoryComponent;
+class UInputAction;
 class UUserWidget;
 class UDeathScreenWidget;
+class UEndScreenWidget;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API ATinoPlayerController : public APlayerController
@@ -31,6 +33,10 @@ public:
 	void FadeDeathScreenToBlack(float Duration);
 	void HideDeathScreen();
 
+	// 엔딩 조건이 충족됐을 때 호출한다. 실제 레벨 이동은 EndScreenContinueAction 입력에서 처리한다.
+	UFUNCTION(BlueprintCallable, Category = "UI|End Screen")
+	void ShowEndScreen();
+
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	void ResetGameInputMode();
 	
@@ -44,11 +50,16 @@ public:
 	
 protected:
 	virtual void BeginPlay() override;
+	virtual void SetupInputComponent() override;
 	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
+
+	// 에디터에서 Enter 키가 매핑된 Input Action을 지정한다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|End Screen")
+	TObjectPtr<UInputAction> EndScreenContinueAction;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UTinoPlayerWidget> PlayerUIClass;
@@ -73,12 +84,25 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UDeathScreenWidget> DeathScreenWidget;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|End Screen")
+	TSoftClassPtr<UEndScreenWidget> EndScreenClass;
+
+	UPROPERTY()
+	TObjectPtr<UEndScreenWidget> EndScreenWidget;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel|End Screen")
+	FName EndScreenDestinationLevel = TEXT("/Game/Map/TinoKingdom_ByChanWoong");
 	
 private:
 	void EnsureMenuBackgroundWidget();
 	void EnsureDeathScreenWidget();
+	void EnsureEndScreenWidget();
+	void HandleEndScreenContinue();
 	void ResetGameInputModeForCurrentMap();
 
 	bool bCharacterMenuOpen = false;
 	bool bCookingMenuOpen = false;
+	bool bEndScreenOpen = false;
+	bool bEndScreenTravelInProgress = false;
 };
