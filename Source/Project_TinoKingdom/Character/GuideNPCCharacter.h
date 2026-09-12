@@ -65,7 +65,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Guide|Movement", meta = (ClampMin = "0.05"))
 	float MoveRequestInterval = 0.5f;
 
-	// 두 형태의 메시를 컴포넌트 태그로 구분한다. 이름은 블루프린트에서 바뀔 수 있어 태그를 쓴다.
+	// 두 형태를 컴포넌트 태그로 구분한다. 스켈레탈 메시든 차일드 액터든 태그만 맞으면 된다.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
 	FName BaseFormMeshTag = TEXT("BaseForm");
 

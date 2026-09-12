@@ -1,6 +1,7 @@
 #include "GuideNPCCharacter.h"
 
 #include "AIController.h"
+#include "Components/ChildActorComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
@@ -134,28 +135,49 @@ void AGuideNPCCharacter::SetEvolvedForm(bool bEvolved)
 	}
 	bEvolvedForm = bEvolved;
 
-	TArray<USkeletalMeshComponent*> FormMeshes;
-	GetComponents<USkeletalMeshComponent>(FormMeshes);
+	// 스켈레탈 메시뿐 아니라 차일드 액터도 대상이므로 씬 컴포넌트 전체를 훑는다.
+	TArray<USceneComponent*> FormComponents;
+	GetComponents<USceneComponent>(FormComponents);
 
-	for (USkeletalMeshComponent* FormMesh : FormMeshes)
+	int32 SwitchedCount = 0;
+
+	for (USceneComponent* FormComponent : FormComponents)
 	{
-		if (!IsValid(FormMesh))
+		if (!IsValid(FormComponent))
 		{
 			continue;
 		}
 
-		// 얼굴과 그룸이 몸의 자식이므로 전파해야 함께 바뀐다.
-		if (FormMesh->ComponentHasTag(BaseFormMeshTag))
+		bool bShouldShow = false;
+		if (FormComponent->ComponentHasTag(BaseFormMeshTag))
 		{
-			FormMesh->SetVisibility(!bEvolved, true);
+			bShouldShow = !bEvolved;
 		}
-		else if (FormMesh->ComponentHasTag(EvolvedFormMeshTag))
+		else if (FormComponent->ComponentHasTag(EvolvedFormMeshTag))
 		{
-			FormMesh->SetVisibility(bEvolved, true);
+			bShouldShow = bEvolved;
+		}
+		else
+		{
+			continue;
+		}
+
+		// 얼굴과 옷이 자식으로 붙어 있으므로 전파해야 함께 바뀐다.
+		FormComponent->SetVisibility(bShouldShow, true);
+		++SwitchedCount;
+
+		// 차일드 액터는 자기 컴포넌트를 따로 소유해 액터 단위로도 숨겨야 한다.
+		if (UChildActorComponent* ChildActorComponent = Cast<UChildActorComponent>(FormComponent))
+		{
+			if (AActor* ChildActor = ChildActorComponent->GetChildActor())
+			{
+				ChildActor->SetActorHiddenInGame(!bShouldShow);
+			}
 		}
 	}
 
-	UE_LOG(LogGuideNPC, Log, TEXT("%s 외형 전환: %s"), *GetName(), bEvolved ? TEXT("사람") : TEXT("물짱이"));
+	UE_LOG(LogGuideNPC, Log, TEXT("%s 외형 전환: %s (컴포넌트 %d개)"),
+		*GetName(), bEvolved ? TEXT("사람") : TEXT("물짱이"), SwitchedCount);
 }
 
 void AGuideNPCCharacter::MoveToCurrentTarget()
