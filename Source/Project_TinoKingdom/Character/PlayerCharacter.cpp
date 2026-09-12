@@ -648,6 +648,20 @@ void APlayerCharacter::SetCinematicPoseOverride(bool bEnabled)
 		VisibleBodyMesh->SetLeaderPoseComponent(GetMesh(), true, false);
 	}
 
+	// 무브먼트가 살아 있으면 중력과 바닥 보정이 시퀀서가 옮긴 위치를 매 틱 되돌린다.
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		if (bEnabled)
+		{
+			MovementComponent->StopMovementImmediately();
+			MovementComponent->DisableMovement();
+		}
+		else
+		{
+			MovementComponent->SetMovementMode(MOVE_Walking);
+		}
+	}
+
 	UE_LOG(LogTemp, Log, TEXT("시네마틱 포즈 오버라이드: %s"), bEnabled ? TEXT("켜짐") : TEXT("꺼짐"));
 }
 
