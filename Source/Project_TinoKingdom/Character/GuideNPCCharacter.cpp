@@ -1,9 +1,12 @@
 #include "GuideNPCCharacter.h"
 
 #include "AIController.h"
+#include "Components/ChildActorComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogGuideNPC, Log, All);
@@ -123,6 +126,69 @@ void AGuideNPCCharacter::StopGuide()
 	GuidedPlayer = nullptr;
 	MoveRequestElapsed = 0.0f;
 	SetNPCMovementEnabled(false);
+}
+
+void AGuideNPCCharacter::SetEvolvedForm(bool bEvolved)
+{
+	if (bEvolvedForm == bEvolved)
+	{
+		return;
+	}
+	bEvolvedForm = bEvolved;
+
+	// 스켈레탈 메시뿐 아니라 차일드 액터도 대상이므로 씬 컴포넌트 전체를 훑는다.
+	TArray<USceneComponent*> FormComponents;
+	GetComponents<USceneComponent>(FormComponents);
+
+	int32 SwitchedCount = 0;
+
+	for (USceneComponent* FormComponent : FormComponents)
+	{
+		if (!IsValid(FormComponent))
+		{
+			continue;
+		}
+
+		bool bShouldShow = false;
+		if (FormComponent->ComponentHasTag(BaseFormMeshTag))
+		{
+			bShouldShow = !bEvolved;
+		}
+		else if (FormComponent->ComponentHasTag(EvolvedFormMeshTag))
+		{
+			bShouldShow = bEvolved;
+		}
+		else
+		{
+			continue;
+		}
+
+		// 얼굴과 옷이 자식으로 붙어 있으므로 전파해야 함께 바뀐다.
+		FormComponent->SetVisibility(bShouldShow, true);
+		++SwitchedCount;
+
+		// 차일드 액터는 자기 컴포넌트를 따로 소유해 액터 단위로도 숨겨야 한다.
+		if (UChildActorComponent* ChildActorComponent = Cast<UChildActorComponent>(FormComponent))
+		{
+			if (AActor* ChildActor = ChildActorComponent->GetChildActor())
+			{
+				ChildActor->SetActorHiddenInGame(!bShouldShow);
+			}
+		}
+	}
+
+	// 사람이 되는 순간에만 터뜨린다.
+	if (bEvolved && IsValid(EvolveEffect))
+	{
+		const FVector EffectLocation = GetActorLocation() + FVector(0.0f, 0.0f, EvolveEffectHeightOffset);
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(), EvolveEffect, EffectLocation, FRotator::ZeroRotator,
+			FVector(EvolveEffectScale));
+	}
+
+	UE_LOG(LogGuideNPC, Log, TEXT("%s 외형 전환: %s (컴포넌트 %d개, 이펙트 %s)"),
+		*GetName(), bEvolved ? TEXT("사람") : TEXT("물짱이"), SwitchedCount,
+		IsValid(EvolveEffect) ? TEXT("있음") : TEXT("없음"));
 }
 
 void AGuideNPCCharacter::MoveToCurrentTarget()

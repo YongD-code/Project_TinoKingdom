@@ -45,6 +45,7 @@
 #include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Player/TinoPlayerController.h"
 #include "Project_TinoKingdom/Interface/TargetableInterface.h"
+#include "Project_TinoKingdom/World/EndingPortal.h"
 #include "Project_TinoKingdom/World/SecretPlaceEntrance.h"
 #include "Project_TinoKingdom/GameMode/TinoGameMode.h"
 #include "Sound/SoundBase.h"
@@ -589,6 +590,66 @@ void APlayerCharacter::HandleSecretPlaceTransitionFinished()
 	}
 }
 
+bool APlayerCharacter::TravelToEndingSurface()
+{
+	if (bLevelTravelInProgress || bDeathHandled)
+	{
+		return false;
+	}
+
+	bLevelTravelInProgress = true;
+
+	// 도착한 맵에서 엔딩 시퀀스를 한 번만 재생하도록 요청해 둔다.
+	if (UTinoGameInstance* TinoGameInstance = Cast<UTinoGameInstance>(GetGameInstance()))
+	{
+		TinoGameInstance->CapturePlayerState(this);
+		TinoGameInstance->RequestEndingSequence();
+	}
+
+	ForceStopSlowMotion();
+	StopAiming();
+	StopRunning();
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		PlayerController->SetIgnoreMoveInput(true);
+		PlayerController->SetIgnoreLookInput(true);
+
+		if (ATinoPlayerController* TinoPlayerController = Cast<ATinoPlayerController>(PlayerController))
+		{
+			TinoPlayerController->SetPlayerUIVisible(false);
+		}
+
+		if (IsValid(PlayerController->PlayerCameraManager))
+		{
+			PlayerController->PlayerCameraManager->StartCameraFade(
+				0.f, 1.f, SecretPlaceFadeOutDuration, FLinearColor::Black, false, true);
+		}
+	}
+
+	if (SecretPlaceFadeOutDuration <= 0.f)
+	{
+		TravelToEndingSurfaceLevel();
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(
+			EndingTravelTimerHandle,
+			this,
+			&APlayerCharacter::TravelToEndingSurfaceLevel,
+			SecretPlaceFadeOutDuration,
+			false);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("엔딩 포탈: %s 로 이동합니다."), *EndingSurfaceLevelName.ToString());
+	return true;
+}
+
+void APlayerCharacter::TravelToEndingSurfaceLevel()
+{
+	UGameplayStatics::OpenLevel(this, EndingSurfaceLevelName);
+}
+
 void APlayerCharacter::TravelToSecretPlace()
 {
 	UGameplayStatics::OpenLevel(this, SecretPlaceLevelName);
@@ -631,6 +692,40 @@ bool APlayerCharacter::TryUseUsableItem(const FName ItemId)
 	return SecretPlaceEntrance->TryUseItem(this, ItemId);
 }
 
+void APlayerCharacter::SetCinematicPoseOverride(bool bEnabled)
+{
+	if (!IsValid(VisibleBodyMesh))
+	{
+		return;
+	}
+
+	if (bEnabled)
+	{
+		// 연결을 끊어야 시퀀서의 컨트롤 릭 포즈가 화면에 남는다.
+		VisibleBodyMesh->SetLeaderPoseComponent(nullptr);
+	}
+	else
+	{
+		VisibleBodyMesh->SetLeaderPoseComponent(GetMesh(), true, false);
+	}
+
+	// 무브먼트가 살아 있으면 중력과 바닥 보정이 시퀀서가 옮긴 위치를 매 틱 되돌린다.
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		if (bEnabled)
+		{
+			MovementComponent->StopMovementImmediately();
+			MovementComponent->DisableMovement();
+		}
+		else
+		{
+			MovementComponent->SetMovementMode(MOVE_Walking);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("시네마틱 포즈 오버라이드: %s"), bEnabled ? TEXT("켜짐") : TEXT("꺼짐"));
+}
+
 void APlayerCharacter::Interact()
 {
 	if (!IsValid(DialogueComponent) || DialogueComponent->IsInDialogue())
@@ -645,6 +740,16 @@ void APlayerCharacter::Interact()
 			UE_LOG(LogTemp, Warning, TEXT("NPC 대화 시작 실패: %s"), *GetNameSafe(NearbyNPC));
 		}
 		return;
+	}
+
+	// NPC가 없을 때만 귀환 포탈을 확인한다. 포탈은 엔딩 시네마틱 뒤에만 열려 있다.
+	if (AEndingPortal* EndingPortal =
+		Cast<AEndingPortal>(UGameplayStatics::GetActorOfClass(this, AEndingPortal::StaticClass())))
+	{
+		if (EndingPortal->TryEnter(this))
+		{
+			return;
+		}
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("상호작용 범위 안에서 NPC를 찾지 못했습니다."));

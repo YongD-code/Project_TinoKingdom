@@ -119,6 +119,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	UInventoryComponent* GetInventoryComponent() const { return InventoryComponent; }
 
+	// 시네마틱이 보이는 몸을 직접 포즈할 수 있도록 Leader Pose 연결을 끊는다.
+	// 평소에는 숨겨진 Mesh가 Body를 구동하므로 시퀀서 포즈가 매 프레임 덮어써진다.
+	UFUNCTION(BlueprintCallable, Category = "Player|Cinematic")
+	void SetCinematicPoseOverride(bool bEnabled);
+
+	// 엔딩 포탈이 호출한다. 페이드 아웃 뒤 지상 맵을 열고 엔딩 시퀀스를 요청한다.
+	UFUNCTION(BlueprintCallable, Category = "Level Travel")
+	bool TravelToEndingSurface();
+
 	UFUNCTION(BlueprintPure, Category = "Cooking")
 	UCookingComponent* GetCookingComponent() const { return CookingComponent; }
 
@@ -255,6 +264,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel")
 	FName SecretPlaceLevelName = TEXT("/Game/MedievalDungeon/Maps/SecretPlace");
+
+	// 엔딩 포탈로 돌아갈 지상 맵.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel")
+	FName EndingSurfaceLevelName = TEXT("/Game/Map/TinoKingdom_ByChanWoong");
 
 	// SecretPlace 맵이 열린 직후 해당 맵에서 재생하는 입장 시퀀스.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Level Travel|Cinematic")
@@ -395,6 +408,7 @@ private:
 	FTimerHandle DeathScreenShowTimerHandle;
 	FTimerHandle DeathScreenFadeTimerHandle;
 	FTimerHandle SecretPlaceTravelTimerHandle;
+	FTimerHandle EndingTravelTimerHandle;
 
 	TWeakObjectPtr<AActor> PendingDeathDamageCauser;
 
@@ -433,6 +447,7 @@ private:
 	void ClearRespawnSequence();
 	bool PlaySecretPlaceTransition();
 	void TravelToSecretPlace();
+	void TravelToEndingSurfaceLevel();
 	void ClearSecretPlaceTransition();
 	void ForceStopSlowMotion();
 

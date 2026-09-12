@@ -8,6 +8,7 @@
 
 class AAIController;
 class APlayerCharacter;
+class UNiagaraSystem;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AGuideNPCCharacter : public ATinoNPCCharacter
@@ -25,6 +26,14 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Guide")
 	bool IsGuiding() const { return bGuiding; }
+
+	// 엔딩 시네마틱에서 물짱이가 사람 형태로 바뀐다. 시퀀서 Event Track에서 호출한다.
+	// 시퀀서가 건드린 값이 아니라 코드가 바꾼 상태이므로 시퀀스가 끝나도 유지된다.
+	UFUNCTION(BlueprintCallable, Category = "Guide|Form")
+	void SetEvolvedForm(bool bEvolved);
+
+	UFUNCTION(BlueprintPure, Category = "Guide|Form")
+	bool IsEvolvedForm() const { return bEvolvedForm; }
 
 	virtual void OnDialogueCompleted_Implementation(APlayerCharacter* PlayerCharacter) override;
 
@@ -57,6 +66,25 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Guide|Movement", meta = (ClampMin = "0.05"))
 	float MoveRequestInterval = 0.5f;
 
+	// 두 형태를 컴포넌트 태그로 구분한다. 스켈레탈 메시든 차일드 액터든 태그만 맞으면 된다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
+	FName BaseFormMeshTag = TEXT("BaseForm");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
+	FName EvolvedFormMeshTag = TEXT("EvolvedForm");
+
+	// 변신하는 순간 터뜨릴 이펙트. 되돌릴 때는 재생하지 않는다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
+	TObjectPtr<UNiagaraSystem> EvolveEffect;
+
+	// 물고기와 사람의 키 차이를 보정해 이펙트를 띄울 높이.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
+	float EvolveEffectHeightOffset = 60.0f;
+
+	// 이펙트 전체 배율. 나이아가라 애셋을 건드리지 않고 크기만 키울 때 쓴다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form", meta = (ClampMin = "0.1"))
+	float EvolveEffectScale = 1.0f;
+
 private:
 	void MoveToCurrentTarget();
 	void AdvanceGuideTarget();
@@ -81,4 +109,5 @@ private:
 	bool bGuiding = false;
 	bool bMoveRequestActive = false;
 	float MoveRequestElapsed = 0.0f;
+	bool bEvolvedForm = false;
 };

@@ -20,6 +20,13 @@ bool UTinoGameInstance::ConsumeSecretPlaceEntrySequenceRequest()
 	return bWasRequested;
 }
 
+bool UTinoGameInstance::ConsumeEndingSequenceRequest()
+{
+	const bool bWasRequested = bPendingEndingSequence;
+	bPendingEndingSequence = false;
+	return bWasRequested;
+}
+
 bool UTinoGameInstance::CapturePlayerState(APlayerCharacter* PlayerCharacter)
 {
 	if (!IsValid(PlayerCharacter))
