@@ -3,6 +3,7 @@
 #include "LevelSequence.h"
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
+#include "MovieScene.h"
 #include "Kismet/GameplayStatics.h"
 #include "Project_TinoKingdom/Character/GuideNPCCharacter.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
@@ -12,6 +13,13 @@ DEFINE_LOG_CATEGORY_STATIC(LogEndingCinematic, Log, All);
 
 namespace
 {
+	// SetBindingByTag은 태그를 못 찾아도 조용히 넘어가므로 미리 확인해 로그로 알린다.
+	bool SequenceHasBindingTag(const ULevelSequence* Sequence, FName BindingTag)
+	{
+		const UMovieScene* MovieScene = Sequence ? Sequence->GetMovieScene() : nullptr;
+		return MovieScene && MovieScene->AllTaggedBindings().Find(BindingTag) != nullptr;
+	}
+
 	// 시퀀서 바인딩에 달아둔 태그와 문자열이 정확히 일치해야 한다.
 	const FName PlayerBindingTag(TEXT("Player"));
 	const FName GuideBindingTag(TEXT("Guide"));
@@ -128,6 +136,13 @@ void AEndingCinematicActor::PlayEnding()
 	if (APlayerCharacter* PlayerCharacter =
 		Cast<APlayerCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
 	{
+		if (!SequenceHasBindingTag(EndingSequence, PlayerBindingTag))
+		{
+			UE_LOG(LogEndingCinematic, Error,
+				TEXT("%s: 시퀀스에 '%s' 태그를 가진 바인딩이 없습니다. 시퀀서에서 태그를 확인하세요."),
+				*GetName(), *PlayerBindingTag.ToString());
+		}
+
 		SequenceActor->SetBindingByTag(PlayerBindingTag, { PlayerCharacter });
 		UE_LOG(LogEndingCinematic, Log, TEXT("Player 바인딩: %s"), *PlayerCharacter->GetName());
 
@@ -140,6 +155,13 @@ void AEndingCinematicActor::PlayEnding()
 	{
 		// 안내 AI가 살아 있으면 시네마틱 도중에 걸어가 버린다.
 		GuideNPC->StopGuide();
+		if (!SequenceHasBindingTag(EndingSequence, GuideBindingTag))
+		{
+			UE_LOG(LogEndingCinematic, Error,
+				TEXT("%s: 시퀀스에 '%s' 태그를 가진 바인딩이 없습니다. 시퀀서에서 태그를 확인하세요."),
+				*GetName(), *GuideBindingTag.ToString());
+		}
+
 		SequenceActor->SetBindingByTag(GuideBindingTag, { GuideNPC });
 		UE_LOG(LogEndingCinematic, Log, TEXT("Guide 바인딩: %s"), *GuideNPC->GetName());
 	}
