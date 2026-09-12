@@ -160,19 +160,22 @@ void AEndingCinematicActor::PlayEnding()
 	if (APlayerCharacter* PlayerCharacter =
 		Cast<APlayerCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
 	{
+		// 카메라만 있는 시퀀스에는 Player 트랙이 없다. 그때는 포즈도 건드리지 않는다.
 		if (!SequenceHasBindingTag(EndingSequence, PlayerBindingTag))
 		{
-			UE_LOG(LogEndingCinematic, Error,
-				TEXT("%s: 시퀀스에 '%s' 태그를 가진 바인딩이 없습니다. 시퀀서에서 태그를 확인하세요."),
+			UE_LOG(LogEndingCinematic, Log,
+				TEXT("%s: 시퀀스에 '%s' 태그가 없어 플레이어를 연결하지 않습니다."),
 				*GetName(), *PlayerBindingTag.ToString());
 		}
+		else
+		{
+			SequenceActor->SetBindingByTag(PlayerBindingTag, { PlayerCharacter });
+			UE_LOG(LogEndingCinematic, Log, TEXT("Player 바인딩: %s"), *PlayerCharacter->GetName());
 
-		SequenceActor->SetBindingByTag(PlayerBindingTag, { PlayerCharacter });
-		UE_LOG(LogEndingCinematic, Log, TEXT("Player 바인딩: %s"), *PlayerCharacter->GetName());
-
-		// 시퀀서의 컨트롤 릭 포즈가 Leader Pose에 덮이지 않도록 연결을 끊는다.
-		CinematicPlayerCharacter = PlayerCharacter;
-		PlayerCharacter->SetCinematicPoseOverride(true);
+			// 시퀀서의 컨트롤 릭 포즈가 Leader Pose에 덮이지 않도록 연결을 끊는다.
+			CinematicPlayerCharacter = PlayerCharacter;
+			PlayerCharacter->SetCinematicPoseOverride(true);
+		}
 	}
 
 	if (IsValid(GuideNPC))
