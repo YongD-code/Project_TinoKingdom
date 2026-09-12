@@ -5,6 +5,7 @@
 #include "LevelSequencePlayer.h"
 #include "MovieScene.h"
 #include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 #include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Character/GuideNPCCharacter.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"

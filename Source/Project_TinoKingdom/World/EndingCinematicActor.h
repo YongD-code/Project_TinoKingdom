@@ -18,8 +18,8 @@ class PROJECT_TINOKINGDOM_API AEndingCinematicActor : public AActor
 public:
 	AEndingCinematicActor();
 
-	// 마력석 파괴와 무관하게 직접 재생하고 싶을 때 쓴다. 디버그와 블루프린트 테스트용.
-	UFUNCTION(BlueprintCallable, Category = "Ending")
+	// 마력석 파괴와 무관하게 직접 재생한다. Details 패널의 버튼으로도 부를 수 있다.
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending")
 	void PlayEnding();
 
 protected:
