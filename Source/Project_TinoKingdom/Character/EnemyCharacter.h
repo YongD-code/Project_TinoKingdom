@@ -57,6 +57,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy|AI")
 	void SetCinematicAIBlocked(bool bBlocked);
 
+	// 전환 취소 시 기존 시네마틱 AI 정지 상태를 복원하기 위해 조회합니다.
+	bool IsCinematicAIBlocked() const { return bCinematicAIBlocked; }
+
+	// 엔딩 전환 중 전투를 막고, 나중에 로드된 몬스터는 준비 중에도 숨깁니다.
+	void SuppressForEndingCrowd(bool bHide);
+	// 셀 언로드 시 원래 속성만 복원합니다. 종료 중 AI를 재시작하지 않습니다.
+	void ReleaseEndingCrowdSuppression();
+
 	UFUNCTION(BlueprintPure, Category = "Enemy|State")
 	bool IsDead() const { return bDead; }
 
@@ -250,6 +258,12 @@ private:
 	bool bAIActive = false;
 
 	bool bCinematicAIBlocked = false;
+	bool bEndingCrowdSuppressed = false;
+	bool bBeforeEndingAIBlocked = false;
+	bool bBeforeEndingHidden = false;
+	bool bBeforeEndingCollision = true;
+	bool bBeforeEndingDamage = true;
+	bool bBeforeEndingTick = true;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> CombatAnimationMesh = nullptr;
