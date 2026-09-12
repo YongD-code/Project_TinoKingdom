@@ -181,7 +181,9 @@ void AGuideNPCCharacter::SetEvolvedForm(bool bEvolved)
 	if (bEvolved && IsValid(EvolveEffect))
 	{
 		const FVector EffectLocation = GetActorLocation() + FVector(0.0f, 0.0f, EvolveEffectHeightOffset);
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), EvolveEffect, EffectLocation);
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(), EvolveEffect, EffectLocation, FRotator::ZeroRotator,
+			FVector(EvolveEffectScale));
 	}
 
 	UE_LOG(LogGuideNPC, Log, TEXT("%s 외형 전환: %s (컴포넌트 %d개, 이펙트 %s)"),

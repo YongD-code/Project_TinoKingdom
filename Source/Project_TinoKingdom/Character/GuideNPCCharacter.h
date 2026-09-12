@@ -81,6 +81,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form")
 	float EvolveEffectHeightOffset = 60.0f;
 
+	// 이펙트 전체 배율. 나이아가라 애셋을 건드리지 않고 크기만 키울 때 쓴다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Guide|Form", meta = (ClampMin = "0.1"))
+	float EvolveEffectScale = 1.0f;
+
 private:
 	void MoveToCurrentTarget();
 	void AdvanceGuideTarget();
