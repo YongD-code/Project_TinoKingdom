@@ -635,6 +635,11 @@ void AEnemyCharacter::SetCinematicAIBlocked(bool bBlocked)
 	{
 		return;
 	}
+	// 이미 차단된 상태여도 남아 있는 전투 BGM 카운트는 반드시 해제합니다.
+	if (bBlocked)
+	{
+		SetEngaged(false);
+	}
 	if (bCinematicAIBlocked == bBlocked)
 	{
 		return;
@@ -648,7 +653,6 @@ void AEnemyCharacter::SetCinematicAIBlocked(bool bBlocked)
 		bAttacking = false;
 		bHitReacting = false;
 		LastAttackTime = -999.0f;
-		SetEngaged(false);
 		SetEnemyAIActive(false);
 
 		if (AAIController* AIController = Cast<AAIController>(GetController()))
@@ -675,6 +679,8 @@ void AEnemyCharacter::SuppressForEndingCrowd(bool bHide)
 		bBeforeEndingTick = IsActorTickEnabled();
 		bEndingCrowdSuppressed = true;
 	}
+	// 전환 전에 플레이어를 감지했던 몬스터도 즉시 전투 상태에서 제외합니다.
+	SetEngaged(false);
 	SetCanBeDamaged(false);
 	SetActorEnableCollision(false);
 	SetActorTickEnabled(false);
@@ -701,6 +707,11 @@ void AEnemyCharacter::ReleaseEndingCrowdSuppression()
 
 void AEnemyCharacter::SetEngaged(bool bNewEngaged)
 {
+	// 엔딩 군중으로 전환 중이거나 AI가 차단된 몬스터는 전투 BGM을 다시 켤 수 없습니다.
+	if (bNewEngaged && (bDead || bCinematicAIBlocked || bEndingCrowdSuppressed))
+	{
+		return;
+	}
 	if (bEngaged == bNewEngaged)
 	{
 		return;
@@ -983,6 +994,11 @@ void AEnemyCharacter::UpdateAIActivation()
 void AEnemyCharacter::SetEnemyAIActive(bool bEnabled)
 {
 	bAIActive = bEnabled;
+	if (!bEnabled)
+	{
+		// 정지된 Behavior Tree가 해제 이벤트를 보내지 못하므로 여기서 교전 상태를 정리합니다.
+		SetEngaged(false);
+	}
 
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
 	{

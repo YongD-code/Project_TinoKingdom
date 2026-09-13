@@ -28,6 +28,15 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 	{
 		return;
 	}
+	AEnemyCharacter* OwnerEnemy = Cast<AEnemyCharacter>(OwnerPawn);
+	if (OwnerEnemy != nullptr && OwnerEnemy->IsCinematicAIBlocked())
+	{
+		// 엔딩 전환 직전에 예약된 서비스 갱신도 전투 상태를 되살리지 못하게 합니다.
+		BlackboardComponent->ClearValue(AEnemyAIController::TargetPlayer);
+		OwnerEnemy->SetCombatTarget(nullptr);
+		OwnerEnemy->SetEngaged(false);
+		return;
+	}
 
 	const FVector OwnerLocation = OwnerPawn->GetActorLocation();
 	const FVector HomeLocation = BlackboardComponent->GetValueAsVector(
@@ -40,7 +49,6 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 
 	if (CurrentTarget != nullptr)
 	{
-		AEnemyCharacter* OwnerEnemy = Cast<AEnemyCharacter>(OwnerPawn);
 		AEnemyCharacter* TargetEnemy = Cast<AEnemyCharacter>(CurrentTarget);
 
 		const bool bTargetDead = TargetEnemy != nullptr && TargetEnemy->IsDead();
@@ -90,9 +98,9 @@ void UBTService_UpdateTarget::TickNode(UBehaviorTreeComponent& OwnerComp,uint8* 
 			PlayerPawn
 		);
 
-		if (AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(OwnerPawn))
+		if (OwnerEnemy != nullptr)
 		{
-			Enemy->SetEngaged(true);
+			OwnerEnemy->SetEngaged(true);
 		}
 	}
 }
