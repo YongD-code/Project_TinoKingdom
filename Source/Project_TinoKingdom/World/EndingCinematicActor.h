@@ -11,6 +11,7 @@ class UNiagaraSystem;
 class ALevelSequenceActor;
 class ULevelSequence;
 class ULevelSequencePlayer;
+class UWorldPartitionStreamingSourceComponent;
 
 UCLASS()
 class PROJECT_TINOKINGDOM_API AEndingCinematicActor : public AActor
@@ -75,6 +76,35 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending")
 	bool bPlayAfterEndingTravel = false;
 
+	// 패키징 환경에서 시퀀스를 시작하기 전에 각 카메라 지역의 월드 파티션 셀을 미리 활성화합니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Streaming")
+	bool bPreloadCinematicRegions = true;
+
+	// 각 카메라가 보여 줄 지역에 배치한 기준 액터입니다. 기존 카메라 액터나 Target Point를 지정할 수 있습니다.
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending|Streaming",
+		meta = (EditCondition = "bPreloadCinematicRegions"))
+	TArray<TObjectPtr<AActor>> CinematicPreloadAnchors;
+
+	// 각 기준점에서 월드 파티션 런타임 그리드의 기본 로딩 범위를 확대할 비율입니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Streaming",
+		meta = (EditCondition = "bPreloadCinematicRegions", ClampMin = "0.1"))
+	float CinematicPreloadRangeScale = 1.25f;
+
+	// 느린 저장장치에서도 영원히 대기하지 않도록 두는 최대 프리로드 시간입니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Streaming",
+		meta = (EditCondition = "bPreloadCinematicRegions", ClampMin = "1.0", Units = "s"))
+	float CinematicPreloadTimeout = 30.0f;
+
+	// 월드 파티션 스트리밍 완료 여부를 확인하는 주기입니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Streaming",
+		meta = (EditCondition = "bPreloadCinematicRegions", ClampMin = "0.05", Units = "s"))
+	float CinematicPreloadCheckInterval = 0.1f;
+
+	// 프리로드 중 아직 준비되지 않은 월드가 보이지 않도록 화면을 검게 가립니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Streaming",
+		meta = (EditCondition = "bPreloadCinematicRegions"))
+	bool bHideViewDuringCinematicPreload = true;
+
 	// 몬스터를 사람으로 바꿔줄 팀원의 컨트롤러. 비워두면 전환을 요청하지 않는다.
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending|Crowd")
 	TObjectPtr<ATinoEndingCrowdController> CrowdController;
@@ -117,6 +147,13 @@ protected:
 	FName MushroomCrowdTag = TEXT("EndingCrowdMushroom");
 
 private:
+	bool BeginCinematicPreload();
+	void CheckCinematicPreload();
+	void StartEndingSequence();
+	void ReleaseCinematicPreload();
+	void HideCinematicPreloadView();
+	void RevealCinematicPreloadView();
+
 	UFUNCTION()
 	void HandleStoneBroken();
 
@@ -135,8 +172,15 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<class APlayerCharacter> CinematicPlayerCharacter;
 
+	UPROPERTY(VisibleAnywhere, Category = "Ending|Streaming")
+	TObjectPtr<UWorldPartitionStreamingSourceComponent> CinematicStreamingSource;
+
 	FTimerHandle StartTimerHandle;
 	FTimerHandle CrowdTimerHandle;
+	FTimerHandle CinematicPreloadTimerHandle;
+	double CinematicPreloadStartTime = 0.0;
+	bool bCinematicPreloadInProgress = false;
+	bool bCinematicPreloadViewHidden = false;
 	bool bPlayed = false;
 	bool bAllCrowdCuePlayed = false;
 	TSet<FName> PlayedCrowdGroupTags;

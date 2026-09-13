@@ -4,10 +4,14 @@
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
 #include "MovieScene.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Components/WorldPartitionStreamingSourceComponent.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "WorldPartition/WorldPartitionSubsystem.h"
 #include "Project_TinoKingdom/GameMode/TinoGameInstance.h"
 #include "Project_TinoKingdom/Character/GuideNPCCharacter.h"
 #include "Project_TinoKingdom/Character/PlayerCharacter.h"
@@ -35,6 +39,13 @@ namespace
 AEndingCinematicActor::AEndingCinematicActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+
+	CinematicStreamingSource = CreateDefaultSubobject<UWorldPartitionStreamingSourceComponent>(
+		TEXT("CinematicStreamingSource"));
+	CinematicStreamingSource->DisableStreamingSource();
+	CinematicStreamingSource->TargetBehavior = EStreamingSourceTargetBehavior::Include;
+	CinematicStreamingSource->Priority = EStreamingSourcePriority::High;
+	CinematicStreamingSource->TargetState = EStreamingSourceTargetState::Activated;
 }
 
 void AEndingCinematicActor::BeginPlay()
@@ -84,6 +95,7 @@ void AEndingCinematicActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(StartTimerHandle);
 	GetWorldTimerManager().ClearTimer(CrowdTimerHandle);
+	ReleaseCinematicPreload();
 
 	if (IsValid(MagicStoneActor))
 	{
@@ -125,9 +137,114 @@ void AEndingCinematicActor::HandleStoneBroken()
 
 void AEndingCinematicActor::PlayEnding()
 {
+	if (IsValid(SequencePlayer) || bCinematicPreloadInProgress)
+	{
+		return;
+	}
+
+	if (BeginCinematicPreload())
+	{
+		return;
+	}
+
+	StartEndingSequence();
+}
+
+bool AEndingCinematicActor::BeginCinematicPreload()
+{
+	UWorld* World = GetWorld();
+	if (!bPreloadCinematicRegions || !World || !World->IsGameWorld()
+		|| World->GetSubsystem<UWorldPartitionSubsystem>() == nullptr
+		|| !IsValid(CinematicStreamingSource))
+	{
+		return false;
+	}
+
+	TArray<FStreamingSourceShape> PreloadShapes;
+	const FTransform OwnerTransform = GetActorTransform();
+	for (AActor* Anchor : CinematicPreloadAnchors)
+	{
+		if (!IsValid(Anchor) || Anchor->GetWorld() != World)
+		{
+			continue;
+		}
+
+		FStreamingSourceShape& Shape = PreloadShapes.AddDefaulted_GetRef();
+		Shape.bUseGridLoadingRange = true;
+		Shape.LoadingRangeScale = FMath::Max(CinematicPreloadRangeScale, 0.1f);
+		Shape.Location = OwnerTransform.InverseTransformPositionNoScale(Anchor->GetActorLocation());
+	}
+
+	if (PreloadShapes.IsEmpty())
+	{
+		UE_LOG(LogEndingCinematic, Warning,
+			TEXT("%s: 유효한 시네마틱 프리로드 기준점이 없어 즉시 재생합니다."), *GetName());
+		return false;
+	}
+
+	CinematicStreamingSource->Shapes = MoveTemp(PreloadShapes);
+	CinematicStreamingSource->EnableStreamingSource();
+	bCinematicPreloadInProgress = true;
+	CinematicPreloadStartTime = World->GetTimeSeconds();
+	HideCinematicPreloadView();
+
+	const float CheckInterval = FMath::Max(CinematicPreloadCheckInterval, 0.05f);
+	GetWorldTimerManager().SetTimer(
+		CinematicPreloadTimerHandle,
+		this,
+		&AEndingCinematicActor::CheckCinematicPreload,
+		CheckInterval,
+		true,
+		CheckInterval);
+
+	UE_LOG(LogEndingCinematic, Log,
+		TEXT("%s: 시네마틱 지역 %d곳의 월드 파티션 프리로드를 시작합니다."),
+		*GetName(), CinematicStreamingSource->Shapes.Num());
+	return true;
+}
+
+void AEndingCinematicActor::CheckCinematicPreload()
+{
+	UWorld* World = GetWorld();
+	if (!bCinematicPreloadInProgress || !World || !IsValid(CinematicStreamingSource))
+	{
+		ReleaseCinematicPreload();
+		return;
+	}
+
+	const bool bStreamingCompleted = CinematicStreamingSource->IsStreamingCompleted();
+	const double ElapsedTime = World->GetTimeSeconds() - CinematicPreloadStartTime;
+	const bool bTimedOut = ElapsedTime >= FMath::Max(CinematicPreloadTimeout, 1.0f);
+	if (!bStreamingCompleted && !bTimedOut)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(CinematicPreloadTimerHandle);
+	bCinematicPreloadInProgress = false;
+
+	if (bTimedOut && !bStreamingCompleted)
+	{
+		UE_LOG(LogEndingCinematic, Warning,
+			TEXT("%s: 시네마틱 지역 프리로드가 %.1f초 안에 끝나지 않아 재생을 계속합니다."),
+			*GetName(), ElapsedTime);
+	}
+	else
+	{
+		UE_LOG(LogEndingCinematic, Log,
+			TEXT("%s: 시네마틱 지역 프리로드가 %.2f초 만에 완료됐습니다."), *GetName(), ElapsedTime);
+	}
+
+	// 뒤쪽 카메라 지역이 다시 언로드되지 않도록 스트리밍 소스는 시퀀스가 끝날 때까지 유지합니다.
+	StartEndingSequence();
+}
+
+void AEndingCinematicActor::StartEndingSequence()
+{
 	if (!IsValid(EndingSequence))
 	{
 		UE_LOG(LogEndingCinematic, Warning, TEXT("%s: EndingSequence가 비어 있습니다."), *GetName());
+		ReleaseCinematicPreload();
 		return;
 	}
 
@@ -148,6 +265,7 @@ void AEndingCinematicActor::PlayEnding()
 			CreatedActor->Destroy();
 		}
 		UE_LOG(LogEndingCinematic, Warning, TEXT("%s: 시퀀스 플레이어 생성에 실패했습니다."), *GetName());
+		ReleaseCinematicPreload();
 		return;
 	}
 
@@ -208,6 +326,7 @@ void AEndingCinematicActor::PlayEnding()
 	}
 
 	SequencePlayer->OnFinished.AddUniqueDynamic(this, &AEndingCinematicActor::HandleEndingFinished);
+	RevealCinematicPreloadView();
 	SequencePlayer->Play();
 
 	UE_LOG(LogEndingCinematic, Log, TEXT("%s: %s 재생을 시작합니다."),
@@ -225,6 +344,53 @@ void AEndingCinematicActor::PlayEnding()
 		GetWorldTimerManager().SetTimer(
 			CrowdTimerHandle, this, &AEndingCinematicActor::PlayCrowdCue, CrowdSpawnDelay, false);
 	}
+}
+
+void AEndingCinematicActor::ReleaseCinematicPreload()
+{
+	GetWorldTimerManager().ClearTimer(CinematicPreloadTimerHandle);
+	bCinematicPreloadInProgress = false;
+	RevealCinematicPreloadView();
+
+	if (IsValid(CinematicStreamingSource))
+	{
+		CinematicStreamingSource->DisableStreamingSource();
+		CinematicStreamingSource->Shapes.Reset();
+	}
+}
+
+void AEndingCinematicActor::HideCinematicPreloadView()
+{
+	if (!bHideViewDuringCinematicPreload || bCinematicPreloadViewHidden)
+	{
+		return;
+	}
+
+	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0);
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->PlayerCameraManager))
+	{
+		return;
+	}
+
+	PlayerController->PlayerCameraManager->SetManualCameraFade(1.0f, FLinearColor::Black, false);
+	bCinematicPreloadViewHidden = true;
+}
+
+void AEndingCinematicActor::RevealCinematicPreloadView()
+{
+	if (!bCinematicPreloadViewHidden)
+	{
+		return;
+	}
+
+	if (APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (IsValid(PlayerController->PlayerCameraManager))
+		{
+			PlayerController->PlayerCameraManager->StopCameraFade();
+		}
+	}
+	bCinematicPreloadViewHidden = false;
 }
 
 void AEndingCinematicActor::PlayCrowdCue()
@@ -313,6 +479,7 @@ void AEndingCinematicActor::HandleEndingFinished()
 		SequenceActor->Destroy();
 	}
 	SequenceActor = nullptr;
+	ReleaseCinematicPreload();
 
 	// 연출이 끝난 뒤에 포탈을 열어야 시네마틱 도중에 들어가는 일이 없다.
 	if (IsValid(EndingPortal))
