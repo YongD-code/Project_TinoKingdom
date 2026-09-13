@@ -68,6 +68,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy|State")
 	bool IsDead() const { return bDead; }
 
+	// 패키징 환경에서도 사망 화면에 표시할 안정적인 몬스터 이름을 반환합니다.
+	UFUNCTION(BlueprintPure, Category = "Enemy|UI")
+	FText GetEnemyDisplayName() const { return EnemyDisplayName; }
+
 	void PlayHitReaction();
 	
 	void SetCombatTarget(AActor* Target);
@@ -112,6 +116,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	TObjectPtr<UWidgetComponent> HealthBarComponent;
+
+	// 액터 내부 이름 대신 사용자에게 보여줄 이름입니다. 몬스터 블루프린트 기본값에서 지정합니다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|UI")
+	FText EnemyDisplayName;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|AI")
 	TObjectPtr<UBehaviorTree> BehaviorTree;

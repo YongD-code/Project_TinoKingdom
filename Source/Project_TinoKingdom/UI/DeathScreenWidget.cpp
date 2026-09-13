@@ -9,6 +9,7 @@
 #include "Components/TextBlock.h"
 #include "GameFramework/Pawn.h"
 #include "HAL/PlatformTime.h"
+#include "Project_TinoKingdom/Character/EnemyCharacter.h"
 #include "Sound/SoundBase.h"
 
 void UDeathScreenWidget::NativeOnInitialized()
@@ -215,9 +216,15 @@ FText UDeathScreenWidget::MakeDeathMessage(AActor* DamageCauser) const
 		}
 	}
 
-	const FText CauserName = IsValid(DisplayActor)
-		? FText::FromString(DisplayActor->GetActorNameOrLabel())
-		: NSLOCTEXT("DeathScreen", "UnknownDamageCauser", "알 수 없는 원인");
+	FText CauserName = NSLOCTEXT("DeathScreen", "UnknownDamageCauser", "알 수 없는 원인");
+	if (const AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(DisplayActor))
+	{
+		const FText EnemyName = Enemy->GetEnemyDisplayName();
+		if (!EnemyName.IsEmpty())
+		{
+			CauserName = EnemyName;
+		}
+	}
 
 	return FText::Format(
 		NSLOCTEXT("DeathScreen", "DeathMessage", "{0}에 의해 처참히 사망했습니다."),
