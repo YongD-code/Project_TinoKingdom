@@ -87,10 +87,20 @@ void ATinoEndingCrowdController::SpawnEndingCrowdWithEffect(UNiagaraSystem* Effe
 	SpawnEndingCrowdInternal();
 }
 
-void ATinoEndingCrowdController::SpawnEndingCrowdInternal()
+void ATinoEndingCrowdController::SpawnEndingCrowdGroupWithEffect(FName GroupTag,
+	UNiagaraSystem* Effect, float EffectToSpawnDelay, float TransformationInterval)
+{
+	RequestedTransformationEffect = Effect;
+	RequestedEffectToSpawnDelay = FMath::Max(EffectToSpawnDelay, 0.0f);
+	RequestedTransformationInterval = FMath::Max(TransformationInterval, 0.0f);
+	SpawnEndingCrowdInternal(GroupTag);
+}
+
+void ATinoEndingCrowdController::SpawnEndingCrowdInternal(FName GroupTag)
 {
 	UWorld* World = GetWorld();
-	if (!World || !World->IsGameWorld() || !HasActorBegunPlay() || bSpawnRequested)
+	if (!World || !World->IsGameWorld() || !HasActorBegunPlay()
+		|| (bSpawnRequested && !bTransformTaggedMonsters))
 	{
 		return;
 	}
@@ -102,6 +112,7 @@ void ATinoEndingCrowdController::SpawnEndingCrowdInternal()
 	}
 	GetWorldTimerManager().ClearTimer(TestSpawnTimerHandle);
 	LastSpawnError.Reset();
+	const bool bHadSpawnRequest = bSpawnRequested;
 	bSpawnRequested = true;
 	if (bTransformTaggedMonsters)
 	{
@@ -109,16 +120,16 @@ void ATinoEndingCrowdController::SpawnEndingCrowdInternal()
 		UTinoEndingCrowdSubsystem* Session = World->GetSubsystem<UTinoEndingCrowdSubsystem>();
 		if (!SettingsSpawner || !Session)
 		{
-			bSpawnRequested = false;
+			bSpawnRequested = bHadSpawnRequest;
 			FailSpawn(TEXT("몬스터 전환에는 TinoEndingCrowdSpawner와 게임 월드 관리자가 필요합니다."));
 			return;
 		}
 		FString Error;
 		if (!Session->ActivateEnding(*SettingsSpawner, TargetMonsterTag, NavProjectionExtent,
 			TransformationTimeout, Error, RequestedTransformationEffect,
-			RequestedEffectToSpawnDelay, RequestedTransformationInterval))
+			RequestedEffectToSpawnDelay, RequestedTransformationInterval, GroupTag))
 		{
-			bSpawnRequested = false;
+			bSpawnRequested = bHadSpawnRequest;
 			FailSpawn(Error);
 			return;
 		}

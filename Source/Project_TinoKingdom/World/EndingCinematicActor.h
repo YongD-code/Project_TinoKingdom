@@ -28,6 +28,22 @@ public:
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending|Crowd")
 	void PlayCrowdCue();
 
+	// 슬라임 카메라 컷에 맞춰 슬라임 그룹만 전환합니다.
+	UFUNCTION(BlueprintCallable, Category = "Ending|Crowd|Groups")
+	void PlaySlimeCrowdCue();
+
+	// 물짱이 카메라 컷에 맞춰 물짱이 그룹만 전환합니다.
+	UFUNCTION(BlueprintCallable, Category = "Ending|Crowd|Groups")
+	void PlayWaterBestCrowdCue();
+
+	// 원숭이 카메라 컷에 맞춰 원숭이 그룹만 전환합니다.
+	UFUNCTION(BlueprintCallable, Category = "Ending|Crowd|Groups")
+	void PlayMonkeyCrowdCue();
+
+	// 버섯킹 카메라 컷에 맞춰 버섯킹 그룹만 전환합니다.
+	UFUNCTION(BlueprintCallable, Category = "Ending|Crowd|Groups")
+	void PlayMushroomCrowdCue();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -63,9 +79,14 @@ protected:
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Ending|Crowd")
 	TObjectPtr<ATinoEndingCrowdController> CrowdController;
 
+	// 켜면 LS_Ending_B의 EndingCinematic 바인딩 이벤트가 전환 시점을 결정합니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd")
+	bool bTriggerCrowdFromSequencer = true;
+
 	// 재생 시작부터 전환을 요청하기까지의 시간.
-	// 첫 컷이 화면에 뜬 뒤여야 카메라가 비추는 동안 바뀐다.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd", meta = (ClampMin = "0.0"))
+	// 시퀀서 이벤트를 사용하지 않을 때만 적용하는 예비 타이머입니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd",
+		meta = (EditCondition = "!bTriggerCrowdFromSequencer", ClampMin = "0.0", Units = "s"))
 	float CrowdSpawnDelay = 0.7f;
 
 	// 몬스터가 사람으로 바뀌는 동안 화면을 가려줄 연기입니다.
@@ -82,12 +103,27 @@ protected:
 		meta = (ClampMin = "0.0", Units = "s"))
 	float CrowdTransformationInterval = 0.25f;
 
+	// 각 카메라 이벤트가 선택할 몬스터 종별 태그입니다.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd|Groups")
+	FName SlimeCrowdTag = TEXT("EndingCrowdSlime");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd|Groups")
+	FName WaterBestCrowdTag = TEXT("EndingCrowdWaterBest");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd|Groups")
+	FName MonkeyCrowdTag = TEXT("EndingCrowdMonkey");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ending|Crowd|Groups")
+	FName MushroomCrowdTag = TEXT("EndingCrowdMushroom");
+
 private:
 	UFUNCTION()
 	void HandleStoneBroken();
 
 	UFUNCTION()
 	void HandleEndingFinished();
+
+	void PlayCrowdCueForGroup(FName GroupTag);
 
 	UPROPERTY(Transient)
 	TObjectPtr<ULevelSequencePlayer> SequencePlayer;
@@ -102,4 +138,6 @@ private:
 	FTimerHandle StartTimerHandle;
 	FTimerHandle CrowdTimerHandle;
 	bool bPlayed = false;
+	bool bAllCrowdCuePlayed = false;
+	TSet<FName> PlayedCrowdGroupTags;
 };

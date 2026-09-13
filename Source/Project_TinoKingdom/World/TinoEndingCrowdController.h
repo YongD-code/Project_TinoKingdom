@@ -31,6 +31,10 @@ public:
 	void SpawnEndingCrowdWithEffect(UNiagaraSystem* Effect,
 		float EffectToSpawnDelay, float TransformationInterval);
 
+	// 이미 활성화된 엔딩 상태에 새 몬스터 그룹을 순차적으로 추가합니다.
+	void SpawnEndingCrowdGroupWithEffect(FName GroupTag, UNiagaraSystem* Effect,
+		float EffectToSpawnDelay, float TransformationInterval);
+
 	// NavMesh 또는 에셋 문제를 해결한 뒤 실패한 대상만 다시 시도합니다.
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Ending Crowd")
 	void RetryFailedCrowdConversions();
@@ -112,7 +116,7 @@ private:
 	void FailSpawn(const FString& Reason);
 	void UnbindSpawner();
 	void BindSession(UTinoEndingCrowdSubsystem& Session);
-	void SpawnEndingCrowdInternal();
+	void SpawnEndingCrowdInternal(FName GroupTag = NAME_None);
 
 	// 에디터 플레이 중 참조가 변경되어도 실제 생성 요청을 보낸 스포너를 추적합니다.
 	UPROPERTY(Transient)

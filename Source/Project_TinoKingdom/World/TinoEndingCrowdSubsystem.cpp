@@ -12,6 +12,12 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogTinoEndingCrowdSession, Log, All);
 
+namespace
+{
+	// 한 카메라 컷의 일반적인 몬스터 수는 한 번에 처리하되 과도한 동시 생성을 제한합니다.
+	constexpr int32 MaxConcurrentCrowdSpawns = 16;
+}
+
 bool UTinoEndingCrowdSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
 	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
@@ -25,7 +31,7 @@ TStatId UTinoEndingCrowdSubsystem::GetStatId() const
 bool UTinoEndingCrowdSubsystem::ActivateEnding(ATinoEndingCrowdSpawner& SettingsSpawner,
 	FName Tag, const FVector& ProjectionExtent, float Timeout, FString& OutError,
 	UNiagaraSystem* InTransformationEffect, float InEffectToSpawnDelay,
-	float InTransformationInterval)
+	float InTransformationInterval, FName InGroupTag)
 {
 	if (bShuttingDown || Tag.IsNone() || SettingsSpawner.GetWorld() != GetWorld())
 	{
@@ -40,25 +46,45 @@ bool UTinoEndingCrowdSubsystem::ActivateEnding(ATinoEndingCrowdSpawner& Settings
 	}
 	if (bEndingActive)
 	{
-		if (TargetTag == Tag && EntityConfig == Config)
+		if (TargetTag != Tag || EntityConfig != Config)
+		{
+			OutError = TEXT("이 월드에는 이미 다른 설정의 엔딩 전환이 활성화되어 있습니다.");
+			return false;
+		}
+		if (bAllGroupsActive || (!InGroupTag.IsNone() && ActiveGroupTags.Contains(InGroupTag)))
 		{
 			return true;
 		}
-		OutError = TEXT("이 월드에는 이미 다른 설정의 엔딩 전환이 활성화되어 있습니다.");
-		return false;
 	}
 
-	EntityConfig = Config;
-	TargetTag = Tag;
+	const bool bFirstActivation = !bEndingActive;
+	if (bFirstActivation)
+	{
+		EntityConfig = Config;
+		TargetTag = Tag;
+		NavProjectionExtent = ProjectionExtent.ComponentMax(FVector::OneVector);
+		ConversionTimeout = FMath::Max(Timeout, 1.0f);
+		bEndingActive = true;
+		bCollectingInitial = true;
+	}
+	if (InGroupTag.IsNone())
+	{
+		bAllGroupsActive = true;
+	}
+	else
+	{
+		ActiveGroupTags.Add(InGroupTag);
+	}
+
 	NavProjectionExtent = ProjectionExtent.ComponentMax(FVector::OneVector);
 	ConversionTimeout = FMath::Max(Timeout, 1.0f);
 	TransformationEffect = InTransformationEffect;
 	EffectToSpawnDelay = FMath::Max(InEffectToSpawnDelay, 0.0f);
 	TransformationInterval = FMath::Max(InTransformationInterval, 0.0f);
 	NextEffectTime = GetWorld()->GetTimeSeconds();
-	bEndingActive = true;
-	bCollectingInitial = true;
-	// 기존 대상은 한 번만 탐색하고, 이후 로딩은 몬스터의 플레이 시작 알림으로 처리합니다.
+	bCollectingCueTargets = true;
+	const int32 PreviousConversionCount = Conversions.Num();
+	// 새 카메라 이벤트가 올 때마다 이번 그룹에 속한 로드된 몬스터를 등록합니다.
 	for (TActorIterator<AEnemyCharacter> It(GetWorld()); It; ++It)
 	{
 		if (It->HasActorBegunPlay())
@@ -66,16 +92,34 @@ bool UTinoEndingCrowdSubsystem::ActivateEnding(ATinoEndingCrowdSpawner& Settings
 			RegisterEnemy(**It);
 		}
 	}
+	bCollectingCueTargets = false;
 	bCollectingInitial = false;
-	UE_LOG(LogTinoEndingCrowdSession, Log, TEXT("엔딩 상태 활성화: 최초 대상 %d마리. 이후 로드되는 대상도 전환합니다."),
-		InitialPendingCount);
+	UE_LOG(LogTinoEndingCrowdSession, Log,
+		TEXT("엔딩 군중 그룹 활성화: 그룹=%s, 새 대상=%d마리. 이후 로드되는 같은 그룹 대상도 전환합니다."),
+		InGroupTag.IsNone() ? TEXT("전체") : *InGroupTag.ToString(),
+		Conversions.Num() - PreviousConversionCount);
 	return true;
 }
 
 bool UTinoEndingCrowdSubsystem::ShouldConvert(const AEnemyCharacter& Enemy) const
 {
-	return bEndingActive && !bShuttingDown && Enemy.GetWorld() == GetWorld()
-		&& Enemy.ActorHasTag(TargetTag) && !Enemy.IsDead();
+	if (!bEndingActive || bShuttingDown || Enemy.GetWorld() != GetWorld()
+		|| !Enemy.ActorHasTag(TargetTag) || Enemy.IsDead())
+	{
+		return false;
+	}
+	if (bAllGroupsActive)
+	{
+		return true;
+	}
+	for (const FName GroupTag : ActiveGroupTags)
+	{
+		if (Enemy.ActorHasTag(GroupTag))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void UTinoEndingCrowdSubsystem::RegisterEnemy(AEnemyCharacter& Enemy)
@@ -99,7 +143,7 @@ void UTinoEndingCrowdSubsystem::RegisterEnemy(AEnemyCharacter& Enemy)
 	Conversion->Enemy = &Enemy;
 	Conversion->PhaseStartTime = GetWorld()->GetTimeSeconds();
 	Conversion->bInitialPending = bCollectingInitial;
-	Conversion->bHideWhileWaiting = !bCollectingInitial;
+	Conversion->bHideWhileWaiting = !bCollectingCueTargets;
 	InitialPendingCount += Conversion->bInitialPending ? 1 : 0;
 	Conversions.Add(Key, Conversion);
 	// 늦게 로드된 몬스터는 사람이 준비될 때까지 화면과 전투에 등장하지 않습니다.
@@ -154,8 +198,7 @@ void UTinoEndingCrowdSubsystem::Tick(float DeltaTime)
 	Conversions.GetKeys(Keys);
 	for (const auto& Pair : Conversions)
 	{
-		InFlightCount += (Pair.Value->Phase == EConversionPhase::EffectPlaying
-			|| Pair.Value->Phase == EConversionPhase::Spawning) ? 1 : 0;
+		InFlightCount += Pair.Value->Phase == EConversionPhase::Spawning ? 1 : 0;
 	}
 	// 등록 해제나 외부 완료 이벤트가 발생해도 맵 순회가 깨지지 않도록 키를 복사합니다.
 	for (const TWeakObjectPtr<AEnemyCharacter>& Key : Keys)
@@ -252,8 +295,8 @@ void UTinoEndingCrowdSubsystem::ProcessConversion(FConversion& Conversion, int32
 
 	if (Conversion.Phase == EConversionPhase::WaitingForEffect)
 	{
-		// 연기 재생부터 생성 완료까지를 한 작업으로 계산하여 연기만 먼저 사라지는 일을 막습니다.
-		if (InFlightCount >= 4 || Now < NextEffectTime)
+		// 간격이 0이면 같은 카메라 그룹의 연기를 한 처리 틱에 모두 시작합니다.
+		if (Now < NextEffectTime)
 		{
 			return;
 		}
@@ -265,7 +308,6 @@ void UTinoEndingCrowdSubsystem::ProcessConversion(FConversion& Conversion, int32
 		Conversion.Phase = EConversionPhase::EffectPlaying;
 		Conversion.PhaseStartTime = Now;
 		NextEffectTime = Now + TransformationInterval;
-		++InFlightCount;
 		UE_LOG(LogTinoEndingCrowdSession, Log, TEXT("%s: 사람 전환 연기를 재생했습니다."), *GetNameSafe(Enemy));
 		if (EffectToSpawnDelay > 0.0f)
 		{
@@ -278,6 +320,10 @@ void UTinoEndingCrowdSubsystem::ProcessConversion(FConversion& Conversion, int32
 	{
 		return;
 	}
+	if (InFlightCount >= MaxConcurrentCrowdSpawns)
+	{
+		return;
+	}
 
 	FActorSpawnParameters Parameters;
 	Parameters.OverrideLevel = GetWorld()->PersistentLevel;
@@ -287,7 +333,6 @@ void UTinoEndingCrowdSubsystem::ProcessConversion(FConversion& Conversion, int32
 		ATinoEndingCrowdSpawner::StaticClass(), Conversion.SpawnTransform, Parameters);
 	if (!Spawner)
 	{
-		--InFlightCount;
 		FailConversion(Conversion, TEXT("런타임 군중 스포너를 만들지 못했습니다."));
 		return;
 	}
@@ -295,12 +340,12 @@ void UTinoEndingCrowdSubsystem::ProcessConversion(FConversion& Conversion, int32
 	Spawner->SetEndingEntityConfig(EntityConfig);
 	if (!Spawner->PrepareSpawnLocations(TArray<FTransform>{Conversion.SpawnTransform}))
 	{
-		--InFlightCount;
 		FailConversion(Conversion, TEXT("몬스터 위치의 군중 생성 데이터를 준비하지 못했습니다."));
 		return;
 	}
 	Conversion.Phase = EConversionPhase::Spawning;
 	Conversion.PhaseStartTime = Now;
+	++InFlightCount;
 	Spawner->SpawnPreparedCrowd();
 }
 

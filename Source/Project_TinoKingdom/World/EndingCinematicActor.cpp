@@ -4,6 +4,7 @@
 #include "LevelSequenceActor.h"
 #include "LevelSequencePlayer.h"
 #include "MovieScene.h"
+#include "Engine/World.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -28,6 +29,7 @@ namespace
 	// 시퀀서 바인딩에 달아둔 태그와 문자열이 정확히 일치해야 한다.
 	const FName PlayerBindingTag(TEXT("Player"));
 	const FName GuideBindingTag(TEXT("Guide"));
+	const FName EndingCinematicBindingTag(TEXT("EndingCinematic"));
 }
 
 AEndingCinematicActor::AEndingCinematicActor()
@@ -151,6 +153,21 @@ void AEndingCinematicActor::PlayEnding()
 
 	SequencePlayer = CreatedPlayer;
 	SequenceActor = CreatedActor;
+	bAllCrowdCuePlayed = false;
+	PlayedCrowdGroupTags.Reset();
+
+	// 오브젝트 바인딩 아래의 이벤트 트랙이 현재 실행 중인 제어 액터를 호출하도록 연결합니다.
+	if (SequenceHasBindingTag(EndingSequence, EndingCinematicBindingTag))
+	{
+		SequenceActor->SetBindingByTag(EndingCinematicBindingTag, { this });
+		UE_LOG(LogEndingCinematic, Log, TEXT("EndingCinematic 바인딩: %s"), *GetName());
+	}
+	else if (bTriggerCrowdFromSequencer && IsValid(CrowdController))
+	{
+		UE_LOG(LogEndingCinematic, Warning,
+			TEXT("%s: 시퀀서 군중 이벤트를 사용하지만 '%s' 바인딩 태그가 없습니다."),
+			*GetName(), *EndingCinematicBindingTag.ToString());
+	}
 
 	// 에디터에서 잡아둔 임시 액터 대신 실제로 플레이 중인 액터를 물린다.
 	// Play() 뒤에 바꾸면 첫 프레임이 임시 액터로 평가되므로 반드시 재생 전에 한다.
@@ -196,8 +213,8 @@ void AEndingCinematicActor::PlayEnding()
 	UE_LOG(LogEndingCinematic, Log, TEXT("%s: %s 재생을 시작합니다."),
 		*GetName(), *EndingSequence->GetName());
 
-	// 카메라가 첫 지역을 비추는 동안 바뀌어야 하므로 재생 시작 기준으로 미룬다.
-	if (IsValid(CrowdController))
+	// 시퀀서 이벤트를 쓰지 않는 경우에만 재생 시작 기준의 예비 타이머를 사용합니다.
+	if (IsValid(CrowdController) && !bTriggerCrowdFromSequencer)
 	{
 		if (CrowdSpawnDelay <= 0.0f)
 		{
@@ -212,15 +229,72 @@ void AEndingCinematicActor::PlayEnding()
 
 void AEndingCinematicActor::PlayCrowdCue()
 {
+	PlayCrowdCueForGroup(NAME_None);
+}
+
+void AEndingCinematicActor::PlaySlimeCrowdCue()
+{
+	PlayCrowdCueForGroup(SlimeCrowdTag);
+}
+
+void AEndingCinematicActor::PlayWaterBestCrowdCue()
+{
+	PlayCrowdCueForGroup(WaterBestCrowdTag);
+}
+
+void AEndingCinematicActor::PlayMonkeyCrowdCue()
+{
+	PlayCrowdCueForGroup(MonkeyCrowdTag);
+}
+
+void AEndingCinematicActor::PlayMushroomCrowdCue()
+{
+	PlayCrowdCueForGroup(MushroomCrowdTag);
+}
+
+void AEndingCinematicActor::PlayCrowdCueForGroup(FName GroupTag)
+{
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		UE_LOG(LogEndingCinematic, Warning,
+			TEXT("%s: 군중 전환은 PIE 또는 실제 게임 월드에서만 실행할 수 있습니다."), *GetName());
+		return;
+	}
+	if (bAllCrowdCuePlayed || (!GroupTag.IsNone() && PlayedCrowdGroupTags.Contains(GroupTag)))
+	{
+		UE_LOG(LogEndingCinematic, Verbose,
+			TEXT("%s: 이미 실행한 군중 전환 이벤트를 무시합니다. 그룹=%s"),
+			*GetName(), *GroupTag.ToString());
+		return;
+	}
+	if (!GroupTag.IsNone() && GroupTag.ToString().TrimStartAndEnd().IsEmpty())
+	{
+		UE_LOG(LogEndingCinematic, Warning, TEXT("%s: 군중 그룹 태그가 비어 있습니다."), *GetName());
+		return;
+	}
 	if (!IsValid(CrowdController))
 	{
+		UE_LOG(LogEndingCinematic, Warning, TEXT("%s: Crowd Controller가 지정되지 않았습니다."), *GetName());
 		return;
 	}
 
-	// 월드 관리자가 몬스터별로 연기와 생성 순서를 함께 관리합니다.
-	CrowdController->SpawnEndingCrowdWithEffect(
-		CrowdSmokeEffect, SmokeToCrowdSpawnDelay, CrowdTransformationInterval);
-	UE_LOG(LogEndingCinematic, Log, TEXT("%s: 군중 전환을 요청했습니다."), *GetName());
+	if (GroupTag.IsNone())
+	{
+		bAllCrowdCuePlayed = true;
+		// 기존 전체 전환 이벤트는 호환용으로 유지합니다.
+		CrowdController->SpawnEndingCrowdWithEffect(
+			CrowdSmokeEffect, SmokeToCrowdSpawnDelay, CrowdTransformationInterval);
+	}
+	else
+	{
+		PlayedCrowdGroupTags.Add(GroupTag);
+		// 같은 카메라 컷에 속한 몬스터만 이번 요청에서 등록합니다.
+		CrowdController->SpawnEndingCrowdGroupWithEffect(
+			GroupTag, CrowdSmokeEffect, SmokeToCrowdSpawnDelay, CrowdTransformationInterval);
+	}
+	UE_LOG(LogEndingCinematic, Log, TEXT("%s: 군중 전환을 요청했습니다. 그룹=%s"),
+		*GetName(), GroupTag.IsNone() ? TEXT("전체") : *GroupTag.ToString());
 }
 
 void AEndingCinematicActor::HandleEndingFinished()

@@ -22,7 +22,8 @@ public:
 		const FVector& ProjectionExtent, float Timeout, FString& OutError,
 		UNiagaraSystem* InTransformationEffect = nullptr,
 		float InEffectToSpawnDelay = 0.0f,
-		float InTransformationInterval = 0.0f);
+		float InTransformationInterval = 0.0f,
+		FName InGroupTag = NAME_None);
 	bool ShouldConvert(const AEnemyCharacter& Enemy) const;
 	void RegisterEnemy(AEnemyCharacter& Enemy);
 	void UnregisterEnemy(AEnemyCharacter& Enemy);
@@ -79,6 +80,7 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UNiagaraSystem> TransformationEffect;
 	FName TargetTag;
+	TSet<FName> ActiveGroupTags;
 	FVector NavProjectionExtent = FVector(50.0, 50.0, 200.0);
 	float ConversionTimeout = 60.0f;
 	float EffectToSpawnDelay = 0.0f;
@@ -88,6 +90,8 @@ private:
 	int32 InitialPendingCount = 0;
 	bool bEndingActive = false;
 	bool bCollectingInitial = false;
+	bool bCollectingCueTargets = false;
+	bool bAllGroupsActive = false;
 	bool bInitialCrowdFinished = false;
 	bool bShuttingDown = false;
 	FString LastError;

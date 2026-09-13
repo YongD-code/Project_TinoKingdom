@@ -41,8 +41,12 @@ bool FTinoEndingCrowdStreamingRegistrationTest::RunTest(const FString& Parameter
 		return false;
 	}
 	const FName Tag(TEXT("EndingCrowdTarget"));
+	const FName NearGroupTag(TEXT("EndingCrowdNearGroup"));
+	const FName FarGroupTag(TEXT("EndingCrowdFarGroup"));
 	NearEnemy->Tags.Add(Tag);
+	NearEnemy->Tags.Add(NearGroupTag);
 	FarEnemy->Tags.Add(Tag);
+	FarEnemy->Tags.Add(FarGroupTag);
 	const bool bOriginalDamage = NearEnemy->CanBeDamaged();
 	const bool bOriginalCollision = NearEnemy->GetActorEnableCollision();
 	Session->RegisterEnemy(*NearEnemy);
@@ -55,20 +59,28 @@ bool FTinoEndingCrowdStreamingRegistrationTest::RunTest(const FString& Parameter
 	TestFalse(TEXT("설정 실패 후 엔딩 상태 유지 안 함"), Session->IsEndingActive());
 	UMassEntityConfigAsset* Config = NewObject<UMassEntityConfigAsset>(World);
 	Settings->SetEndingEntityConfig(TSoftObjectPtr<UMassEntityConfigAsset>(Config));
-	if (!TestTrue(TEXT("엔딩 활성화"), Session->ActivateEnding(*Settings, Tag, FVector(50.0), 60.0f, Error)))
+	if (!TestTrue(TEXT("첫 그룹 활성화"), Session->ActivateEnding(*Settings, Tag,
+		FVector(50.0), 60.0f, Error, nullptr, 0.0f, 0.0f, NearGroupTag)))
 	{
 		return false;
 	}
-	TestTrue(TEXT("중복 활성화는 같은 상태 재사용"),
-		Session->ActivateEnding(*Settings, Tag, FVector(50.0), 60.0f, Error));
+	TestTrue(TEXT("같은 그룹 중복 활성화는 같은 상태 재사용"),
+		Session->ActivateEnding(*Settings, Tag, FVector(50.0), 60.0f, Error,
+			nullptr, 0.0f, 0.0f, NearGroupTag));
 	TestFalse(TEXT("활성화 후 다른 태그로 상태를 덮어쓰지 않음"),
 		Session->ActivateEnding(*Settings, TEXT("DifferentTag"), FVector(50.0), 60.0f, Error));
 
-	// 실제 스트리밍 콜백과 동일한 등록 함수를 호출하며 위치에 따른 필터가 없는지 확인합니다.
+	// 첫 이벤트에서는 선택한 그룹만 대상이 되는지 확인합니다.
 	Session->RegisterEnemy(*NearEnemy);
 	Session->RegisterEnemy(*FarEnemy);
 	Session->RegisterEnemy(*UntaggedEnemy);
-	TestEqual(TEXT("거리와 무관하게 태그 대상 두 마리만 등록"), Session->GetPendingCount(), 2);
+	TestEqual(TEXT("첫 그룹 대상만 등록"), Session->GetPendingCount(), 1);
+	TestFalse(TEXT("아직 활성화하지 않은 그룹은 숨기지 않음"), FarEnemy->IsHidden());
+	TestTrue(TEXT("두 번째 그룹 활성화"), Session->ActivateEnding(*Settings, Tag,
+		FVector(50.0), 60.0f, Error, nullptr, 0.0f, 0.0f, FarGroupTag));
+	// 실제 스트리밍 콜백과 동일한 등록 함수를 호출하며 위치에 따른 필터가 없는지 확인합니다.
+	Session->RegisterEnemy(*FarEnemy);
+	TestEqual(TEXT("거리와 무관하게 두 그룹 대상 등록"), Session->GetPendingCount(), 2);
 	TestTrue(TEXT("늦게 로드된 몬스터를 즉시 숨김"), FarEnemy->IsHidden());
 	TestTrue(TEXT("늦게 로드된 몬스터의 AI 차단"), FarEnemy->IsCinematicAIBlocked());
 	TestFalse(TEXT("늦게 로드된 몬스터의 충돌 차단"), FarEnemy->GetActorEnableCollision());
